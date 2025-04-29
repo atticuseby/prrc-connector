@@ -1,8 +1,9 @@
-entrypoint = "main.py"
+entrypoint = "optimizely_connector/web.py"
 modules = ["python-3.11"]
 
 [nix]
 channel = "stable-24_05"
+packages = ["glibcLocales"]
 
 [unitTest]
 language = "python3"
@@ -11,5 +12,5 @@ language = "python3"
 requiredFiles = [".replit", "replit.nix"]
 
 [deployment]
-run = ["python3", "main.py"]
+run = ["python3", "optimizely_connector/web.py"]
 deploymentTarget = "cloudrun"

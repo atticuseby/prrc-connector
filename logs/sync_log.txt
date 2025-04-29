@@ -1,0 +1,12 @@
+[2025-04-16 19:43:50] [DRY RUN] Would send: {'customer_id': '12345', 'email': 'jhazerjian@gmail.com', 'orders': '6', 'total_spent': '429.97'}
+[2025-04-16 19:43:50] [DRY RUN] Would send: {'customer_id': '67890', 'email': 'bobbipaulson@hotmail.com', 'orders': '12', 'total_spent': '1216.0'}
+[2025-04-16 19:43:50] [DRY RUN] Would send: {'customer_id': '24680', 'email': 'cesposit1@verizon.net', 'orders': '5', 'total_spent': '899.23'}
+[2025-04-16 19:43:57] [DRY RUN] Would send: {'customer_id': '12345', 'email': 'jhazerjian@gmail.com', 'orders': '6', 'total_spent': '429.97'}
+[2025-04-16 19:43:57] [DRY RUN] Would send: {'customer_id': '67890', 'email': 'bobbipaulson@hotmail.com', 'orders': '12', 'total_spent': '1216.0'}
+[2025-04-16 19:43:57] [DRY RUN] Would send: {'customer_id': '24680', 'email': 'cesposit1@verizon.net', 'orders': '5', 'total_spent': '899.23'}
+[2025-04-24 13:50:37] [DRY RUN] Would send: {'customer_id': '12345', 'email': 'jhazerjian@gmail.com', 'orders': '6', 'total_spent': '429.97'}
+[2025-04-24 13:50:37] [DRY RUN] Would send: {'customer_id': '67890', 'email': 'bobbipaulson@hotmail.com', 'orders': '12', 'total_spent': '1216.0'}
+[2025-04-24 13:50:37] [DRY RUN] Would send: {'customer_id': '24680', 'email': 'cesposit1@verizon.net', 'orders': '5', 'total_spent': '899.23'}
+[2025-04-24 13:51:17] [DRY RUN] Would send: {'customer_id': '12345', 'email': 'jhazerjian@gmail.com', 'orders': '6', 'total_spent': '429.97'}
+[2025-04-24 13:51:17] [DRY RUN] Would send: {'customer_id': '67890', 'email': 'bobbipaulson@hotmail.com', 'orders': '12', 'total_spent': '1216.0'}
+[2025-04-24 13:51:17] [DRY RUN] Would send: {'customer_id': '24680', 'email': 'cesposit1@verizon.net', 'orders': '5', 'total_spent': '899.23'}

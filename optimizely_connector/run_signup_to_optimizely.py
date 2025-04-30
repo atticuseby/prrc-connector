@@ -85,8 +85,12 @@ def fetch_runsignup_data():
 
     print(f"\n✅ RunSignUp data export complete: {OUTPUT_PATH}")
 
-# TEMP: Preview first row of CSV for validation
-with open(OUTPUT_PATH, newline='') as f:
-    reader = csv.DictReader(f)
-    first_row = next(reader)
-    print(f"\n🧪 First row of CSV:\n{first_row}")
+    # TEMP: Preview first row of CSV for validation
+    with open(OUTPUT_PATH, newline='') as f:
+        reader = csv.DictReader(f)
+        try:
+            first_row = next(reader)
+            print(f"\n🧪 First row of CSV:\n{first_row}")
+        except StopIteration:
+            print("⚠️ No rows found in CSV.")
+

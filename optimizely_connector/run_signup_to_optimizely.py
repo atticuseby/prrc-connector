@@ -10,10 +10,11 @@ load_dotenv()
 API_KEY = os.getenv("API_KEY")
 API_SECRET = os.getenv("API_SECRET")
 OUTPUT_PATH = f"data/runsignup_export_{datetime.now().strftime('%Y-%m-%d')}.csv"
-
 BASE_URL = "https://runsignup.com/Rest"
 
 def fetch_runsignup_data():
+    print("\n=== Pulling RunSignUp Data ===\n")
+
     # --- STEP 1: GET ALL RACES ---
     races_response = requests.get(
         f"{BASE_URL}/races",
@@ -24,11 +25,16 @@ def fetch_runsignup_data():
         }
     )
 
-    races_data = races_response.json()
-    race_list = races_data.get("races", [])
+    try:
+        races_data = races_response.json()
+        print(f"📦 Raw races response:\n{races_data}")
+        race_list = races_data.get("races", [])
+    except Exception as e:
+        print(f"❌ Error parsing races response: {e}")
+        return
 
     # --- STEP 2: PREP CSV ---
-    os.makedirs("data", exist_ok=True)  # Make sure 'data' folder exists
+    os.makedirs("data", exist_ok=True)  # Ensure 'data' folder exists
 
     with open(OUTPUT_PATH, mode='w', newline='') as file:
         writer = csv.DictWriter(file, fieldnames=[
@@ -43,7 +49,6 @@ def fetch_runsignup_data():
         for race in race_list:
             race_id = race.get("race_id")
             race_name = race.get("name")
-
             print(f"Fetching registrations for race: {race_name} (ID: {race_id})")
 
             reg_response = requests.get(
@@ -85,12 +90,11 @@ def fetch_runsignup_data():
 
     print(f"\n✅ RunSignUp data export complete: {OUTPUT_PATH}")
 
-    # TEMP: Preview first row of CSV for validation
-    with open(OUTPUT_PATH, newline='') as f:
-        reader = csv.DictReader(f)
-        try:
+    # TEMP: Preview first row if available
+    try:
+        with open(OUTPUT_PATH, newline='') as f:
+            reader = csv.DictReader(f)
             first_row = next(reader)
             print(f"\n🧪 First row of CSV:\n{first_row}")
-        except StopIteration:
-            print("⚠️ No rows found in CSV.")
-
+    except StopIteration:
+        print("⚠️ No rows found in CSV.")

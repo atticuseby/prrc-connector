@@ -10,11 +10,10 @@ load_dotenv()
 API_KEY = os.getenv("API_KEY")
 API_SECRET = os.getenv("API_SECRET")
 OUTPUT_PATH = f"data/runsignup_export_{datetime.now().strftime('%Y-%m-%d')}.csv"
+
 BASE_URL = "https://runsignup.com/Rest"
 
 def fetch_runsignup_data():
-    print("\n=== Pulling RunSignUp Data ===\n")
-
     # --- STEP 1: GET ALL RACES ---
     races_response = requests.get(
         f"{BASE_URL}/races",
@@ -25,13 +24,8 @@ def fetch_runsignup_data():
         }
     )
 
-    try:
-        races_data = races_response.json()
-        print(f"📦 Raw races response:\n{races_data}")
-        race_list = races_data.get("races", [])
-    except Exception as e:
-        print(f"❌ Error parsing races response: {e}")
-        return
+    races_data = races_response.json()
+    race_list = races_data.get("races", [])
 
     # --- STEP 2: PREP CSV ---
     os.makedirs("data", exist_ok=True)  # Ensure 'data' folder exists
@@ -47,8 +41,14 @@ def fetch_runsignup_data():
 
         # --- STEP 3: LOOP THROUGH EACH RACE ---
         for race in race_list:
-            race_id = race.get("race_id")
-            race_name = race.get("name")
+            race_data = race.get("race", {})
+            race_id = race_data.get("race_id")
+            race_name = race_data.get("name")
+
+            if not race_id:
+                print(f"⚠️ Skipping invalid race entry: {race}")
+                continue
+
             print(f"Fetching registrations for race: {race_name} (ID: {race_id})")
 
             reg_response = requests.get(
@@ -90,11 +90,14 @@ def fetch_runsignup_data():
 
     print(f"\n✅ RunSignUp data export complete: {OUTPUT_PATH}")
 
-    # TEMP: Preview first row if available
-    try:
-        with open(OUTPUT_PATH, newline='') as f:
-            reader = csv.DictReader(f)
+    # --- STEP 4: Preview First Row ---
+    with open(OUTPUT_PATH, newline='') as f:
+        reader = csv.DictReader(f)
+        try:
             first_row = next(reader)
             print(f"\n🧪 First row of CSV:\n{first_row}")
-    except StopIteration:
-        print("⚠️ No rows found in CSV.")
+        except StopIteration:
+            print("⚠️ No rows found in CSV.")
+
+# Run the function
+fetch_runsignup_data()

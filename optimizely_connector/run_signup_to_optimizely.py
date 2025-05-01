@@ -1,58 +1,40 @@
 import requests
-import csv
-from datetime import datetime
-from dotenv import load_dotenv
 import os
-
-# --- CONFIG ---
-load_dotenv()
 
 API_KEY = os.getenv("API_KEY")
 API_SECRET = os.getenv("API_SECRET")
-OUTPUT_PATH = f"data/runsignup_export_{datetime.now().strftime('%Y-%m-%d')}.csv"
-
 BASE_URL = "https://runsignup.com/Rest"
 
-def fetch_runsignup_data():
-    # --- STEP 1: GET ALL RACES ---
-    races_response = requests.get(
-        f"{BASE_URL}/races",
-        params={
-            "api_key": API_KEY,
-            "api_secret": API_SECRET,
-            "format": "json"
-        }
-    )
+def fetch_events_and_registrations(race_list):
+    for race in race_list:
+        race_id = race.get("race_id")
+        race_name = race.get("name")
 
-    races_data = races_response.json()
-    race_list = races_data.get("races", [])
+        # === GET EVENT DETAILS FOR EACH RACE ===
+        detail_resp = requests.get(
+            f"{BASE_URL}/race/{race_id}",
+            params={
+                "api_key": API_KEY,
+                "api_secret": API_SECRET,
+                "format": "json"
+            }
+        )
 
-    # --- STEP 2: PREP CSV ---
-    os.makedirs("data", exist_ok=True)  # Ensure 'data' folder exists
+        if detail_resp.status_code != 200:
+            print(f"⚠️ Error fetching details for race {race_id}")
+            continue
 
-    with open(OUTPUT_PATH, mode='w', newline='') as file:
-        writer = csv.DictWriter(file, fieldnames=[
-            "run_signup_id", "first_name", "last_name", "email", "phone",
-            "date_of_birth", "address", "city", "state", "zip",
-            "gender", "event_name", "registration_date", "transaction_id",
-            "amount_paid", "checked_in", "source_race"
-        ])
-        writer.writeheader()
+        race_data = detail_resp.json()
+        events = race_data.get("race", {}).get("events", [])
 
-        # --- STEP 3: LOOP THROUGH EACH RACE ---
-        for race in race_list:
-            race_data = race.get("race", {})
-            race_id = race_data.get("race_id")
-            race_name = race_data.get("name")
+        for event in events:
+            event_id = event.get("event_id")
+            event_name = event.get("name")
 
-            if not race_id:
-                print(f"⚠️ Skipping invalid race entry: {race}")
-                continue
+            print(f"\nFetching registrations for race: {race_name} — Event: {event_name} (ID: {event_id})")
 
-            print(f"Fetching registrations for race: {race_name} (ID: {race_id})")
-
-            reg_response = requests.get(
-                f"{BASE_URL}/race/{race_id}/registrations",
+            reg_resp = requests.get(
+                f"{BASE_URL}/race/{race_id}/event/{event_id}/registrations",
                 params={
                     "api_key": API_KEY,
                     "api_secret": API_SECRET,
@@ -60,44 +42,15 @@ def fetch_runsignup_data():
                 }
             )
 
-            if reg_response.status_code != 200:
-                print(f"⚠️ Error fetching race {race_id}: {reg_response.status_code}")
+            if reg_resp.status_code != 200:
+                print(f"⚠️ Error fetching registrations for event {event_id}: {reg_resp.status_code}")
                 continue
 
-            reg_data = reg_response.json()
+            reg_data = reg_resp.json()
             registrations = reg_data.get("registrations", [])
 
-            for reg in registrations:
-                writer.writerow({
-                    "run_signup_id": reg.get("registration_id"),
-                    "first_name": reg.get("first_name"),
-                    "last_name": reg.get("last_name"),
-                    "email": reg.get("email"),
-                    "phone": reg.get("phone"),
-                    "date_of_birth": reg.get("dob"),
-                    "address": reg.get("address"),
-                    "city": reg.get("city"),
-                    "state": reg.get("state"),
-                    "zip": reg.get("zip"),
-                    "gender": reg.get("gender"),
-                    "event_name": reg.get("event_name"),
-                    "registration_date": reg.get("registration_date"),
-                    "transaction_id": reg.get("transaction_id"),
-                    "amount_paid": reg.get("amount_paid"),
-                    "checked_in": reg.get("checked_in"),
-                    "source_race": race_name
-                })
-
-    print(f"\n✅ RunSignUp data export complete: {OUTPUT_PATH}")
-
-    # --- STEP 4: Preview First Row ---
-    with open(OUTPUT_PATH, newline='') as f:
-        reader = csv.DictReader(f)
-        try:
-            first_row = next(reader)
-            print(f"\n🧪 First row of CSV:\n{first_row}")
-        except StopIteration:
-            print("⚠️ No rows found in CSV.")
-
-# Run the function
-fetch_runsignup_data()
+            if not registrations:
+                print("⚠️ No registrations found.")
+            else:
+                print(f"✅ Found {len(registrations)} registrations.")
+                # Here’s where you’d save or process the data

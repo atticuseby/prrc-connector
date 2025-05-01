@@ -29,7 +29,7 @@ def get_all_races():
     return response.json().get("races", [])
 
 
-def fetch_events_and_registrations():
+def fetch_events_and_registrations(race_list):
     races = get_all_races()
     for race in races:
         race_id = race.get("race_id")

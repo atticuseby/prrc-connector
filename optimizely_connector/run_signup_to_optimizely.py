@@ -8,18 +8,17 @@ load_dotenv()
 
 API_KEY = os.getenv("API_KEY")
 API_SECRET = os.getenv("API_SECRET")
-PARTNER_ID = os.getenv("PARTNER_ID")  # ← This must be set in Railway
+PARTNER_ID = os.getenv("PARTNER_ID")
 BASE_URL = "https://runsignup.com/Rest"
 OUTPUT_PATH = f"data/runsignup_export_{datetime.now().strftime('%Y-%m-%d')}.csv"
 
 
 def get_all_races():
     response = requests.get(
-        f"{BASE_URL}/races",
+        f"{BASE_URL}/partner/{PARTNER_ID}/races",
         params={
             "api_key": API_KEY,
             "api_secret": API_SECRET,
-            "partner_id": PARTNER_ID,
             "format": "json"
         }
     )
@@ -28,14 +27,7 @@ def get_all_races():
         print(f"⚠️ Error fetching race list: {response.status_code}")
         return []
 
-    races_raw = response.json().get("races", [])
-    races = [r["race"] for r in races_raw if "race" in r]
-
-    # Log a preview
-    for r in races[:5]:
-        print(f"📍 Found: {r.get('name')} (ID: {r.get('race_id')})")
-
-    return races
+    return response.json().get("races", [])
 
 
 def fetch_events_and_registrations():

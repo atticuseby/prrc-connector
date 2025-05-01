@@ -131,3 +131,15 @@ def fetch_runsignup_data():
                 })
 
     print(f"\n✅ RunSignUp data export complete: {OUTPUT_PATH}")
+
+    # Console preview of first 5 rows
+    print("\n📊 Preview of exported data:")
+    try:
+        with open(OUTPUT_PATH, mode='r') as f:
+            for i, line in enumerate(f):
+                print(line.strip())
+                if i >= 5:
+                    break
+    except Exception as e:
+        print(f"⚠️ Could not preview CSV: {e}")
+

@@ -29,14 +29,13 @@ def get_all_races():
     return response.json().get("races", [])
 
 
-def fetch_events_and_registrations(race_list):
+def fetch_events_and_registrations():
     races = get_all_races()
     for race in races:
         race_id = race.get("race_id")
         race_name = race.get("name")
         print(f"\n📌 {race_name} (ID: {race_id})")
 
-        # Fetch events for the race
         event_url = f"{BASE_URL}/race/{race_id}/events"
         event_response = requests.get(
             event_url,
@@ -57,7 +56,6 @@ def fetch_events_and_registrations(race_list):
             event_name = event.get("name")
             print(f"  🏁 Event: {event_name} (ID: {event_id})")
 
-            # Fetch registrations for this event
             reg_response = requests.get(
                 f"{BASE_URL}/race/{race_id}/registrations",
                 params={

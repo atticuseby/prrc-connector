@@ -27,7 +27,9 @@ def get_all_races():
         print(f"⚠️ Error fetching race list: {response.status_code}")
         return []
 
-    return response.json().get("races", [])
+    races = response.json().get("races", [])
+    print(f"🎯 Total races found: {len(races)}")
+    return races
 
 
 def fetch_events_and_registrations():
@@ -72,7 +74,7 @@ def fetch_events_and_registrations():
                 continue
 
             registrations = reg_response.json().get("registrations", [])
-            print(f"   ✅ {len(registrations)} registrations found")
+            print(f"   ✅ {len(registrations)} registration(s) found")
 
 
 def fetch_runsignup_data():
@@ -92,7 +94,7 @@ def fetch_runsignup_data():
             race_id = race.get("race_id")
             race_name = race.get("name")
 
-            print(f"Fetching registrations for race: {race_name} (ID: {race_id})")
+            print(f"\nFetching registrations for race: {race_name} (ID: {race_id})")
 
             reg_response = requests.get(
                 f"{BASE_URL}/race/{race_id}/registrations",
@@ -108,6 +110,7 @@ def fetch_runsignup_data():
                 continue
 
             registrations = reg_response.json().get("registrations", [])
+            print(f"     → {len(registrations)} registration(s) found")
 
             for reg in registrations:
                 writer.writerow({
@@ -131,14 +134,3 @@ def fetch_runsignup_data():
                 })
 
     print(f"\n✅ RunSignUp data export complete: {OUTPUT_PATH}")
-
-    # Console preview of first 5 rows
-    print("\n📊 Preview of exported data:")
-    try:
-        with open(OUTPUT_PATH, mode='r') as f:
-            for i, line in enumerate(f):
-                print(line.strip())
-                if i >= 5:
-                    break
-    except Exception as e:
-        print(f"⚠️ Could not preview CSV: {e}")

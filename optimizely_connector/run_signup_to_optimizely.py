@@ -8,14 +8,12 @@ load_dotenv()
 
 API_KEY = os.getenv("API_KEY")
 API_SECRET = os.getenv("API_SECRET")
-PARTNER_ID = os.getenv("PARTNER_ID")
 BASE_URL = "https://runsignup.com/Rest"
 OUTPUT_PATH = f"data/runsignup_export_{datetime.now().strftime('%Y-%m-%d')}.csv"
 
-
 def get_all_races():
     response = requests.get(
-        f"{BASE_URL}/partner/{PARTNER_ID}/races",
+        f"{BASE_URL}/users/me/races",
         params={
             "api_key": API_KEY,
             "api_secret": API_SECRET,
@@ -30,7 +28,6 @@ def get_all_races():
     races = response.json().get("races", [])
     print(f"🎯 Total races found: {len(races)}")
     return races
-
 
 def fetch_events_and_registrations():
     races = get_all_races()
@@ -74,8 +71,7 @@ def fetch_events_and_registrations():
                 continue
 
             registrations = reg_response.json().get("registrations", [])
-            print(f"   ✅ {len(registrations)} registration(s) found")
-
+            print(f"   ✅ {len(registrations)} registrations found")
 
 def fetch_runsignup_data():
     races = get_all_races()
@@ -90,11 +86,13 @@ def fetch_runsignup_data():
         ])
         writer.writeheader()
 
+        preview_rows = []
+
         for race in races:
             race_id = race.get("race_id")
             race_name = race.get("name")
 
-            print(f"\nFetching registrations for race: {race_name} (ID: {race_id})")
+            print(f"Fetching registrations for race: {race_name} (ID: {race_id})")
 
             reg_response = requests.get(
                 f"{BASE_URL}/race/{race_id}/registrations",
@@ -110,10 +108,9 @@ def fetch_runsignup_data():
                 continue
 
             registrations = reg_response.json().get("registrations", [])
-            print(f"     → {len(registrations)} registration(s) found")
 
             for reg in registrations:
-                writer.writerow({
+                row = {
                     "run_signup_id": reg.get("registration_id"),
                     "first_name": reg.get("first_name"),
                     "last_name": reg.get("last_name"),
@@ -131,6 +128,15 @@ def fetch_runsignup_data():
                     "amount_paid": reg.get("amount_paid"),
                     "checked_in": reg.get("checked_in"),
                     "source_race": race_name
-                })
+                }
+                writer.writerow(row)
+                preview_rows.append(row)
 
-    print(f"\n✅ RunSignUp data export complete: {OUTPUT_PATH}")
+        print(f"\n✅ RunSignUp data export complete: {OUTPUT_PATH}")
+        print("\n📊 Preview of exported data:")
+        if preview_rows:
+            print(','.join(preview_rows[0].keys()))
+            for row in preview_rows[:5]:
+                print(','.join(str(value or "") for value in row.values()))
+        else:
+            print("⚠️ No data found.")

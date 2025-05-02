@@ -142,4 +142,3 @@ def fetch_runsignup_data():
                     break
     except Exception as e:
         print(f"⚠️ Could not preview CSV: {e}")
-

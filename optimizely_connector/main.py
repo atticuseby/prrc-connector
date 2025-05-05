@@ -1,7 +1,7 @@
 import os
 import requests
-from optimizely_connector.run_signup_to_optimizely import fetch_runsignup_data, fetch_events_and_registrations
-from optimizely_connector.sync_rics_to_optimizely import run_sync
+from run_signup_to_optimizely import fetch_runsignup_data, fetch_events_and_registrations
+from sync_rics_to_optimizely import run_sync
 from dotenv import load_dotenv
 
 load_dotenv()

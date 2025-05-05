@@ -4,7 +4,7 @@ import requests
 import csv
 import os
 from scripts.helpers import log_message
-from scripts.config import RICS_API_TOKEN
+from scripts.config import OPTIMIZELY_API_TOKEN as RICS_API_TOKEN
 
 RICS_API_URL = "https://api.ricssoftware.com/v1/customers"  # Replace with real endpoint
 

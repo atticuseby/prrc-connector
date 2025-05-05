@@ -1,7 +1,7 @@
 import os
 import requests
-from run_signup_to_optimizely import fetch_runsignup_data, fetch_events_and_registrations
-from sync_rics_to_optimizely import run_sync
+from optimizely_connector.run_signup_to_optimizely import fetch_runsignup_data, fetch_events_and_registrations
+from optimizely_connector.sync_rics_to_optimizely import run_sync
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -36,7 +36,6 @@ def run_all():
         print("✅ Data sync to Optimizely complete\n")
     except Exception as e:
         print(f"❌ Error syncing to Optimizely: {e}")
-
 
 if __name__ == "__main__":
     try:

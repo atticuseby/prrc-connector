@@ -2,6 +2,7 @@ import os
 import requests
 from run_signup_to_optimizely import fetch_runsignup_data, fetch_events_and_registrations
 from sync_rics_to_optimizely import run_sync
+from fetch_rics_data import fetch_rics_data  # ← Add this line
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -9,12 +10,11 @@ load_dotenv()
 def run_all():
     print("=== Starting RunSignUp to Optimizely Sync ===")
 
-    # Debug environment values (DO NOT commit logs with sensitive info)
+    # Debug environment values
     print(f"API_KEY present: {bool(os.getenv('API_KEY'))}")
     print(f"API_SECRET present: {bool(os.getenv('API_SECRET'))}")
     print(f"PARTNER_ID: {os.getenv('PARTNER_ID')}")
 
-    # Ensure data directory exists
     try:
         os.makedirs("data", exist_ok=True)
     except Exception as e:
@@ -28,6 +28,14 @@ def run_all():
         print("✅ RunSignUp data pull complete\n")
     except Exception as e:
         print(f"❌ Error during RunSignUp data pull: {e}")
+        return
+
+    print("=== Pulling RICS Data ===")
+    try:
+        fetch_rics_data()
+        print("✅ RICS data pull complete\n")
+    except Exception as e:
+        print(f"❌ Error during RICS data pull: {e}")
         return
 
     print("=== Syncing Data to Optimizely ===")

@@ -12,8 +12,8 @@ BASE_URL = "https://runsignup.com/Rest"
 OUTPUT_PATH = f"data/runsignup_export_{datetime.now().strftime('%Y-%m-%d')}.csv"
 
 def fetch_runsignup_data():
-    test_race_id = "145723"  # Ashburn Village Fiesta Run
-    race_name = "Ashburn Village Fiesta Run"
+    test_race_id = "173466"  # Ashburn Village Fiesta Run
+    race_name = "Soldier Run"
 
     print(f"\n📥 Testing known race: {race_name} (ID: {test_race_id})")
 

@@ -3,10 +3,15 @@
 import requests
 import csv
 import os
+import sys
+
+# Add parent directory to Python path so we can import from /scripts
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 from scripts.helpers import log_message
 from scripts.config import OPTIMIZELY_API_TOKEN as RICS_API_TOKEN
 
-RICS_API_URL = "https://api.ricssoftware.com/v1/customers"  # Replace with real endpoint
+RICS_API_URL = "https://api.ricssoftware.com/v1/customers"  # Replace with actual endpoint
 
 def fetch_rics_data():
     headers = {
@@ -36,7 +41,7 @@ def fetch_rics_data():
 
         for c in customers:
             writer.writerow({
-                "rics_id": c.get("id"),  # Confirm actual field names
+                "rics_id": c.get("id"),  # Confirm field names from RICS API response
                 "email": c.get("email"),
                 "first_name": c.get("first_name"),
                 "last_name": c.get("last_name"),

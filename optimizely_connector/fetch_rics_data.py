@@ -4,13 +4,14 @@ import requests
 import csv
 import os
 from scripts.helpers import log_message
-from scripts.config import OPTIMIZELY_API_TOKEN as RICS_API_TOKEN
+from scripts.config import OPTIMIZELY_API_TOKEN
 
+RICS_API_TOKEN = OPTIMIZELY_API_TOKEN.strip()  # ✅ Clean whitespace from token
 RICS_API_URL = "https://enterprise.ricssoftware.com/api/Customer/GetCustomer"
 
 def fetch_rics_data():
     headers = {
-        "Token": RICS_API_TOKEN,  # ✅ Correct header name
+        "Token": RICS_API_TOKEN,
         "Content-Type": "application/json"
     }
 
@@ -20,7 +21,9 @@ def fetch_rics_data():
         "Email": None,
         "FirstName": None,
         "LastName": None,
-        "PhoneNumber": None
+        "PhoneNumber": None,
+        "Page": 1,
+        "PageSize": 1000  # ✅ Ensures we get bulk customer data
     }
 
     print("🔍 Sending POST request to RICS API...")
@@ -30,13 +33,19 @@ def fetch_rics_data():
         log_message(f"❌ Network error when connecting to RICS: {e}")
         raise
 
+    print(f"DEBUG RAW RICS RESPONSE: {response.text}")
+
     if response.status_code != 200:
         log_message(f"❌ Failed to fetch RICS data — Status {response.status_code}")
-        log_message(f"❌ RICS response: {response.text}")
-        print(f"DEBUG RAW RICS RESPONSE: {response.text}")
         raise Exception("Failed RICS API pull")
 
-    customers = response.json()
+    data = response.json()
+
+    if not data.get("IsSuccessful", False):
+        log_message("❌ RICS API responded with failure")
+        raise Exception("RICS API returned unsuccessful status")
+
+    customers = data.get("Customers", [])
     print(f"📥 Pulled {len(customers)} customers from RICS")
 
     output_path = "data/rics_test_pull.csv"

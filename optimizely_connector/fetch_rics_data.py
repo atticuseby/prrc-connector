@@ -26,6 +26,7 @@ def fetch_rics_data():
 
     if response.status_code != 200:
         log_message(f"❌ Failed to fetch RICS data — Status {response.status_code}")
+        log_message(f"❌ RICS response: {response.text}")
         raise Exception("Failed RICS API pull")
 
     customers = response.json()

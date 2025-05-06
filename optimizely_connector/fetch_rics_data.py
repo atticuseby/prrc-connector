@@ -6,7 +6,6 @@ import os
 from scripts.helpers import log_message
 from scripts.config import OPTIMIZELY_API_TOKEN as RICS_API_TOKEN
 
-# ✅ Correct RICS API endpoint
 RICS_API_URL = "https://enterprise.ricssoftware.com/api/Customer/GetCustomer"
 
 def fetch_rics_data():
@@ -15,7 +14,14 @@ def fetch_rics_data():
         "Content-Type": "application/json"
     }
 
-    payload = {}  # Start with an empty payload — we'll adjust based on API response
+    payload = {
+        "CustomerID": None,
+        "CustomerNumber": None,
+        "Email": None,
+        "FirstName": None,
+        "LastName": None,
+        "PhoneNumber": None
+    }
 
     print("🔍 Sending POST request to RICS API...")
     try:
@@ -44,15 +50,15 @@ def fetch_rics_data():
 
         for c in customers:
             writer.writerow({
-                "rics_id": c.get("id"),
-                "email": c.get("email"),
-                "first_name": c.get("first_name"),
-                "last_name": c.get("last_name"),
-                "orders": c.get("order_count"),
-                "total_spent": c.get("total_spent"),
-                "city": c.get("city"),
-                "state": c.get("state"),
-                "zip": c.get("zip")
+                "rics_id": c.get("CustomerID"),
+                "email": c.get("Email"),
+                "first_name": c.get("FirstName"),
+                "last_name": c.get("LastName"),
+                "orders": c.get("OrderCount"),
+                "total_spent": c.get("TotalSpent"),
+                "city": c.get("City"),
+                "state": c.get("State"),
+                "zip": c.get("Zip")
             })
 
     log_message(f"✅ Saved test pull to {output_path}")

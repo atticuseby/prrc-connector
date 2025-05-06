@@ -10,7 +10,7 @@ RICS_API_URL = "https://enterprise.ricssoftware.com/api/Customer/GetCustomer"
 
 def fetch_rics_data():
     headers = {
-        "Authorization": f"Bearer {RICS_API_TOKEN}",
+        "Token": RICS_API_TOKEN,  # ✅ Correct header name
         "Content-Type": "application/json"
     }
 

@@ -6,7 +6,7 @@ import os
 from scripts.helpers import log_message
 from scripts.config import OPTIMIZELY_API_TOKEN
 
-RICS_API_TOKEN = OPTIMIZELY_API_TOKEN.strip()  # ✅ Clean whitespace from token
+RICS_API_TOKEN = OPTIMIZELY_API_TOKEN.strip()
 RICS_API_URL = "https://enterprise.ricssoftware.com/api/Customer/GetCustomer"
 
 def fetch_rics_data():
@@ -15,15 +15,12 @@ def fetch_rics_data():
         "Content-Type": "application/json"
     }
 
+    # ✅ Pull customers born anytime between 1950 and 2025
     payload = {
-        "CustomerID": None,
-        "CustomerNumber": None,
-        "Email": None,
-        "FirstName": None,
-        "LastName": None,
-        "PhoneNumber": None,
+        "DateOfBirthStart": "1950-01-01",
+        "DateOfBirthEnd": "2025-12-31",
         "Page": 1,
-        "PageSize": 1000  # ✅ Ensures we get bulk customer data
+        "PageSize": 1000
     }
 
     print("🔍 Sending POST request to RICS API...")
@@ -60,7 +57,7 @@ def fetch_rics_data():
 
         for c in customers:
             writer.writerow({
-                "rics_id": c.get("CustomerID"),
+                "rics_id": c.get("CustomerId"),
                 "email": c.get("Email"),
                 "first_name": c.get("FirstName"),
                 "last_name": c.get("LastName"),

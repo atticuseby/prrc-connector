@@ -6,7 +6,7 @@ import os
 from scripts.helpers import log_message
 from scripts.config import OPTIMIZELY_API_TOKEN as RICS_API_TOKEN
 
-# ✅ Correct base URL provided by RICS support
+# ✅ Correct RICS API endpoint
 RICS_API_URL = "https://enterprise.ricssoftware.com/api/Customer/GetCustomer"
 
 def fetch_rics_data():
@@ -15,7 +15,7 @@ def fetch_rics_data():
         "Content-Type": "application/json"
     }
 
-    payload = {}  # Empty payload = pull all customers, adjust if filtering is needed
+    payload = {}  # Start with an empty payload — we'll adjust based on API response
 
     print("🔍 Sending POST request to RICS API...")
     try:
@@ -30,7 +30,6 @@ def fetch_rics_data():
         raise Exception("Failed RICS API pull")
 
     customers = response.json()
-
     print(f"📥 Pulled {len(customers)} customers from RICS")
 
     output_path = "data/rics_test_pull.csv"

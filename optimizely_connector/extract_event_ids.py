@@ -24,7 +24,10 @@ def extract_event_ids():
         return
 
     races = response.json().get("races", [])
-    print(f"📦 Found {len(races)} races")
+    if not races:
+        print("⚠️ No races returned from RunSignUp")
+    else:
+        print(f"📦 Found {len(races)} races")
 
     output_path = "data/event_ids.csv"
     os.makedirs("data", exist_ok=True)

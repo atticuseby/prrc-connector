@@ -2,6 +2,7 @@ import requests
 import csv
 import os
 import time
+import random
 from datetime import datetime
 from scripts.helpers import log_message
 from scripts.config import OPTIMIZELY_API_TOKEN
@@ -39,8 +40,9 @@ def fetch_rics_data():
                 break
             except requests.exceptions.HTTPError as e:
                 if response.status_code == 429:
-                    wait_time = retry_delay * (2 ** (attempt - 1))
-                    print(f"⚠️ Rate limited (attempt {attempt}/{max_retries}). Retrying in {wait_time} seconds...")
+                    jitter = random.uniform(0.5, 1.5)
+                    wait_time = retry_delay * (2 ** (attempt - 1)) * jitter
+                    print(f"⚠️ Rate limited (attempt {attempt}/{max_retries}). Retrying in {wait_time:.2f} seconds...")
                     time.sleep(wait_time)
                 else:
                     print(f"❌ RICS API request failed on page {page}: {e}")

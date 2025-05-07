@@ -18,7 +18,7 @@ def fetch_rics_data():
 
     all_customers = []
     page = 1
-    page_size = 1000
+    page_size = 100
     max_retries = 5
     retry_delay = 5
 
@@ -36,6 +36,10 @@ def fetch_rics_data():
             try:
                 response = requests.post(RICS_API_URL, headers=headers, json=payload)
                 response.raise_for_status()
+                data = response.json()
+                if not data.get("IsSuccessful", False):
+                    log_message(f"❌ RICS API returned failure on page {page}: {data}")
+                    raise Exception("RICS API returned unsuccessful status")
                 break
             except requests.exceptions.HTTPError as e:
                 if response.status_code == 429:
@@ -49,24 +53,15 @@ def fetch_rics_data():
             log_message(f"❌ Max retries reached on page {page}. Exiting.")
             raise Exception("Max retries reached. Aborting.")
 
-        data = response.json()
-
-        if not data.get("IsSuccessful", False):
-            log_message(f"❌ RICS API returned failure on page {page}")
-            break
-
         customers = data.get("Customers", [])
+        all_customers.extend(customers)
 
         if not customers:
-            log_message(f"⚠️ No customers found on page {page}. Stopping sync.")
+            print(f"✅ No more customers. Ending sync on page {page}.")
             break
 
-        all_customers.extend(customers)
-        log_message(f"📄 Pulled page {page} — {len(customers)} customers")
-
+        print(f"📄 Pulled page {page} — {len(customers)} customers")
         page += 1
-
-    print(f"\n📥 Pulled {len(all_customers)} total customers from RICS")
 
     # Save results to CSV
     timestamp = datetime.now().strftime("%Y-%m-%d")
@@ -99,3 +94,4 @@ def fetch_rics_data():
             })
 
     log_message(f"✅ Saved RICS customer export to {output_path}")
+    print(f"✅ Saved RICS customer export to {output_path}")

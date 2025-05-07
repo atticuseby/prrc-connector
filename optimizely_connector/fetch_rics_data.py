@@ -3,6 +3,7 @@ import csv
 import os
 import time
 import random
+import json
 from datetime import datetime
 from scripts.helpers import log_message
 from scripts.config import OPTIMIZELY_API_TOKEN
@@ -25,7 +26,7 @@ def fetch_rics_data():
 
     print("🔍 Starting paginated RICS customer sync...")
 
-    while True:
+    while page <= 5:  # TEMPORARY LIMIT FOR TESTING
         payload = {
             "DateOfBirthStart": "1950-01-01",
             "DateOfBirthEnd": "2025-12-31",
@@ -60,6 +61,12 @@ def fetch_rics_data():
         customers = data.get("Customers", [])
         all_customers.extend(customers)
 
+        # Save each page to JSON for verification
+        output_dir = "./output"
+        os.makedirs(output_dir, exist_ok=True)
+        with open(f"{output_dir}/page_{page}.json", mode="w") as page_file:
+            json.dump(customers, page_file, indent=2)
+
         if not customers:
             print(f"✅ All customers pulled. Stopping on page {page}.")
             break
@@ -67,10 +74,8 @@ def fetch_rics_data():
         print(f"📄 Pulled page {page} — {len(customers)} customers")
         page += 1
 
-    # Save results to CSV
+    # Save full results to CSV
     timestamp = datetime.now().strftime("%Y-%m-%d")
-    output_dir = "./output"
-    os.makedirs(output_dir, exist_ok=True)
     output_path = f"{output_dir}/rics_customers_{timestamp}.csv"
 
     with open(output_path, mode="w", newline="") as file:

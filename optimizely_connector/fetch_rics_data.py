@@ -3,7 +3,6 @@ import csv
 import os
 import time
 import random
-import json
 from datetime import datetime
 from scripts.helpers import log_message
 from scripts.config import OPTIMIZELY_API_TOKEN
@@ -26,7 +25,7 @@ def fetch_rics_data():
 
     print("🔍 Starting paginated RICS customer sync...")
 
-    while page <= 5:  # TEMPORARY LIMIT FOR TESTING
+    while True:
         payload = {
             "DateOfBirthStart": "1950-01-01",
             "DateOfBirthEnd": "2025-12-31",
@@ -59,50 +58,56 @@ def fetch_rics_data():
             raise Exception("RICS API returned unsuccessful status")
 
         customers = data.get("Customers", [])
-        all_customers.extend(customers)
-
-        # Save each page to JSON for verification
-        output_dir = "./output"
-        os.makedirs(output_dir, exist_ok=True)
-        with open(f"{output_dir}/page_{page}.json", mode="w") as page_file:
-            json.dump(customers, page_file, indent=2)
-
         if not customers:
             print(f"✅ All customers pulled. Stopping on page {page}.")
             break
 
+        all_customers.extend(customers)
         print(f"📄 Pulled page {page} — {len(customers)} customers")
         page += 1
 
-    # Save full results to CSV
-    timestamp = datetime.now().strftime("%Y-%m-%d")
+    # Save results to CSV
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    output_dir = "./output"
+    os.makedirs(output_dir, exist_ok=True)
     output_path = f"{output_dir}/rics_customers_{timestamp}.csv"
 
-    with open(output_path, mode="w", newline="") as file:
-        writer = csv.DictWriter(file, fieldnames=[
-            "CustomerId", "AccountNumber", "FirstName", "LastName",
-            "Email", "PhoneNumber", "DateOfBirth", "Address",
-            "City", "State", "PostalCode"
-        ])
-        writer.writeheader()
+    try:
+        with open(output_path, mode="w", newline="") as file:
+            writer = csv.DictWriter(file, fieldnames=[
+                "CustomerId", "AccountNumber", "FirstName", "LastName",
+                "Email", "PhoneNumber", "DateOfBirth", "Address",
+                "City", "State", "PostalCode"
+            ])
+            writer.writeheader()
 
-        for c in all_customers:
-            mailing = c.get("MailingAddress", {})
-            writer.writerow({
-                "CustomerId": c.get("CustomerId"),
-                "AccountNumber": c.get("AccountNumber"),
-                "FirstName": c.get("FirstName"),
-                "LastName": c.get("LastName"),
-                "Email": c.get("Email"),
-                "PhoneNumber": c.get("PhoneNumber"),
-                "DateOfBirth": c.get("DateOfBirth"),
-                "Address": mailing.get("Address", ""),
-                "City": mailing.get("City", ""),
-                "State": mailing.get("State", ""),
-                "PostalCode": mailing.get("PostalCode", "")
-            })
+            for c in all_customers:
+                mailing = c.get("MailingAddress", {})
+                writer.writerow({
+                    "CustomerId": c.get("CustomerId"),
+                    "AccountNumber": c.get("AccountNumber"),
+                    "FirstName": c.get("FirstName"),
+                    "LastName": c.get("LastName"),
+                    "Email": c.get("Email"),
+                    "PhoneNumber": c.get("PhoneNumber"),
+                    "DateOfBirth": c.get("DateOfBirth"),
+                    "Address": mailing.get("Address", ""),
+                    "City": mailing.get("City", ""),
+                    "State": mailing.get("State", ""),
+                    "PostalCode": mailing.get("PostalCode", "")
+                })
 
-    print(f"✅ Saved RICS customer export to {output_path}")
+        print(f"✅ Successfully saved RICS customer data to {output_path}")
+
+        # Optional: Push to GitHub
+        os.system(f"git add {output_path}")
+        os.system(f'git commit -m "Add RICS customer data - {timestamp}"')
+        os.system("git push")
+
+    except Exception as e:
+        print(f"❌ Failed to save RICS data: {e}")
+
+    print("✅ Data export completed and pushed to GitHub (if configured).")
 
 
 fetch_rics_data()

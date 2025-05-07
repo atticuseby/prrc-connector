@@ -37,7 +37,31 @@ def fetch_rics_data():
             try:
                 response = requests.post(RICS_API_URL, headers=headers, json=payload)
                 response.raise_for_status()
-                break
+                data = response.json()
+                
+                if not data.get("IsSuccessful", False):
+                    print(f"❌ RICS API returned failure on page {page}")
+                    raise Exception("RICS API returned unsuccessful status")
+                
+                customers = data.get("Customers", [])
+                if not customers:
+                    print(f"✅ All customers pulled. Stopping on page {page}.")
+                    break
+
+                all_customers.extend(customers)
+                print(f"📄 Pulled page {page} — {len(customers)} customers")
+                
+                # Check if we have reached the end
+                current_end = data.get("ResultStatistics", {}).get("EndRecord", 0)
+                total_records = data.get("ResultStatistics", {}).get("TotalRecords", 0)
+
+                if current_end >= total_records:
+                    print(f"✅ Reached the end of available customer data (Total: {total_records}).")
+                    break
+
+                page += 1
+                break  # Exit retry loop on success
+
             except requests.exceptions.HTTPError as e:
                 if response.status_code == 429:
                     jitter = random.uniform(0.5, 1.5)
@@ -50,21 +74,6 @@ def fetch_rics_data():
         else:
             print(f"❌ Max retries reached on page {page}. Exiting.")
             raise Exception("Max retries reached. Aborting.")
-
-        data = response.json()
-
-        if not data.get("IsSuccessful", False):
-            print(f"❌ RICS API returned failure on page {page}")
-            raise Exception("RICS API returned unsuccessful status")
-
-        customers = data.get("Customers", [])
-        if not customers:
-            print(f"✅ All customers pulled. Stopping on page {page}.")
-            break
-
-        all_customers.extend(customers)
-        print(f"📄 Pulled page {page} — {len(customers)} customers")
-        page += 1
 
     # Save results to CSV
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
@@ -99,15 +108,10 @@ def fetch_rics_data():
 
         print(f"✅ Successfully saved RICS customer data to {output_path}")
 
-        # Optional: Push to GitHub
-        os.system(f"git add {output_path}")
-        os.system(f'git commit -m "Add RICS customer data - {timestamp}"')
-        os.system("git push")
-
     except Exception as e:
         print(f"❌ Failed to save RICS data: {e}")
 
-    print("✅ Data export completed and pushed to GitHub (if configured).")
+    print("✅ Data export completed.")
 
 
 fetch_rics_data()

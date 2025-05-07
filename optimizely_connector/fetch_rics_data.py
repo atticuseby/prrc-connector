@@ -1,8 +1,7 @@
-# fetch_rics_data.py
-
 import requests
 import csv
 import os
+import time
 from datetime import datetime
 from scripts.helpers import log_message
 from scripts.config import OPTIMIZELY_API_TOKEN
@@ -20,6 +19,8 @@ def fetch_rics_data():
     page = 1
     page_size = 1000
     total_records = None
+    max_retries = 5
+    retry_delay = 5
 
     print("🔍 Starting paginated RICS customer sync...")
 
@@ -31,12 +32,22 @@ def fetch_rics_data():
             "PageSize": page_size
         }
 
-        try:
-            response = requests.post(RICS_API_URL, headers=headers, json=payload)
-            response.raise_for_status()
-        except requests.exceptions.RequestException as e:
-            log_message(f"❌ RICS API request failed on page {page}: {e}")
-            raise
+        for attempt in range(1, max_retries + 1):
+            try:
+                response = requests.post(RICS_API_URL, headers=headers, json=payload)
+                response.raise_for_status()
+                break
+            except requests.exceptions.HTTPError as e:
+                if response.status_code == 429:
+                    wait_time = retry_delay * (2 ** (attempt - 1))
+                    log_message(f"⚠️ Rate limited (attempt {attempt}/{max_retries}). Retrying in {wait_time} seconds...")
+                    time.sleep(wait_time)
+                else:
+                    log_message(f"❌ RICS API request failed on page {page}: {e}")
+                    raise
+        else:
+            log_message(f"❌ Max retries reached on page {page}. Exiting.")
+            raise Exception("Max retries reached. Aborting.")
 
         data = response.json()
 
@@ -91,17 +102,3 @@ def fetch_rics_data():
             })
 
     log_message(f"✅ Saved RICS customer export to {output_path}")
-
-    # Optional: S3 upload (disabled for now)
-    # upload_to_s3(output_path, bucket_name="prrc-daily-backups")
-
-# Uncomment and configure this when you're ready for S3 uploads
-# def upload_to_s3(filepath, bucket_name):
-#     import boto3
-#     from botocore.exceptions import NoCredentialsError
-#     s3 = boto3.client("s3")
-#     try:
-#         s3.upload_file(filepath, bucket_name, os.path.basename(filepath))
-#         log_message(f"☁️ Uploaded {os.path.basename(filepath)} to {bucket_name}")
-#     except NoCredentialsError:
-#         log_message("❌ S3 upload failed: No AWS credentials found")

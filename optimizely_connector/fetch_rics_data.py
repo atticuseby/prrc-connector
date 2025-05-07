@@ -69,7 +69,7 @@ def fetch_rics_data():
 
     # Save results to CSV
     timestamp = datetime.now().strftime("%Y-%m-%d")
-    output_dir = "output"
+    output_dir = "./output"
     os.makedirs(output_dir, exist_ok=True)
     output_path = f"{output_dir}/rics_customers_{timestamp}.csv"
 

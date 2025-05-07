@@ -36,28 +36,30 @@ def fetch_rics_data():
             try:
                 response = requests.post(RICS_API_URL, headers=headers, json=payload)
                 response.raise_for_status()
-                data = response.json()
-                if not data.get("IsSuccessful", False):
-                    log_message(f"❌ RICS API returned failure on page {page}: {data}")
-                    raise Exception("RICS API returned unsuccessful status")
                 break
             except requests.exceptions.HTTPError as e:
                 if response.status_code == 429:
                     wait_time = retry_delay * (2 ** (attempt - 1))
-                    log_message(f"⚠️ Rate limited (attempt {attempt}/{max_retries}). Retrying in {wait_time} seconds...")
+                    print(f"⚠️ Rate limited (attempt {attempt}/{max_retries}). Retrying in {wait_time} seconds...")
                     time.sleep(wait_time)
                 else:
-                    log_message(f"❌ RICS API request failed on page {page}: {e}")
+                    print(f"❌ RICS API request failed on page {page}: {e}")
                     raise
         else:
-            log_message(f"❌ Max retries reached on page {page}. Exiting.")
+            print(f"❌ Max retries reached on page {page}. Exiting.")
             raise Exception("Max retries reached. Aborting.")
+
+        data = response.json()
+
+        if not data.get("IsSuccessful", False):
+            print(f"❌ RICS API returned failure on page {page}")
+            raise Exception("RICS API returned unsuccessful status")
 
         customers = data.get("Customers", [])
         all_customers.extend(customers)
 
         if not customers:
-            print(f"✅ No more customers. Ending sync on page {page}.")
+            print(f"✅ All customers pulled. Stopping on page {page}.")
             break
 
         print(f"📄 Pulled page {page} — {len(customers)} customers")
@@ -93,5 +95,7 @@ def fetch_rics_data():
                 "PostalCode": mailing.get("PostalCode", "")
             })
 
-    log_message(f"✅ Saved RICS customer export to {output_path}")
     print(f"✅ Saved RICS customer export to {output_path}")
+
+
+fetch_rics_data()

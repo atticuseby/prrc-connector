@@ -1,6 +1,7 @@
 import requests
 import csv
 import os
+from datetime import datetime
 from scripts.helpers import log_message
 from scripts.config import OPTIMIZELY_API_TOKEN
 
@@ -45,13 +46,18 @@ def fetch_rics_data():
     customers = data.get("Customers", [])
     print(f"📥 Pulled {len(customers)} customers from RICS")
 
-    # Save the data to a CSV file
+    # Create output directory if it doesn't exist
     output_dir = "./optimizely_connector/output"  # Use relative path for Railway
     os.makedirs(output_dir, exist_ok=True)
-    output_path = f"{output_dir}/rics_test_pull.csv"
-
+    
+    # Use date-based filename to avoid overwrites and track daily pulls
+    date_suffix = datetime.now().strftime('%Y-%m-%d')
+    output_path = f"{output_dir}/rics_data_{date_suffix}.csv"
+    
     print(f"📝 Writing CSV to: {output_path}")  # Add directory path print for debugging
 
+    # Write to CSV without duplicates
+    seen_customers = set()
     with open(output_path, mode="w", newline="") as file:
         writer = csv.DictWriter(file, fieldnames=[
             "rics_id", "email", "first_name", "last_name", 
@@ -60,18 +66,21 @@ def fetch_rics_data():
         writer.writeheader()
 
         for c in customers:
-            mailing = c.get("MailingAddress", {})
-            writer.writerow({
-                "rics_id": c.get("CustomerId"),
-                "email": c.get("Email"),
-                "first_name": c.get("FirstName"),
-                "last_name": c.get("LastName"),
-                "orders": c.get("OrderCount", 0),
-                "total_spent": c.get("TotalSpent", 0.0),
-                "city": mailing.get("City", ""),
-                "state": mailing.get("State", ""),
-                "zip": mailing.get("PostalCode", "")
-            })
+            rics_id = c.get("CustomerId")
+            if rics_id not in seen_customers:
+                seen_customers.add(rics_id)
+                mailing = c.get("MailingAddress", {})
+                writer.writerow({
+                    "rics_id": rics_id,
+                    "email": c.get("Email"),
+                    "first_name": c.get("FirstName"),
+                    "last_name": c.get("LastName"),
+                    "orders": c.get("OrderCount", 0),
+                    "total_spent": c.get("TotalSpent", 0.0),
+                    "city": mailing.get("City", ""),
+                    "state": mailing.get("State", ""),
+                    "zip": mailing.get("PostalCode", "")
+                })
 
     log_message(f"✅ Saved test pull to {output_path}")
 

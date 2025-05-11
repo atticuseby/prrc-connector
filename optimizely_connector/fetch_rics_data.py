@@ -7,6 +7,7 @@ from scripts.config import OPTIMIZELY_API_TOKEN
 RICS_API_TOKEN = OPTIMIZELY_API_TOKEN.strip()
 RICS_API_URL = "https://enterprise.ricssoftware.com/api/Customer/GetCustomer"
 
+
 def fetch_rics_data():
     headers = {
         "Token": RICS_API_TOKEN,
@@ -45,9 +46,11 @@ def fetch_rics_data():
     print(f"📥 Pulled {len(customers)} customers from RICS")
 
     # Save the data to a CSV file
-    output_dir = "./output"
+    output_dir = "./optimizely_connector/output"  # Use relative path for Railway
     os.makedirs(output_dir, exist_ok=True)
     output_path = f"{output_dir}/rics_test_pull.csv"
+
+    print(f"📝 Writing CSV to: {output_path}")  # Add directory path print for debugging
 
     with open(output_path, mode="w", newline="") as file:
         writer = csv.DictWriter(file, fieldnames=[

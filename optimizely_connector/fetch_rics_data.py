@@ -45,8 +45,9 @@ def fetch_rics_data():
     print(f"📥 Pulled {len(customers)} customers from RICS")
 
     # Save the data to a CSV file
-    output_path = "data/rics_test_pull.csv"
-    os.makedirs("data", exist_ok=True)
+    output_dir = "./output"
+    os.makedirs(output_dir, exist_ok=True)
+    output_path = f"{output_dir}/rics_test_pull.csv"
 
     with open(output_path, mode="w", newline="") as file:
         writer = csv.DictWriter(file, fieldnames=[
@@ -56,6 +57,7 @@ def fetch_rics_data():
         writer.writeheader()
 
         for c in customers:
+            mailing = c.get("MailingAddress", {})
             writer.writerow({
                 "rics_id": c.get("CustomerId"),
                 "email": c.get("Email"),
@@ -63,9 +65,9 @@ def fetch_rics_data():
                 "last_name": c.get("LastName"),
                 "orders": c.get("OrderCount", 0),
                 "total_spent": c.get("TotalSpent", 0.0),
-                "city": c.get("City", ""),
-                "state": c.get("State", ""),
-                "zip": c.get("Zip", "")
+                "city": mailing.get("City", ""),
+                "state": mailing.get("State", ""),
+                "zip": mailing.get("PostalCode", "")
             })
 
     log_message(f"✅ Saved test pull to {output_path}")

@@ -30,4 +30,5 @@ jobs:
 
       - name: Run connector
         run: |
-          python main.py
+          run: python optimizely_connector/main.py
+

@@ -3,7 +3,7 @@
 import os
 import requests
 import csv
-from scripts.helpers import log_message
+from helpers import log_message
 from dotenv import load_dotenv
 
 load_dotenv()

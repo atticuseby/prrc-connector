@@ -16,7 +16,7 @@ creds = service_account.Credentials.from_service_account_file(
     SERVICE_ACCOUNT_FILE, scopes=SCOPES)
 
 # 📁 Replace with your actual folder ID if you want to upload to a specific folder
-FOLDER_ID = None  # Or paste actual folder ID here
+FOLDER_ID = 1D49X0MsLf75FfAjEl2IMuI9ETQ7raAPf
 
 def upload_file(filepath, drive_service):
     file_metadata = {

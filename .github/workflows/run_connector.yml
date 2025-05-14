@@ -30,3 +30,9 @@ jobs:
 
       - name: Run connector
         run: python optimizely_connector/main.py
+
+      - name: Save Google Drive credentials
+        run: echo '${{ secrets.GDRIVE_CREDENTIALS }}' > service_account.json
+
+      - name: Upload CSVs to Google Drive
+        run: python optimizely_connector/upload_to_gdrive.py

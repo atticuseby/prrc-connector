@@ -2,28 +2,44 @@
 
 import os
 import glob
+import io
 import json
-from pydrive.auth import GoogleAuth
-from pydrive.drive import GoogleDrive
+from google.oauth2 import service_account
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaFileUpload
 
-CREDENTIALS_PATH = "service_account.json"
-UPLOAD_FOLDER_NAME = "PRRC Connector Uploads"  # this can be the folder's name
+# 🔐 Load credentials from service_account.json
+SERVICE_ACCOUNT_FILE = 'service_account.json'
+SCOPES = ['https://www.googleapis.com/auth/drive.file']
 
-def authenticate():
-    gauth = GoogleAuth()
-    gauth.LoadServiceConfigSettings()
-    gauth.ServiceAuth()
-    return GoogleDrive(gauth)
+creds = service_account.Credentials.from_service_account_file(
+    SERVICE_ACCOUNT_FILE, scopes=SCOPES)
 
-def upload_csvs():
-    drive = authenticate()
+# 📁 Replace with your actual folder ID if you want to upload to a specific folder
+FOLDER_ID = None  # Or paste actual folder ID here
 
-    for filepath in glob.glob("**/*.csv", recursive=True):
-        print(f"📤 Uploading {filepath} to Google Drive...")
-        file = drive.CreateFile({'title': os.path.basename(filepath)})
-        file.SetContentFile(filepath)
-        file.Upload()
-        print(f"✅ Uploaded: {filepath}")
+def upload_file(filepath, drive_service):
+    file_metadata = {
+        'name': os.path.basename(filepath)
+    }
+    if FOLDER_ID:
+        file_metadata['parents'] = [FOLDER_ID]
 
-if __name__ == "__main__":
-    upload_csvs()
+    media = MediaFileUpload(filepath, mimetype='text/csv')
+    file = drive_service.files().create(
+        body=file_metadata,
+        media_body=media,
+        fields='id'
+    ).execute()
+
+    print(f"✅ Uploaded {filepath} as file ID: {file.get('id')}")
+
+def main():
+    service = build('drive', 'v3', credentials=creds)
+
+    for csv_path in glob.glob("**/*.csv", recursive=True):
+        print(f"📤 Uploading {csv_path}...")
+        upload_file(csv_path, service)
+
+if __name__ == '__main__':
+    main()

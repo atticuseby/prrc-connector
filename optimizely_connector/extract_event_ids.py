@@ -12,7 +12,7 @@ API_KEY = os.getenv("API_KEY")
 API_SECRET = os.getenv("API_SECRET")
 PARTNER_ID = os.getenv("PARTNER_ID")
 
-RUNSIGNUP_RACES_ENDPOINT = f"https://runsignup.com/rest/races?format=json&event_type=R&api_key={API_KEY}&api_secret={API_SECRET}&partner_id={PARTNER_ID}"
+RUNSIGNUP_RACES_ENDPOINT = f"https://runsignup.com/rest/races?format=json&events=T&event_type=R&api_key={API_KEY}&api_secret={API_SECRET}&partner_id={PARTNER_ID}"
 
 def extract_event_ids():
     print("🔍 Requesting race and event data from RunSignUp...")

@@ -4,13 +4,10 @@ import os
 import sys
 import requests
 import csv
-from dotenv import load_dotenv
 
 # ✅ Allow import from scripts/helpers.py
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "scripts")))
 from helpers import log_message
-
-load_dotenv()
 
 API_KEY = os.getenv("API_KEY")
 API_SECRET = os.getenv("API_SECRET")

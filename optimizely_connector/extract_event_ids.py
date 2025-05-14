@@ -1,10 +1,14 @@
 # extract_event_ids.py
 
 import os
+import sys
 import requests
 import csv
-from helpers import log_message
 from dotenv import load_dotenv
+
+# 👇 Fix for importing from scripts/helpers.py
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "scripts")))
+from helpers import log_message
 
 load_dotenv()
 

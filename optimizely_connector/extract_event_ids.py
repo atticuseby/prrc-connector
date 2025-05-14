@@ -6,7 +6,7 @@ import requests
 import csv
 from dotenv import load_dotenv
 
-# 👇 Fix for importing from scripts/helpers.py
+# ✅ Allow import from scripts/helpers.py
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "scripts")))
 from helpers import log_message
 
@@ -20,6 +20,7 @@ RUNSIGNUP_RACES_ENDPOINT = f"https://runsignup.com/rest/races?format=json&events
 
 def extract_event_ids():
     print("🔍 Requesting race and event data from RunSignUp...")
+
     try:
         response = requests.get(RUNSIGNUP_RACES_ENDPOINT)
         response.raise_for_status()
@@ -30,8 +31,9 @@ def extract_event_ids():
     races = response.json().get("races", [])
     if not races:
         print("⚠️ No races returned from RunSignUp")
-    else:
-        print(f"📦 Found {len(races)} races")
+        return
+
+    print(f"📦 Found {len(races)} races")
 
     output_path = "data/event_ids.csv"
     os.makedirs("data", exist_ok=True)
@@ -43,12 +45,23 @@ def extract_event_ids():
         for race in races:
             race_id = race.get("race_id")
             race_name = race.get("name")
+
             for event in race.get("events", []):
+                event_id = event.get("event_id")
+                event_name = event.get("name")
+
+                # 🪵 Print to logs for debugging
+                print(f"{race_name} ({race_id}) → {event_name} ({event_id})")
+
                 writer.writerow({
                     "race_id": race_id,
                     "race_name": race_name,
-                    "event_id": event.get("event_id"),
-                    "event_name": event.get("name")
+                    "event_id": event_id,
+                    "event_name": event_name
                 })
 
     log_message(f"✅ Saved event IDs to {output_path}")
+
+# ✅ Make sure this runs when the script is called directly
+if __name__ == "__main__":
+    extract_event_ids()

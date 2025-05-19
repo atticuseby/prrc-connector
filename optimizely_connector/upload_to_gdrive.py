@@ -7,7 +7,7 @@ from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 
 # 🔐 Load credentials from service_account.json
-SERVICE_ACCOUNT_FILE = 'service_account.json'
+SERVICE_ACCOUNT_FILE = os.path.join(os.path.dirname(__file__), 'service_account.json')
 SCOPES = ['https://www.googleapis.com/auth/drive.file']
 
 creds = service_account.Credentials.from_service_account_file(

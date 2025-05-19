@@ -1,13 +1,20 @@
-name: Run Extract Event IDs on Schedule
+name: Run Extract Event IDs Daily at 3AM EST
 
 on:
   schedule:
-    - cron: '0 * * * *'  # every hour
-  workflow_dispatch:     # allows manual run in GitHub
+    - cron: '0 8 * * *'  # 3:00 AM EST / 8:00 AM UTC daily
+  workflow_dispatch:
 
 jobs:
   run-script:
     runs-on: ubuntu-latest
+
+    env:
+      API_KEY: ${{ secrets.API_KEY }}
+      API_SECRET: ${{ secrets.API_SECRET }}
+      PARTNER_ID: ${{ secrets.PARTNER_ID }}
+      GDRIVE_FOLDER_ID: ${{ secrets.GDRIVE_FOLDER_ID }}
+
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
@@ -22,9 +29,8 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Save Google Drive credentials
+        run: echo '${{ secrets.GDRIVE_CREDENTIALS }}' > service_account.json
+
       - name: Run script
-        env:
-          API_KEY: ${{ secrets.API_KEY }}
-          API_SECRET: ${{ secrets.API_SECRET }}
-          PARTNER_ID: ${{ secrets.PARTNER_ID }}
         run: bash scripts/run_extract_event_ids.sh

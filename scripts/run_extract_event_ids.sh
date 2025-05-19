@@ -1,5 +1,10 @@
 #!/bin/bash
 
-echo "Running extract_event_ids.py with env support..."
-cd optimizely_connector
-python extract_event_ids.py
+set -e  # Stop on error
+
+echo "🚀 Starting Extract + Upload"
+
+python optimizely_connector/extract_event_ids.py
+python optimizely_connector/upload_to_gdrive.py
+
+echo "✅ Done"

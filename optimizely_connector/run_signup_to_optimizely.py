@@ -34,7 +34,7 @@ def fetch_runsignup_data():
 
             try:
                 response = requests.get(
-                    f"{BASE_URL}/race/{race_id}/registrations",
+                    f"{BASE_URL}/event/{event_id}/registrations",
                     params={
                         "api_key": API_KEY,
                         "api_secret": API_SECRET,
@@ -43,7 +43,7 @@ def fetch_runsignup_data():
                 )
                 response.raise_for_status()
             except requests.RequestException as e:
-                print(f"❌ Request failed for race {race_id}: {e}")
+                print(f"❌ Request failed for event {event_id}: {e}")
                 continue
 
             regs = response.json().get("registrations", [])

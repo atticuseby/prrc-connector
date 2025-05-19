@@ -2,8 +2,6 @@
 
 import os
 import glob
-import io
-import json
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
@@ -15,10 +13,13 @@ SCOPES = ['https://www.googleapis.com/auth/drive.file']
 creds = service_account.Credentials.from_service_account_file(
     SERVICE_ACCOUNT_FILE, scopes=SCOPES)
 
-# 📁 Replace with your actual folder ID if you want to upload to a specific folder
-FOLDER_ID = os.getenv("GDRIVE_FOLDER_ID")
-if not FOLDER_ID:
-    print("⚠️ No folder ID set — uploading to root")
+# 📁 Get target folder ID from environment
+FOLDER_ID = os.getenv("GDRIVE_FOLDER_ID", "").strip()
+
+if FOLDER_ID:
+    print(f"📂 Target Drive folder: {FOLDER_ID}")
+else:
+    print("⚠️ No GDRIVE_FOLDER_ID set — uploading to root folder")
 
 def upload_file(filepath, drive_service):
     file_metadata = {
@@ -39,7 +40,12 @@ def upload_file(filepath, drive_service):
 def main():
     service = build('drive', 'v3', credentials=creds)
 
-    for csv_path in glob.glob("**/*.csv", recursive=True):
+    csv_files = glob.glob("**/*.csv", recursive=True)
+    if not csv_files:
+        print("⚠️ No CSV files found to upload.")
+        return
+
+    for csv_path in csv_files:
         print(f"📤 Uploading {csv_path}...")
         upload_file(csv_path, service)
 

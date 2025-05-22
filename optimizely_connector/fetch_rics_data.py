@@ -1,15 +1,13 @@
-# optimizely_connector/fetch_rics_data.py
-
+from datetime import datetime
+import os
 import requests
 import csv
-import os
-from datetime import datetime
-from pytz import timezone
 from scripts.helpers import log_message
 from scripts.config import OPTIMIZELY_API_TOKEN
 
 RICS_API_TOKEN = OPTIMIZELY_API_TOKEN.strip()
 RICS_API_URL = "https://enterprise.ricssoftware.com/api/Customer/GetCustomer"
+
 
 def fetch_rics_data():
     headers = {
@@ -17,88 +15,87 @@ def fetch_rics_data():
         "Content-Type": "application/json"
     }
 
-    all_customers = []
-    page = 1
-    page_size = 100
-
     print("🔍 Fetching all customers from RICS API...")
 
-    while True:
+    output_dir = "./optimizely_connector/output"
+    os.makedirs(output_dir, exist_ok=True)
+
+    date_suffix = datetime.now().strftime('%m_%d_%Y')
+    output_path = f"{output_dir}/rics_data_{date_suffix}.csv"
+
+    seen_customers = set()
+    all_customers = []
+    page = 1
+    max_pages = 100  # Safety guard against infinite loops
+
+    while page <= max_pages:
         payload = {
-            "DateOfBirthStart": "1950-01-01",
-            "DateOfBirthEnd": "2025-12-31",
+            # Commenting out DOB filters to test total volume
+            # "DateOfBirthStart": "1950-01-01",
+            # "DateOfBirthEnd": "2025-12-31",
             "Page": page,
-            "PageSize": page_size
+            "PageSize": 100
         }
+
+        print(f"📦 Page {page}: Requesting data...")
 
         try:
             response = requests.post(RICS_API_URL, headers=headers, json=payload)
             response.raise_for_status()
-        except requests.exceptions.RequestException as e:
-            log_message(f"❌ Request failed on page {page}: {e}")
+        except requests.RequestException as e:
+            log_message(f"❌ Error on page {page}: {e}")
             break
 
-        try:
-            data = response.json()
-        except Exception as e:
-            log_message(f"❌ Could not parse JSON on page {page}: {e}")
-            log_message(f"Raw response: {response.text}")
-            break
+        data = response.json()
+        print(f"📖 DEBUG raw response page {page}: {data}")
 
         if not data.get("IsSuccessful", False):
-            log_message(f"❌ API returned unsuccessful status on page {page}")
-            log_message(f"Raw response: {data}")
+            log_message(f"❌ API failure on page {page}: {data.get('Message')}")
             break
 
         customers = data.get("Customers", [])
-        print(f"📦 Page {page}: Retrieved {len(customers)} customers")
+        print(f"📊 Page {page}: Retrieved {len(customers)} customers")
 
         if not customers:
+            print("🛑 No more customers returned. Ending pagination.")
             break
 
-        all_customers.extend(customers)
+        for c in customers:
+            rics_id = c.get("CustomerId")
+            if rics_id and rics_id not in seen_customers:
+                seen_customers.add(rics_id)
+                all_customers.append(c)
+
         page += 1
 
+    print(f"📈 All customers pulled: {len(all_customers)} | Unique: {len(seen_customers)}")
+
     if not all_customers:
-        raise Exception("❌ No customers pulled from RICS")
-    else:
-        print(f"✅ Final customer count: {len(all_customers)}")
+        raise Exception("❌ No customer data retrieved")
 
-    # Output directory and filename with EST timestamp
-    output_dir = "./optimizely_connector/output"
-    os.makedirs(output_dir, exist_ok=True)
-
-    est = timezone("US/Eastern")
-    date_suffix = datetime.now(est).strftime('%m_%d_%Y')
-    output_path = f"{output_dir}/{date_suffix}_rics_data.csv"
-
-    print(f"💾 Writing CSV to: {output_path}")
-
-    seen_customers = set()
+    print(f"💾 Writing final CSV to {output_path}")
     with open(output_path, mode="w", newline="") as file:
         writer = csv.DictWriter(file, fieldnames=[
-            "rics_id", "email", "first_name", "last_name", 
+            "rics_id", "email", "first_name", "last_name",
             "orders", "total_spent", "city", "state", "zip"
         ])
         writer.writeheader()
 
         for c in all_customers:
-            rics_id = c.get("CustomerId")
-            if rics_id not in seen_customers:
-                seen_customers.add(rics_id)
-                mailing = c.get("MailingAddress", {})
-                writer.writerow({
-                    "rics_id": rics_id,
-                    "email": c.get("Email"),
-                    "first_name": c.get("FirstName"),
-                    "last_name": c.get("LastName"),
-                    "orders": c.get("OrderCount", 0),
-                    "total_spent": c.get("TotalSpent", 0.0),
-                    "city": mailing.get("City", ""),
-                    "state": mailing.get("State", ""),
-                    "zip": mailing.get("PostalCode", "")
-                })
+            mailing = c.get("MailingAddress", {})
+            writer.writerow({
+                "rics_id": c.get("CustomerId"),
+                "email": c.get("Email"),
+                "first_name": c.get("FirstName"),
+                "last_name": c.get("LastName"),
+                "orders": c.get("OrderCount", 0),
+                "total_spent": c.get("TotalSpent", 0.0),
+                "city": mailing.get("City", ""),
+                "state": mailing.get("State", ""),
+                "zip": mailing.get("PostalCode", "")
+            })
 
-    log_message(f"✅ Saved RICS export to {output_path}")
+    log_message(f"✅ Saved {len(all_customers)} unique customers to {output_path}")
+
 
 fetch_rics_data()

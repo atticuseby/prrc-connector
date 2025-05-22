@@ -1,7 +1,10 @@
+# optimizely_connector/fetch_rics_data.py
+
 import requests
 import csv
 import os
 from datetime import datetime
+from pytz import timezone
 from scripts.helpers import log_message
 from scripts.config import OPTIMIZELY_API_TOKEN
 
@@ -30,38 +33,46 @@ def fetch_rics_data():
 
         try:
             response = requests.post(RICS_API_URL, headers=headers, json=payload)
+            response.raise_for_status()
         except requests.exceptions.RequestException as e:
-            log_message(f"❌ Network error when connecting to RICS: {e}")
-            raise
+            log_message(f"❌ Request failed on page {page}: {e}")
+            break
 
-        if response.status_code != 200:
-            log_message(f"❌ Failed to fetch RICS data — Status {response.status_code}")
-            raise Exception("Failed RICS API pull")
-
-        data = response.json()
+        try:
+            data = response.json()
+        except Exception as e:
+            log_message(f"❌ Could not parse JSON on page {page}: {e}")
+            log_message(f"Raw response: {response.text}")
+            break
 
         if not data.get("IsSuccessful", False):
-            log_message("❌ RICS API responded with failure")
-            raise Exception("RICS API returned unsuccessful status")
+            log_message(f"❌ API returned unsuccessful status on page {page}")
+            log_message(f"Raw response: {data}")
+            break
 
         customers = data.get("Customers", [])
         print(f"📦 Page {page}: Retrieved {len(customers)} customers")
+
+        if not customers:
+            break
+
         all_customers.extend(customers)
-
-        if len(customers) < page_size:
-            break  # Done paginating
-
         page += 1
 
-    print(f"✅ Total customers fetched: {len(all_customers)}")
+    if not all_customers:
+        raise Exception("❌ No customers pulled from RICS")
+    else:
+        print(f"✅ Final customer count: {len(all_customers)}")
 
+    # Output directory and filename with EST timestamp
     output_dir = "./optimizely_connector/output"
     os.makedirs(output_dir, exist_ok=True)
 
-    date_suffix = datetime.now().strftime('%m_%d_%Y')
+    est = timezone("US/Eastern")
+    date_suffix = datetime.now(est).strftime('%m_%d_%Y')
     output_path = f"{output_dir}/{date_suffix}_rics_data.csv"
 
-    print(f"📝 Writing CSV to: {output_path}")
+    print(f"💾 Writing CSV to: {output_path}")
 
     seen_customers = set()
     with open(output_path, mode="w", newline="") as file:
@@ -88,6 +99,6 @@ def fetch_rics_data():
                     "zip": mailing.get("PostalCode", "")
                 })
 
-    log_message(f"✅ Saved complete RICS export to {output_path}")
+    log_message(f"✅ Saved RICS export to {output_path}")
 
 fetch_rics_data()

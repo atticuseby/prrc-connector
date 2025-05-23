@@ -31,7 +31,7 @@ def fetch_rics_data():
 
     while True:
         payload = {
-            "Email": "",  # 👈 satisfies required filter condition while matching everyone
+            "StoreCode": 12132,  # ✅ required valid query filter to unlock full customer set
             "Skip": skip,
             "Take": take
         }

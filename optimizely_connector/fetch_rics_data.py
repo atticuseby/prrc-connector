@@ -22,8 +22,8 @@ def fetch_rics_data():
 
     all_customers = []
     seen_customers = set()
-    page_size = 100
-    customer_id_start = 0
+    skip = 0
+    take = 100
     max_failures = 3
     failures = 0
 
@@ -31,17 +31,11 @@ def fetch_rics_data():
 
     while True:
         payload = {
-            "CustomerIdStart": customer_id_start,
-            "PageSize": page_size,
-            "OrderBy": "CustomerId",
-            "SortDirection": "Ascending",
-            "IncludeInactive": True,
-            "IncludeAll": True,
-            "IncludeDetails": True,
-            "DateCreatedStart": "1950-01-01"  # Minimum filter to satisfy API requirement
+            "Skip": skip,
+            "Take": take
         }
 
-        print(f"📄 Requesting customers starting at ID: {customer_id_start}...")
+        print(f"📄 Requesting customers starting from skip: {skip}...")
 
         try:
             response = requests.post(RICS_API_URL, headers=headers, json=payload)
@@ -82,8 +76,8 @@ def fetch_rics_data():
             if rics_id and rics_id not in seen_customers:
                 seen_customers.add(rics_id)
                 all_customers.append(c)
-                customer_id_start = max(customer_id_start, rics_id + 1)
 
+        skip += take
         failures = 0
 
     print(f"📊 All customers pulled: {len(all_customers)} | Unique: {len(seen_customers)}")

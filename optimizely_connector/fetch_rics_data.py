@@ -26,14 +26,20 @@ def fetch_rics_data():
     take = 100
     max_failures = 3
     failures = 0
+    max_skip = 50000  # ⛔ hard stop for testing
 
     print("🔍 Fetching all customers from RICS API...")
 
     while True:
+        if skip >= max_skip:
+            print("⏹️ Reached temporary cap for testing — breaking.")
+            break
+
         payload = {
             "StoreCode": 12132,  # ✅ required valid query filter to unlock full customer set
             "Skip": skip,
-            "Take": take
+            "Take": take,
+            "FirstName": "%"  # ✅ wildcard match to fetch any customer
         }
 
         print(f"📄 Requesting customers starting from skip: {skip}...")

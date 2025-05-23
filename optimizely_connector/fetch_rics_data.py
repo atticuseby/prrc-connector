@@ -1,7 +1,7 @@
-from datetime import datetime
-import os
 import requests
 import csv
+import os
+from datetime import datetime
 from scripts.helpers import log_message
 from scripts.config import OPTIMIZELY_API_TOKEN
 
@@ -15,49 +15,46 @@ def fetch_rics_data():
         "Content-Type": "application/json"
     }
 
-    print("🔍 Fetching all customers from RICS API...")
-
-    output_dir = "./optimizely_connector/output"
-    os.makedirs(output_dir, exist_ok=True)
-
-    date_suffix = datetime.now().strftime('%m_%d_%Y')
-    output_path = f"{output_dir}/rics_data_{date_suffix}.csv"
-
-    seen_customers = set()
     all_customers = []
+    seen_customers = set()
     page = 1
-    max_pages = 100  # Safety guard against infinite loops
+    page_size = 100
 
-    while page <= max_pages:
+    print("\U0001f50d Fetching all customers from RICS API...")
+
+    while True:
         payload = {
-            # Commenting out DOB filters to test total volume
-            # "DateOfBirthStart": "1950-01-01",
-            # "DateOfBirthEnd": "2025-12-31",
+            "DateOfBirthStart": "1900-01-01",
+            "DateOfBirthEnd": "2030-12-31",
             "Page": page,
-            "PageSize": 100
+            "PageSize": page_size
         }
 
-        print(f"📦 Page {page}: Requesting data...")
+        print(f"\U0001f4dc Page {page}: Requesting data...")
 
         try:
             response = requests.post(RICS_API_URL, headers=headers, json=payload)
-            response.raise_for_status()
-        except requests.RequestException as e:
-            log_message(f"❌ Error on page {page}: {e}")
+        except requests.exceptions.RequestException as e:
+            log_message(f"❌ Network error on page {page}: {e}")
+            break
+
+        # Log raw response for debugging
+        print(f"📖 DEBUG raw response page {page}: {response.text}")
+
+        if response.status_code != 200:
+            log_message(f"❌ Failed to fetch page {page} — Status {response.status_code}")
             break
 
         data = response.json()
-        print(f"📖 DEBUG raw response page {page}: {data}")
 
         if not data.get("IsSuccessful", False):
-            log_message(f"❌ API failure on page {page}: {data.get('Message')}")
+            log_message(f"❌ API Validation Failure page {page}: {data.get('Message')}")
             break
 
         customers = data.get("Customers", [])
-        print(f"📊 Page {page}: Retrieved {len(customers)} customers")
+        print(f"📦 Page {page}: Retrieved {len(customers)} customers")
 
         if not customers:
-            print("🛑 No more customers returned. Ending pagination.")
             break
 
         for c in customers:
@@ -68,12 +65,19 @@ def fetch_rics_data():
 
         page += 1
 
-    print(f"📈 All customers pulled: {len(all_customers)} | Unique: {len(seen_customers)}")
+    print(f"📊 All customers pulled: {len(all_customers)} | Unique: {len(seen_customers)}")
 
     if not all_customers:
         raise Exception("❌ No customer data retrieved")
 
-    print(f"💾 Writing final CSV to {output_path}")
+    output_dir = "./optimizely_connector/output"
+    os.makedirs(output_dir, exist_ok=True)
+
+    filename = datetime.now().strftime("%m_%d_%Y_rics_data.csv")
+    output_path = os.path.join(output_dir, filename)
+
+    print(f"📝 Writing CSV to: {output_path}")
+
     with open(output_path, mode="w", newline="") as file:
         writer = csv.DictWriter(file, fieldnames=[
             "rics_id", "email", "first_name", "last_name",
@@ -95,7 +99,7 @@ def fetch_rics_data():
                 "zip": mailing.get("PostalCode", "")
             })
 
-    log_message(f"✅ Saved {len(all_customers)} unique customers to {output_path}")
+    log_message(f"✅ Saved customer export to {output_path}")
 
 
 fetch_rics_data()

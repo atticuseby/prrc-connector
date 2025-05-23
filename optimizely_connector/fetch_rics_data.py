@@ -31,6 +31,7 @@ def fetch_rics_data():
 
     while True:
         payload = {
+            "Email": "",  # 👈 satisfies required filter condition while matching everyone
             "Skip": skip,
             "Take": take
         }

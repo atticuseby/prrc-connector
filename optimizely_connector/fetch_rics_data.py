@@ -19,18 +19,20 @@ def fetch_rics_data():
     seen_customers = set()
     page = 1
     page_size = 100
+    max_pages = 1000
 
-    print("\U0001f50d Fetching all customers from RICS API...")
+    print("🔍 Fetching all customers from RICS API...")
 
-    while True:
+    while page <= max_pages:
         payload = {
-            "DateOfBirthStart": "1900-01-01",
-            "DateOfBirthEnd": "2030-12-31",
             "Page": page,
-            "PageSize": page_size
+            "PageSize": page_size,
+            "OrderBy": "CustomerId",
+            "SortDirection": "Ascending",
+            "CustomerType": "Retail"
         }
 
-        print(f"\U0001f4dc Page {page}: Requesting data...")
+        print(f"📄 Page {page}: Requesting data...")
 
         try:
             response = requests.post(RICS_API_URL, headers=headers, json=payload)
@@ -38,7 +40,6 @@ def fetch_rics_data():
             log_message(f"❌ Network error on page {page}: {e}")
             break
 
-        # Log raw response for debugging
         print(f"📖 DEBUG raw response page {page}: {response.text}")
 
         if response.status_code != 200:
@@ -55,6 +56,7 @@ def fetch_rics_data():
         print(f"📦 Page {page}: Retrieved {len(customers)} customers")
 
         if not customers:
+            print("🚫 No more customers returned — ending pagination.")
             break
 
         for c in customers:

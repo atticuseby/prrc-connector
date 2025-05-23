@@ -8,7 +8,6 @@ from scripts.config import OPTIMIZELY_API_TOKEN
 RICS_API_TOKEN = OPTIMIZELY_API_TOKEN.strip()
 RICS_API_URL = "https://enterprise.ricssoftware.com/api/Customer/GetCustomer"
 
-
 def fetch_rics_data():
     headers = {
         "Token": RICS_API_TOKEN,
@@ -20,6 +19,8 @@ def fetch_rics_data():
     page = 1
     page_size = 100
     max_pages = 1000
+    consecutive_failures = 0
+    max_failures = 3
 
     print("🔍 Fetching all customers from RICS API...")
 
@@ -29,7 +30,9 @@ def fetch_rics_data():
             "PageSize": page_size,
             "OrderBy": "CustomerId",
             "SortDirection": "Ascending",
-            "CustomerType": "Retail"
+            "CustomerType": "Retail",
+            "DateOfBirthStart": "1900-01-01",
+            "DateOfBirthEnd": "2100-01-01"
         }
 
         print(f"📄 Page {page}: Requesting data...")
@@ -38,19 +41,28 @@ def fetch_rics_data():
             response = requests.post(RICS_API_URL, headers=headers, json=payload)
         except requests.exceptions.RequestException as e:
             log_message(f"❌ Network error on page {page}: {e}")
-            break
+            consecutive_failures += 1
+            if consecutive_failures >= max_failures:
+                break
+            continue
 
         print(f"📖 DEBUG raw response page {page}: {response.text}")
 
         if response.status_code != 200:
             log_message(f"❌ Failed to fetch page {page} — Status {response.status_code}")
-            break
+            consecutive_failures += 1
+            if consecutive_failures >= max_failures:
+                break
+            continue
 
         data = response.json()
 
         if not data.get("IsSuccessful", False):
-            log_message(f"❌ API Validation Failure page {page}: {data.get('Message')}")
-            break
+            log_message(f"❌ API Validation Failure page {page}: {data.get('Message')} | {data.get('ValidationMessages')}")
+            consecutive_failures += 1
+            if consecutive_failures >= max_failures:
+                break
+            continue
 
         customers = data.get("Customers", [])
         print(f"📦 Page {page}: Retrieved {len(customers)} customers")
@@ -66,6 +78,7 @@ def fetch_rics_data():
                 all_customers.append(c)
 
         page += 1
+        consecutive_failures = 0
 
     print(f"📊 All customers pulled: {len(all_customers)} | Unique: {len(seen_customers)}")
 

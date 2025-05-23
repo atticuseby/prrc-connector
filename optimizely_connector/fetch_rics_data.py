@@ -30,8 +30,7 @@ def fetch_rics_data():
             "PageSize": page_size,
             "OrderBy": "CustomerId",
             "SortDirection": "Ascending",
-            "CustomerType": "Retail",
-            "Email": "@"  # Using a common character to fetch all emails
+            "CustomerType": "Retail"
         }
 
         print(f"📄 Page {page}: Requesting data...")
@@ -87,6 +86,12 @@ def fetch_rics_data():
     output_dir = "./optimizely_connector/output"
     os.makedirs(output_dir, exist_ok=True)
 
+    # Remove any existing mock_rics_export.csv file
+    mock_path = os.path.join(output_dir, "mock_rics_export.csv")
+    if os.path.exists(mock_path):
+        os.remove(mock_path)
+        print("🧹 Removed old mock_rics_export.csv")
+
     filename = datetime.now().strftime("%m_%d_%Y_rics_data.csv")
     output_path = os.path.join(output_dir, filename)
 
@@ -114,6 +119,5 @@ def fetch_rics_data():
             })
 
     log_message(f"✅ Saved customer export to {output_path}")
-
 
 fetch_rics_data()

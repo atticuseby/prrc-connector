@@ -86,11 +86,6 @@ def fetch_rics_data():
     output_dir = "./optimizely_connector/output"
     os.makedirs(output_dir, exist_ok=True)
 
-    mock_path = os.path.join(output_dir, "mock_rics_export.csv")
-    if os.path.exists(mock_path):
-        os.remove(mock_path)
-        print("🧹 Removed old mock_rics_export.csv")
-
     filename = datetime.now().strftime("%m_%d_%Y_rics_data.csv")
     output_path = os.path.join(output_dir, filename)
 

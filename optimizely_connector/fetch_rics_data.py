@@ -30,7 +30,8 @@ def fetch_rics_data():
             "PageSize": page_size,
             "OrderBy": "CustomerId",
             "SortDirection": "Ascending",
-            "CustomerType": "Retail"
+            "CustomerType": "Retail",
+            "CustomerIdStart": 0
         }
 
         print(f"📄 Page {page}: Requesting data...")

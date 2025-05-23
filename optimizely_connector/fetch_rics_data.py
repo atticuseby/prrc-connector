@@ -16,69 +16,67 @@ def fetch_rics_data():
 
     all_customers = []
     seen_customers = set()
-    page = 1
     page_size = 100
-    max_pages = 1000
-    consecutive_failures = 0
+    customer_id_start = 0
     max_failures = 3
+    failures = 0
 
     print("🔍 Fetching all customers from RICS API...")
 
-    while page <= max_pages:
+    while True:
         payload = {
-            "Page": page,
+            "CustomerIdStart": customer_id_start,
             "PageSize": page_size,
             "OrderBy": "CustomerId",
             "SortDirection": "Ascending",
-            "CustomerType": "Retail",
-            "CustomerIdStart": 0,
-            "IncludeAll": True  # <--- This is now added to attempt full data pull
+            "IncludeInactive": True,
+            "IncludeAll": True
         }
 
-        print(f"📄 Page {page}: Requesting data...")
+        print(f"📄 Requesting customers starting at ID: {customer_id_start}...")
 
         try:
             response = requests.post(RICS_API_URL, headers=headers, json=payload)
         except requests.exceptions.RequestException as e:
-            log_message(f"❌ Network error on page {page}: {e}")
-            consecutive_failures += 1
-            if consecutive_failures >= max_failures:
+            log_message(f"❌ Network error: {e}")
+            failures += 1
+            if failures >= max_failures:
                 break
             continue
 
-        print(f"📖 DEBUG raw response page {page}: {response.text}")
+        print(f"📖 DEBUG raw response: {response.text}")
 
         if response.status_code != 200:
-            log_message(f"❌ Failed to fetch page {page} — Status {response.status_code}")
-            consecutive_failures += 1
-            if consecutive_failures >= max_failures:
+            log_message(f"❌ Failed fetch — Status {response.status_code}")
+            failures += 1
+            if failures >= max_failures:
                 break
             continue
 
         data = response.json()
 
         if not data.get("IsSuccessful", False):
-            log_message(f"❌ API Validation Failure page {page}: {data.get('Message')} | {data.get('ValidationMessages')}")
-            consecutive_failures += 1
-            if consecutive_failures >= max_failures:
+            log_message(f"❌ API Failure: {data.get('Message')} | {data.get('ValidationMessages')}")
+            failures += 1
+            if failures >= max_failures:
                 break
             continue
 
         customers = data.get("Customers", [])
-        print(f"📦 Page {page}: Retrieved {len(customers)} customers")
-
         if not customers:
             print("🚫 No more customers returned — ending pagination.")
             break
+
+        print(f"📦 Retrieved {len(customers)} customers")
 
         for c in customers:
             rics_id = c.get("CustomerId")
             if rics_id and rics_id not in seen_customers:
                 seen_customers.add(rics_id)
                 all_customers.append(c)
+                customer_id_start = max(customer_id_start, rics_id + 1)
 
-        page += 1
-        consecutive_failures = 0
+        failures = 0
 
     print(f"📊 All customers pulled: {len(all_customers)} | Unique: {len(seen_customers)}")
 
@@ -88,7 +86,6 @@ def fetch_rics_data():
     output_dir = "./optimizely_connector/output"
     os.makedirs(output_dir, exist_ok=True)
 
-    # Remove any existing mock_rics_export.csv file
     mock_path = os.path.join(output_dir, "mock_rics_export.csv")
     if os.path.exists(mock_path):
         os.remove(mock_path)

@@ -31,8 +31,7 @@ def fetch_rics_data():
             "OrderBy": "CustomerId",
             "SortDirection": "Ascending",
             "CustomerType": "Retail",
-            "DateOfBirthStart": "1900-01-01",
-            "DateOfBirthEnd": "2100-01-01"
+            "Email": "@"  # Using a common character to fetch all emails
         }
 
         print(f"📄 Page {page}: Requesting data...")

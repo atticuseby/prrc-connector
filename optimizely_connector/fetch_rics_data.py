@@ -26,7 +26,7 @@ def fetch_rics_data():
     take = 100
     max_failures = 3
     failures = 0
-    max_skip = 50000  # ⛔ hard stop for testing
+    max_skip = 1000  # ⛔ hard stop for testing
 
     print("🔍 Fetching all customers from RICS API...")
 

@@ -30,7 +30,8 @@ def fetch_rics_data():
             "OrderBy": "CustomerId",
             "SortDirection": "Ascending",
             "IncludeInactive": True,
-            "IncludeAll": True
+            "IncludeAll": True,
+            "IncludeDetails": True
         }
 
         print(f"📄 Requesting customers starting at ID: {customer_id_start}...")

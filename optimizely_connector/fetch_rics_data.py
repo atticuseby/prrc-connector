@@ -37,6 +37,7 @@ def fetch_rics_data():
         }
 
         print(f"📄 Requesting customers starting from skip: {skip}...")
+        print(f"📤 Payload: {payload}")
 
         try:
             response = requests.post(RICS_API_URL, headers=headers, json=payload)
@@ -44,7 +45,7 @@ def fetch_rics_data():
             log_message(f"❌ Network error: {e}")
             failures += 1
             if failures >= max_failures:
-                break
+                raise Exception("❌ Reached max retries. Aborting.")
             continue
 
         print(f"📖 DEBUG raw response: {response.text}")
@@ -53,7 +54,7 @@ def fetch_rics_data():
             log_message(f"❌ Failed fetch — Status {response.status_code}")
             failures += 1
             if failures >= max_failures:
-                break
+                raise Exception("❌ Reached max retries. Aborting.")
             continue
 
         data = response.json()
@@ -62,7 +63,7 @@ def fetch_rics_data():
             log_message(f"❌ API Failure: {data.get('Message')} | {data.get('ValidationMessages')}")
             failures += 1
             if failures >= max_failures:
-                break
+                raise Exception("❌ API Validation failed after multiple attempts")
             continue
 
         customers = data.get("Customers", [])

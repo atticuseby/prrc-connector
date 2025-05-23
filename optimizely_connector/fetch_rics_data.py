@@ -31,7 +31,8 @@ def fetch_rics_data():
             "OrderBy": "CustomerId",
             "SortDirection": "Ascending",
             "CustomerType": "Retail",
-            "CustomerIdStart": 0
+            "CustomerIdStart": 0,
+            "IncludeAll": True  # <--- This is now added to attempt full data pull
         }
 
         print(f"📄 Page {page}: Requesting data...")

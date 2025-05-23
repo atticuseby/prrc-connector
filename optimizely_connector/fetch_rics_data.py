@@ -8,6 +8,12 @@ from scripts.config import OPTIMIZELY_API_TOKEN
 RICS_API_TOKEN = OPTIMIZELY_API_TOKEN.strip()
 RICS_API_URL = "https://enterprise.ricssoftware.com/api/Customer/GetCustomer"
 
+# 🔥 Remove any old mock file if present
+mock_path = "./optimizely_connector/output/mock_rics_export.csv"
+if os.path.exists(mock_path):
+    os.remove(mock_path)
+    print("🧹 Removed old mock_rics_export.csv")
+
 def fetch_rics_data():
     headers = {
         "Token": RICS_API_TOKEN,
@@ -31,7 +37,8 @@ def fetch_rics_data():
             "SortDirection": "Ascending",
             "IncludeInactive": True,
             "IncludeAll": True,
-            "IncludeDetails": True
+            "IncludeDetails": True,
+            "DateCreatedStart": "1950-01-01"  # Minimum filter to satisfy API requirement
         }
 
         print(f"📄 Requesting customers starting at ID: {customer_id_start}...")

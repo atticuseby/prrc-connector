@@ -1,12 +1,15 @@
 import requests
 import csv
 import os
+import glob
+import shutil
 from datetime import datetime
 from scripts.helpers import log_message
 from scripts.config import OPTIMIZELY_API_TOKEN
 
 RICS_API_TOKEN = OPTIMIZELY_API_TOKEN.strip()
 RICS_API_URL = "https://enterprise.ricssoftware.com/api/Customer/GetCustomer"
+TEST_EMAIL = os.getenv("TEST_EMAIL", "youremail@yourdomain.com").strip()
 
 # 🔥 Remove any old mock file if present
 mock_path = "./optimizely_connector/output/mock_rics_export.csv"
@@ -27,8 +30,7 @@ def fetch_rics_data():
     max_failures = 3
     failures = 0
 
-    # ✅ Limit to first ~300 customers for testing
-    max_skip = 300
+    max_skip = 300  # Test mode: limit to 300 customers
 
     print(f"\n🕒 {datetime.now().isoformat()} — Starting customer fetch from RICS")
 
@@ -95,6 +97,10 @@ def fetch_rics_data():
     if not all_customers:
         raise Exception("❌ No usable customer data found")
 
+    # 🔁 Insert your test email in the first record
+    print(f"🔧 Injecting test email: {TEST_EMAIL}")
+    all_customers[0]["Email"] = TEST_EMAIL
+
     output_dir = "./optimizely_connector/output"
     os.makedirs(output_dir, exist_ok=True)
 
@@ -125,5 +131,11 @@ def fetch_rics_data():
             })
 
     log_message(f"✅ Export complete: {output_path}")
+
+    # ✅ Copy the CSV to /data for Optimizely sync
+    data_dir = "data"
+    os.makedirs(data_dir, exist_ok=True)
+    shutil.copy(output_path, os.path.join(data_dir, os.path.basename(output_path)))
+    print(f"📂 Copied CSV to /data/: {os.path.basename(output_path)}")
 
 fetch_rics_data()

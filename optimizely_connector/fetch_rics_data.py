@@ -2,8 +2,7 @@ import requests
 import csv
 import os
 from datetime import datetime
-from scripts.helpers import log_message
-from scripts.config import OPTIMIZELY_API_TOKEN
+from scripts.config import OPTIMIZELY_API_TOKEN  # Still assuming this file exists
 
 RICS_API_TOKEN = OPTIMIZELY_API_TOKEN.strip()
 RICS_API_URL = "https://enterprise.ricssoftware.com/api/Customer/GetCustomer"
@@ -50,7 +49,7 @@ def fetch_rics_data():
         try:
             response = requests.post(RICS_API_URL, headers=headers, json=payload)
         except requests.exceptions.RequestException as e:
-            log_message(f"❌ Network error: {e}")
+            print(f"❌ Network error: {e}")
             failures += 1
             if failures >= max_failures:
                 raise Exception("❌ Max retries hit. Aborting.")
@@ -59,7 +58,7 @@ def fetch_rics_data():
         print(f"📖 DEBUG raw response: {response.text[:300]}... [truncated]")
 
         if response.status_code != 200:
-            log_message(f"❌ Bad status: {response.status_code}")
+            print(f"❌ Bad status: {response.status_code}")
             failures += 1
             if failures >= max_failures:
                 raise Exception("❌ Max retries hit. Aborting.")
@@ -68,7 +67,7 @@ def fetch_rics_data():
         data = response.json()
 
         if not data.get("IsSuccessful", False):
-            log_message(f"❌ API failure: {data.get('Message')} | {data.get('ValidationMessages')}")
+            print(f"❌ API failure: {data.get('Message')} | {data.get('ValidationMessages')}")
             failures += 1
             if failures >= max_failures:
                 raise Exception("❌ Max retries hit due to validation.")
@@ -125,6 +124,6 @@ def fetch_rics_data():
                 "zip": mailing.get("PostalCode", "")
             })
 
-    log_message(f"✅ Export complete: {output_path}")
+    print(f"✅ Export complete: {output_path}")
 
 fetch_rics_data()

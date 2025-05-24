@@ -1,5 +1,3 @@
-# sync_rics_to_optimizely.py
-
 import sys
 import os
 import csv
@@ -26,7 +24,6 @@ def run_sync():
                         log_message(f"❌ Missing email — skipping row: {row}")
                         continue
 
-                    # Clean attributes — don't include empty values
                     attributes = {
                         "first_name": row.get("first_name"),
                         "last_name": row.get("last_name"),
@@ -60,7 +57,7 @@ def run_sync():
                                 timeout=10
                             )
                             if response.status_code == 200:
-                                log_message(f"✅ Synced profile for: {email}")
+                                log_message(f"✅ Synced profile for: {email}\n↪️ Response: {response.text}")
                             else:
                                 log_message(f"❌ Failed to sync {email} — Status: {response.status_code} — Response: {response.text}")
                         except requests.exceptions.RequestException as e:

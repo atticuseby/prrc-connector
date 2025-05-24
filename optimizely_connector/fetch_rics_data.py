@@ -105,7 +105,7 @@ def fetch_rics_data():
 
     print(f"📝 Writing final CSV to: {output_path}")
 
-    with open(output_path, mode="w", newline="") as file:
+        with open(output_path, mode="w", newline="") as file:
         fieldnames = [
             "rics_id", "email", "first_name", "last_name",
             "orders", "total_spent", "city", "state", "zip"
@@ -127,7 +127,7 @@ def fetch_rics_data():
                 "zip": mailing.get("PostalCode", "")
             })
 
-        # ✅ Append a clean test record to the bottom of the file
+        # ✅ Append the test record BEFORE closing
         print(f"🔧 Appending test profile with email: {TEST_EMAIL}")
         writer.writerow({
             "rics_id": "test-rics-id",
@@ -148,5 +148,3 @@ def fetch_rics_data():
     os.makedirs(data_dir, exist_ok=True)
     shutil.copy(output_path, os.path.join(data_dir, os.path.basename(output_path)))
     print(f"📂 Copied CSV to /data/: {os.path.basename(output_path)}")
-
-fetch_rics_data()

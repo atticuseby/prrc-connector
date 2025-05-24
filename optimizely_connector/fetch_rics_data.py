@@ -27,8 +27,8 @@ def fetch_rics_data():
     max_failures = 3
     failures = 0
 
-    # 🧪 Development limit (None = full pull, otherwise set a safe limit like 1000 or 50000)
-    max_skip = int(os.getenv("RICS_MAX_SKIP", "0")) or None
+    # ✅ Limit to first ~300 customers for testing
+    max_skip = 300
 
     print(f"\n🕒 {datetime.now().isoformat()} — Starting customer fetch from RICS")
 
@@ -38,16 +38,16 @@ def fetch_rics_data():
             break
 
         payload = {
-            "StoreCode": 12132,  # ✅ required valid query filter
+            "StoreCode": 12132,
             "Skip": skip,
             "Take": take,
-            "FirstName": "%"  # ✅ wildcard to fetch everyone
+            "FirstName": "%"  # Wildcard
         }
 
         print(f"📄 Requesting customers from skip: {skip}...")
 
         try:
-            response = requests.post(RICS_API_URL, headers=headers, json=payload)
+            response = requests.post(RICS_API_URL, headers=headers, json=payload, timeout=10)
         except requests.exceptions.RequestException as e:
             log_message(f"❌ Network error: {e}")
             failures += 1

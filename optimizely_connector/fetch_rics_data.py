@@ -97,10 +97,6 @@ def fetch_rics_data():
     if not all_customers:
         raise Exception("❌ No usable customer data found")
 
-    # 🔁 Insert your test email in the first record
-    print(f"🔧 Injecting test email: {TEST_EMAIL}")
-    all_customers[0]["Email"] = TEST_EMAIL
-
     output_dir = "./optimizely_connector/output"
     os.makedirs(output_dir, exist_ok=True)
 
@@ -110,10 +106,11 @@ def fetch_rics_data():
     print(f"📝 Writing final CSV to: {output_path}")
 
     with open(output_path, mode="w", newline="") as file:
-        writer = csv.DictWriter(file, fieldnames=[
+        fieldnames = [
             "rics_id", "email", "first_name", "last_name",
             "orders", "total_spent", "city", "state", "zip"
-        ])
+        ]
+        writer = csv.DictWriter(file, fieldnames=fieldnames)
         writer.writeheader()
 
         for c in all_customers:
@@ -129,6 +126,20 @@ def fetch_rics_data():
                 "state": mailing.get("State", ""),
                 "zip": mailing.get("PostalCode", "")
             })
+
+        # ✅ Append a clean test record to the bottom of the file
+        print(f"🔧 Appending test profile with email: {TEST_EMAIL}")
+        writer.writerow({
+            "rics_id": "test-rics-id",
+            "email": TEST_EMAIL,
+            "first_name": "Test",
+            "last_name": "User",
+            "orders": 0,
+            "total_spent": 0.0,
+            "city": "Nashville",
+            "state": "TN",
+            "zip": "37201"
+        })
 
     log_message(f"✅ Export complete: {output_path}")
 

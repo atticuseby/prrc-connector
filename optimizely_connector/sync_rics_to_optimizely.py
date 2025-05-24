@@ -43,6 +43,7 @@ def run_sync():
                         "attributes": attributes
                     }
 
+                    print(f"🔍 Syncing: {email}")  # ✅ Live debug
                     if DRY_RUN:
                         log_message(f"[DRY RUN] Would send to Optimizely: {payload}")
                     else:
@@ -57,11 +58,14 @@ def run_sync():
                                 timeout=10
                             )
                             if response.status_code == 200:
-                                log_message(f"✅ Synced profile for: {email}\n↪️ Response: {response.text}")
+                                log_message(f"✅ Synced profile for: {email}")
+                                print(f"↪️ Response: {response.text}")
                             else:
-                                log_message(f"❌ Failed to sync {email} — Status: {response.status_code} — Response: {response.text}")
+                                log_message(f"❌ Failed to sync {email} — Status: {response.status_code}")
+                                print(f"↪️ Error response: {response.text}")
                         except requests.exceptions.RequestException as e:
                             log_message(f"❌ Network error for {email}: {e}")
+                            print(f"⚠️ Exception for {email}: {e}")
 
     print("\n✅ Optimizely sync process completed.")
 

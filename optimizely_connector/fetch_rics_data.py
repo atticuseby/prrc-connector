@@ -2,9 +2,10 @@ import requests
 import csv
 import os
 from datetime import datetime
+from scripts.helpers import log_message
+from scripts.config import OPTIMIZELY_API_TOKEN
 
-# ✅ Use API token directly from environment variable
-RICS_API_TOKEN = os.getenv("OPTIMIZELY_API_TOKEN", "").strip()
+RICS_API_TOKEN = OPTIMIZELY_API_TOKEN.strip()
 RICS_API_URL = "https://enterprise.ricssoftware.com/api/Customer/GetCustomer"
 
 # 🔥 Remove any old mock file if present
@@ -26,9 +27,8 @@ def fetch_rics_data():
     max_failures = 3
     failures = 0
 
-    # ✅ Safely parse RICS_MAX_SKIP from env
-    raw_max_skip = os.getenv("RICS_MAX_SKIP")
-    max_skip = int(raw_max_skip) if raw_max_skip and raw_max_skip.isdigit() else None
+    # 🧪 Development limit (None = full pull, otherwise set a safe limit like 1000 or 50000)
+    max_skip = int(os.getenv("RICS_MAX_SKIP", "0")) or None
 
     print(f"\n🕒 {datetime.now().isoformat()} — Starting customer fetch from RICS")
 
@@ -38,10 +38,10 @@ def fetch_rics_data():
             break
 
         payload = {
-            "StoreCode": 12132,
+            "StoreCode": 12132,  # ✅ required valid query filter
             "Skip": skip,
             "Take": take,
-            "FirstName": "%"  # Wildcard
+            "FirstName": "%"  # ✅ wildcard to fetch everyone
         }
 
         print(f"📄 Requesting customers from skip: {skip}...")
@@ -49,7 +49,7 @@ def fetch_rics_data():
         try:
             response = requests.post(RICS_API_URL, headers=headers, json=payload)
         except requests.exceptions.RequestException as e:
-            print(f"❌ Network error: {e}")
+            log_message(f"❌ Network error: {e}")
             failures += 1
             if failures >= max_failures:
                 raise Exception("❌ Max retries hit. Aborting.")
@@ -58,7 +58,7 @@ def fetch_rics_data():
         print(f"📖 DEBUG raw response: {response.text[:300]}... [truncated]")
 
         if response.status_code != 200:
-            print(f"❌ Bad status: {response.status_code}")
+            log_message(f"❌ Bad status: {response.status_code}")
             failures += 1
             if failures >= max_failures:
                 raise Exception("❌ Max retries hit. Aborting.")
@@ -67,7 +67,7 @@ def fetch_rics_data():
         data = response.json()
 
         if not data.get("IsSuccessful", False):
-            print(f"❌ API failure: {data.get('Message')} | {data.get('ValidationMessages')}")
+            log_message(f"❌ API failure: {data.get('Message')} | {data.get('ValidationMessages')}")
             failures += 1
             if failures >= max_failures:
                 raise Exception("❌ Max retries hit due to validation.")
@@ -124,6 +124,6 @@ def fetch_rics_data():
                 "zip": mailing.get("PostalCode", "")
             })
 
-    print(f"✅ Export complete: {output_path}")
+    log_message(f"✅ Export complete: {output_path}")
 
 fetch_rics_data()

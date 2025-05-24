@@ -3,7 +3,7 @@ name: Run PRRC Connector
 on:
   workflow_dispatch:       # allows manual runs from GitHub UI
   schedule:
-    - cron: '0 8 * * *'    # 3AM EST = 8AM UTC
+    - cron: '0 12 * * *'    # runs daily at noon UTC
 
 jobs:
   run-connector:
@@ -15,6 +15,7 @@ jobs:
       PARTNER_ID: ${{ secrets.PARTNER_ID }}
       OPTIMIZELY_API_TOKEN: ${{ secrets.OPTIMIZELY_API_TOKEN }}
       GDRIVE_FOLDER_ID: ${{ secrets.GDRIVE_FOLDER_ID }}
+      RICS_MAX_SKIP: ${{ secrets.RICS_MAX_SKIP }}  # ✅ new optional runtime cap
 
     steps:
       - name: Checkout repo
@@ -26,13 +27,14 @@ jobs:
           python-version: '3.10'
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: |
+          pip install -r requirements.txt
+
+      - name: Save Google Drive credentials
+        run: echo '${{ secrets.GDRIVE_CREDENTIALS }}' > service_account.json
 
       - name: Run connector
         run: python optimizely_connector/main.py
-
-      - name: Save Google Drive credentials
-        run: echo '${{ secrets.GDRIVE_CREDENTIALS }}' > optimizely_connector/service_account.json
 
       - name: Upload CSVs to Google Drive
         run: python optimizely_connector/upload_to_gdrive.py

@@ -10,6 +10,14 @@ from fetch_rics_data import fetch_rics_data
 load_dotenv()
 
 def run_all():
+    # 🟢 Green Light Script: Confirm DRY_RUN status
+    dry_run = os.getenv("DRY_RUN", "true").lower() == "true"
+    if not dry_run:
+        print("🟢 DRY_RUN is OFF — this run will push data to Optimizely.")
+        print("🚨 LIVE DATA MODE — Check Optimizely after run for profile updates.\n")
+    else:
+        print("🧪 DRY_RUN is ON — this is a test run only. No data will be sent.\n")
+
     print("=== Starting Full Connector Sync ===")
     print(f"API_KEY present: {bool(os.getenv('API_KEY'))}")
     print(f"API_SECRET present: {bool(os.getenv('API_SECRET'))}")

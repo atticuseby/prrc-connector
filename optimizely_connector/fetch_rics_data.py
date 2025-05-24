@@ -27,8 +27,9 @@ def fetch_rics_data():
     max_failures = 3
     failures = 0
 
-    # 🧪 Development limit (None = full pull, otherwise set a safe limit like 1000 or 50000)
-    max_skip = int(os.getenv("RICS_MAX_SKIP", "0")) or None
+    # ✅ Safely parse RICS_MAX_SKIP from env
+    raw_max_skip = os.getenv("RICS_MAX_SKIP")
+    max_skip = int(raw_max_skip) if raw_max_skip and raw_max_skip.isdigit() else None
 
     print(f"\n🕒 {datetime.now().isoformat()} — Starting customer fetch from RICS")
 
@@ -38,10 +39,10 @@ def fetch_rics_data():
             break
 
         payload = {
-            "StoreCode": 12132,  # ✅ required valid query filter
+            "StoreCode": 12132,
             "Skip": skip,
             "Take": take,
-            "FirstName": "%"  # ✅ wildcard to fetch everyone
+            "FirstName": "%"  # Wildcard
         }
 
         print(f"📄 Requesting customers from skip: {skip}...")

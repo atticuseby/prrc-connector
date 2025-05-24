@@ -30,7 +30,7 @@ def fetch_rics_data():
     max_failures = 3
     failures = 0
 
-    max_skip = 300  # Test mode: limit to 300 customers
+    max_skip = 300  # Limit pull for now
 
     print(f"\n🕒 {datetime.now().isoformat()} — Starting customer fetch from RICS")
 
@@ -105,7 +105,7 @@ def fetch_rics_data():
 
     print(f"📝 Writing final CSV to: {output_path}")
 
-        with open(output_path, mode="w", newline="") as file:
+    with open(output_path, mode="w", newline="") as file:
         fieldnames = [
             "rics_id", "email", "first_name", "last_name",
             "orders", "total_spent", "city", "state", "zip"
@@ -127,7 +127,7 @@ def fetch_rics_data():
                 "zip": mailing.get("PostalCode", "")
             })
 
-        # ✅ Append the test record BEFORE closing
+        # ✅ Append test row inside the open block
         print(f"🔧 Appending test profile with email: {TEST_EMAIL}")
         writer.writerow({
             "rics_id": "test-rics-id",
@@ -143,8 +143,10 @@ def fetch_rics_data():
 
     log_message(f"✅ Export complete: {output_path}")
 
-    # ✅ Copy the CSV to /data for Optimizely sync
+    # ✅ Copy to /data for Optimizely sync
     data_dir = "data"
     os.makedirs(data_dir, exist_ok=True)
     shutil.copy(output_path, os.path.join(data_dir, os.path.basename(output_path)))
     print(f"📂 Copied CSV to /data/: {os.path.basename(output_path)}")
+
+fetch_rics_data()

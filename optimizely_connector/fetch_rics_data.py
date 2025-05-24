@@ -2,9 +2,9 @@ import requests
 import csv
 import os
 from datetime import datetime
-from scripts.config import OPTIMIZELY_API_TOKEN  # Still assuming this file exists
 
-RICS_API_TOKEN = OPTIMIZELY_API_TOKEN.strip()
+# ✅ Use API token directly from environment variable
+RICS_API_TOKEN = os.getenv("OPTIMIZELY_API_TOKEN", "").strip()
 RICS_API_URL = "https://enterprise.ricssoftware.com/api/Customer/GetCustomer"
 
 # 🔥 Remove any old mock file if present

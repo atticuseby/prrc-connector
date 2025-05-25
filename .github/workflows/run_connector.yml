@@ -1,7 +1,16 @@
 name: Run PRRC Connector
 
 on:
-  workflow_dispatch:       # allows manual runs from GitHub UI
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Choose sync mode (test or full)'
+        required: true
+        default: 'full'
+        type: choice
+        options:
+          - test
+          - full
   schedule:
     - cron: '0 8 * * *'    # 3AM EST = 8AM UTC
 
@@ -32,7 +41,14 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Run connector
-        run: python optimizely_connector/main.py
+        run: |
+          if [[ "${{ github.event.inputs.mode || 'full' }}" == "test" ]]; then
+            echo "⚙️ Running TEST sync only"
+            python sync_rics_to_optimizely_test_only.py
+          else
+            echo "🚀 Running FULL connector sync"
+            python optimizely_connector/main.py
+          fi
 
       - name: Save Google Drive credentials
         run: echo '${{ secrets.GDRIVE_CREDENTIALS }}' > optimizely_connector/service_account.json

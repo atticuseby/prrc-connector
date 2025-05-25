@@ -15,14 +15,14 @@ OPTIMIZELY_ENDPOINT = "https://api.zaius.com/v3/profiles"
 def run_single_test_payload():
     print("🧪 [START] Sending profile via /v3/profiles...")
 
-    email = "odp_test_2025_002@banditmediagroup.com"  # <- brand-new test email
+    email = "odp_test_2025_002@banditmediagroup.com"
 
     payload = [
         {
             "identifiers": {
                 "email": email
             },
-            "properties": {
+            "attributes": {
                 "first_name": "RealTime",
                 "last_name": "ProfileTest",
                 "name": "RealTime ProfileTest",

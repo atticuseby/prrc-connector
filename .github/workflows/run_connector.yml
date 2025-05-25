@@ -17,6 +17,7 @@ jobs:
       GDRIVE_FOLDER_ID: ${{ secrets.GDRIVE_FOLDER_ID }}
       TEST_EMAIL: ${{ secrets.TEST_EMAIL }}
       DRY_RUN: ${{ secrets.DRY_RUN }}
+      RICS_API_TOKEN: ${{ secrets.RICS_API_TOKEN }}
 
     steps:
       - name: Checkout repo

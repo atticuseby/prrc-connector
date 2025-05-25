@@ -7,7 +7,7 @@ from datetime import datetime
 from scripts.config import RICS_API_TOKEN, TEST_EMAIL
 from scripts.helpers import log_message
 
-MAX_SKIP = 1000  # Adjustable for pagination cap
+MAX_SKIP = 100  # Keep small during test mode
 data_fields = [
     "rics_id", "email", "first_name", "last_name", "orders",
     "total_spent", "city", "state", "zip", "phone"
@@ -58,23 +58,48 @@ def fetch_rics_data():
                 "phone": customer.get("PhoneNumber", "").strip()
             }
             all_rows.append(row)
-
         skip += 100
 
-    # Inject test row
-    log_message(f"\n🔧 Appending test profile with email: {TEST_EMAIL}")
-    all_rows.append({
-        "rics_id": "test-profile",
-        "email": TEST_EMAIL,
-        "first_name": "Test",
-        "last_name": "User",
-        "orders": 0,
-        "total_spent": 0,
-        "city": "Nashville",
-        "state": "TN",
-        "zip": "37201",
-        "phone": ""
-    })
+    # Inject 3 fake test profiles
+    log_message(f"\n🔧 Appending test profiles (x3)...")
+    all_rows.extend([
+        {
+            "rics_id": "test-001",
+            "email": TEST_EMAIL,
+            "first_name": "Test",
+            "last_name": "Email",
+            "orders": 1,
+            "total_spent": 10,
+            "city": "Testville",
+            "state": "TN",
+            "zip": "37201",
+            "phone": ""
+        },
+        {
+            "rics_id": "test-002",
+            "email": "",
+            "first_name": "Phone",
+            "last_name": "Only",
+            "orders": 0,
+            "total_spent": 0,
+            "city": "Franklin",
+            "state": "TN",
+            "zip": "37064",
+            "phone": "5551234567"
+        },
+        {
+            "rics_id": "test-003",
+            "email": "test+both@bandit.com",
+            "first_name": "Dual",
+            "last_name": "Contact",
+            "orders": 2,
+            "total_spent": 200,
+            "city": "Memphis",
+            "state": "TN",
+            "zip": "38103",
+            "phone": "5559876543"
+        }
+    ])
 
     with open(output_path, mode="w", newline="") as file:
         writer = csv.DictWriter(file, fieldnames=data_fields)

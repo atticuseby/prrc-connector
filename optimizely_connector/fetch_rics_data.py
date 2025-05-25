@@ -1,122 +1,92 @@
 # fetch_rics_data.py
 
-import requests
-import csv
 import os
+import csv
+import requests
 from datetime import datetime
-from scripts.helpers import log_message
 from scripts.config import RICS_API_TOKEN, TEST_EMAIL
+from scripts.helpers import log_message
 
-RICS_API_URL = "https://enterprise.ricssoftware.com/api/Customer/GetCustomer"
-
-mock_path = "./optimizely_connector/output/mock_rics_export.csv"
-if os.path.exists(mock_path):
-    os.remove(mock_path)
-    print("🧹 Removed old mock_rics_export.csv")
+MAX_SKIP = 1000  # Adjustable for pagination cap
+data_fields = [
+    "rics_id", "email", "first_name", "last_name", "orders",
+    "total_spent", "city", "state", "zip", "phone"
+]
 
 def fetch_rics_data():
-    headers = {
-        "Token": RICS_API_TOKEN.strip(),
-        "Content-Type": "application/json"
-    }
+    timestamp = datetime.now().strftime("%m_%d_%Y_%H%M")
+    filename = f"{timestamp}_rics_data.csv"
+    output_path = os.path.join("./optimizely_connector/output", filename)
+    data_path = os.path.join("data", filename)
 
-    all_customers = []
+    os.makedirs("./optimizely_connector/output", exist_ok=True)
+    os.makedirs("data", exist_ok=True)
+
+    all_rows = []
     skip = 0
-    take = 100
 
-    print(f"\n🕒 {datetime.now().isoformat()} — Starting customer fetch from RICS")
-
-    while True:
-        payload = {
-            "StoreCode": 12132,
-            "Skip": skip,
-            "Take": take,
-            "FirstName": "%"
-        }
-
-        print(f"📄 Requesting customers from skip: {skip}...")
-
+    while skip < MAX_SKIP:
+        log_message(f"\n📄 Requesting customers from skip: {skip}...")
         try:
-            response = requests.post(RICS_API_URL, headers=headers, json=payload)
-        except requests.exceptions.RequestException as e:
-            log_message(f"❌ Network error: {e}")
+            response = requests.post(
+                url="https://enterprise.ricssoftware.com/api/Customer/GetCustomer",
+                headers={"Authorization": f"Bearer {RICS_API_TOKEN}"},
+                json={"StoreCode": 12132, "Skip": skip, "Take": 100},
+                timeout=20
+            )
+            response.raise_for_status()
+            customers = response.json().get("Customers", [])
+        except Exception as e:
+            log_message(f"❌ Failed to retrieve data: {e}")
             break
 
-        print(f"📖 DEBUG raw response: {response.text[:300]}... [truncated]")
-
-        if response.status_code != 200:
-            log_message(f"❌ Bad status: {response.status_code}")
-            break
-
-        data = response.json()
-        if not data.get("IsSuccessful", False):
-            log_message(f"❌ API failure: {data.get('Message')} | {data.get('ValidationMessages')}")
-            break
-
-        customers = data.get("Customers", [])
         if not customers:
-            print("🚫 No customers returned — pagination complete.")
             break
 
-        print(f"📦 Retrieved {len(customers)} customers")
+        for customer in customers:
+            mailing = customer.get("MailingAddress", {})
+            row = {
+                "rics_id": customer.get("CustomerId"),
+                "email": customer.get("Email", "").strip(),
+                "first_name": customer.get("FirstName", "").strip(),
+                "last_name": customer.get("LastName", "").strip(),
+                "orders": customer.get("Orders", 0),
+                "total_spent": customer.get("TotalSpent", 0),
+                "city": mailing.get("City", "").strip(),
+                "state": mailing.get("State", "").strip(),
+                "zip": mailing.get("PostalCode", "").strip(),
+                "phone": customer.get("PhoneNumber", "").strip()
+            }
+            all_rows.append(row)
 
-        for c in customers:
-            all_customers.append(c)
+        skip += 100
 
-        skip += take
-
-    print(f"\n📊 Total unique customers exported: {len(all_customers)}")
-
-    if not all_customers:
-        raise Exception("❌ No usable customer data found")
-
-    output_dir = "./optimizely_connector/output"
-    os.makedirs(output_dir, exist_ok=True)
-
-    filename = datetime.now().strftime("%m_%d_%Y_%H%M_rics_data.csv")
-    output_path = os.path.join(output_dir, filename)
-
-    print(f"📝 Writing final CSV to: {output_path}")
+    # Inject test row
+    log_message(f"\n🔧 Appending test profile with email: {TEST_EMAIL}")
+    all_rows.append({
+        "rics_id": "test-profile",
+        "email": TEST_EMAIL,
+        "first_name": "Test",
+        "last_name": "User",
+        "orders": 0,
+        "total_spent": 0,
+        "city": "Nashville",
+        "state": "TN",
+        "zip": "37201",
+        "phone": ""
+    })
 
     with open(output_path, mode="w", newline="") as file:
-        writer = csv.DictWriter(file, fieldnames=[
-            "rics_id", "email", "phone", "first_name", "last_name",
-            "orders", "total_spent", "city", "state", "zip"
-        ])
+        writer = csv.DictWriter(file, fieldnames=data_fields)
         writer.writeheader()
+        writer.writerows(all_rows)
+    log_message(f"📝 Writing final CSV to: {output_path}")
 
-        for c in all_customers:
-            mailing = c.get("MailingAddress", {})
-            writer.writerow({
-                "rics_id": c.get("CustomerId"),
-                "email": c.get("Email"),
-                "phone": c.get("PhoneNumber"),
-                "first_name": c.get("FirstName"),
-                "last_name": c.get("LastName"),
-                "orders": c.get("OrderCount", 0),
-                "total_spent": c.get("TotalSpent", 0.0),
-                "city": mailing.get("City", ""),
-                "state": mailing.get("State", ""),
-                "zip": mailing.get("PostalCode", "")
-            })
+    with open(data_path, mode="w", newline="") as file:
+        writer = csv.DictWriter(file, fieldnames=data_fields)
+        writer.writeheader()
+        writer.writerows(all_rows)
+    log_message(f"📂 Copied CSV to /data/: {data_path}")
 
-        if TEST_EMAIL:
-            print(f"🔧 Appending test profile with email: {TEST_EMAIL}")
-            writer.writerow({
-                "rics_id": "test-rics-id",
-                "email": TEST_EMAIL,
-                "phone": "",
-                "first_name": "Test",
-                "last_name": "User",
-                "orders": 0,
-                "total_spent": 0,
-                "city": "Nashville",
-                "state": "TN",
-                "zip": "37201"
-            })
-
-    data_dir = "./data"
-    os.makedirs(data_dir, exist_ok=True)
-    dest_path = os.path.join(data_dir, os.path.basename(output_path))
-    os.system(f"cp {output_path} {dest_path}")
-    print(f"📂 Copied CSV to /data/: {os.path.basename(output_path)}")
+if __name__ == "__main__":
+    fetch_rics_data()

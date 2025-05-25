@@ -1,7 +1,13 @@
-# sync_rics_to_optimizely_test_only.py
+# optimizely_connector/sync_rics_to_optimizely_test_only.py
 
+import sys
+import os
 import requests
 import json
+
+# ✅ Ensure we can import from scripts/
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
 from scripts.config import OPTIMIZELY_API_TOKEN
 from scripts.helpers import log_message
 
@@ -42,6 +48,7 @@ def run_single_test_payload():
         log_message("📨 Sent single test payload")
         log_message(f"🔁 Status: {response.status_code}")
         log_message(f"📝 Response: {response.text}")
+
         if response.status_code == 202:
             log_message("✅ SUCCESS: 202 Accepted — Profile should now appear in ODP")
         else:

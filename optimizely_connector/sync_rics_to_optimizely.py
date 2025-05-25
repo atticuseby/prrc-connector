@@ -11,7 +11,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from scripts.config import OPTIMIZELY_API_TOKEN, DRY_RUN
 from scripts.helpers import log_message
 
-OPTIMIZELY_ENDPOINT = "https://api.zaius.com/v3/profiles"
+OPTIMIZELY_ENDPOINT = "https://api.zaius.com/v3/events"
 
 BATCH_SIZE = 500
 
@@ -33,18 +33,15 @@ def run_sync():
                         log_message(f"❌ No email or phone — skipping row: {row}")
                         continue
 
-                    first_name = row.get("first_name", "").strip()
-                    last_name = row.get("last_name", "").strip()
-
-                    identifiers = []
+                    identifiers = {}
                     if email:
-                        identifiers.append({"type": "email", "value": email})
+                        identifiers["email"] = email
                     if phone:
-                        identifiers.append({"type": "phone_number", "value": phone})
+                        identifiers["phone_number"] = phone
 
                     attributes = {
-                        "first_name": first_name,
-                        "last_name": last_name,
+                        "first_name": row.get("first_name", "").strip(),
+                        "last_name": row.get("last_name", "").strip(),
                         "orders": row.get("orders"),
                         "total_spent": row.get("total_spent"),
                         "city": row.get("city"),
@@ -53,12 +50,15 @@ def run_sync():
                         "rics_id": row.get("rics_id")
                     }
 
-                    if first_name and last_name:
-                        attributes["name"] = f"{first_name} {last_name}"
+                    first = attributes.get("first_name")
+                    last = attributes.get("last_name")
+                    if first and last:
+                        attributes["name"] = f"{first} {last}"
 
                     attributes = {k: v for k, v in attributes.items() if v not in (None, "", "NULL")}
 
                     all_rows.append({
+                        "type": "customer_updated",
                         "identifiers": identifiers,
                         "attributes": attributes
                     })
@@ -80,11 +80,11 @@ def run_sync():
         if not email and not phone:
             continue
 
-        identifiers = []
+        identifiers = {}
         if email:
-            identifiers.append({"type": "email", "value": email})
+            identifiers["email"] = email
         if phone:
-            identifiers.append({"type": "phone_number", "value": phone})
+            identifiers["phone_number"] = phone
 
         attributes = {k: v for k, v in profile.items() if k not in ("email", "phone") and v not in (None, "", "NULL")}
         first = profile.get("first_name", "").strip()
@@ -93,6 +93,7 @@ def run_sync():
             attributes["name"] = f"{first} {last}"
 
         all_rows.append({
+            "type": "customer_updated",
             "identifiers": identifiers,
             "attributes": attributes
         })

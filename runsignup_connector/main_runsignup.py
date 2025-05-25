@@ -1,4 +1,4 @@
-# runsignup_connector/main_runsignup.py
+# main_runsignup.py
 
 import os
 import csv
@@ -12,6 +12,8 @@ from scripts.upload_to_gdrive import upload_to_drive
 load_dotenv()
 
 OPTIMIZELY_API_TOKEN = os.getenv("OPTIMIZELY_API_TOKEN")
+today = datetime.now().strftime("%Y-%m-%d")
+output_file = f"optimizely_connector/output/runsignup_export_{today}.csv"
 
 def push_runsignup_to_optimizely(csv_path):
     if not os.path.exists(csv_path):
@@ -62,28 +64,21 @@ def run_runsignup_flow():
 
     try:
         extract_event_ids()
-        print("✅ Event IDs extracted\n")
     except Exception as e:
         print(f"❌ Failed to extract event IDs: {e}\n")
 
     try:
         fetch_runsignup_data()
-        print("✅ Registration data fetched\n")
     except Exception as e:
         print(f"❌ Failed to fetch registration data: {e}\n")
 
-    today = datetime.now().strftime("%Y-%m-%d")
-    output_file = f"optimizely_connector/output/runsignup_export_{today}.csv"
-
     try:
         upload_to_drive(local_file_path=output_file, drive_subfolder="RunSignUp")
-        print("✅ Uploaded RunSignUp export to Google Drive\n")
     except Exception as e:
         print(f"❌ Google Drive upload failed: {e}\n")
 
     try:
         push_runsignup_to_optimizely(csv_path=output_file)
-        print("✅ Optimizely sync complete\n")
     except Exception as e:
         print(f"❌ Optimizely sync failed: {e}\n")
 

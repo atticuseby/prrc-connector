@@ -3,13 +3,12 @@ import os
 import csv
 import requests
 
-# Ensure project root is in path for module imports
+# Make sure scripts/ is in path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from scripts.config import OPTIMIZELY_API_TOKEN, DRY_RUN
 from scripts.helpers import log_message
 
-# ODP (Zaius) profile endpoint
 OPTIMIZELY_ENDPOINT = "https://api.zaius.com/v3/profiles"
 
 def run_sync():
@@ -28,7 +27,6 @@ def run_sync():
                         log_message(f"❌ Missing email — skipping row: {row}")
                         continue
 
-                    # Prepare attributes to push
                     attributes = {
                         "first_name": row.get("first_name"),
                         "last_name": row.get("last_name"),
@@ -39,7 +37,6 @@ def run_sync():
                         "zip": row.get("zip"),
                         "rics_id": row.get("rics_id")
                     }
-                    # Remove empty/null values
                     attributes = {k: v for k, v in attributes.items() if v not in (None, "", "NULL")}
 
                     payload = {
@@ -50,7 +47,7 @@ def run_sync():
                     }
 
                     if DRY_RUN:
-                        log_message(f"[DRY RUN] Would send to Optimizely: {payload}")
+                        log_message(f"[DRY RUN] Would send to Optimizely:\n{payload}")
                     else:
                         try:
                             response = requests.post(
@@ -62,10 +59,14 @@ def run_sync():
                                 json=payload,
                                 timeout=10
                             )
+                            log_message(f"🔍 Syncing: {email}")
+
                             if response.status_code == 200:
-                                log_message(f"✅ Synced profile for: {email}")
+                                log_message(f"✅ Success:\n↪️ Payload: {payload}\n↪️ Response: {response.text}")
                             else:
-                                log_message(f"❌ Error for {email} — Status: {response.status_code} — Response: {response.text}")
+                                log_message(
+                                    f"❌ Failed:\n↪️ Status: {response.status_code}\n↪️ Response: {response.text}\n↪️ Payload: {payload}"
+                                )
                         except requests.exceptions.RequestException as e:
                             log_message(f"❌ Network error for {email}: {e}")
 

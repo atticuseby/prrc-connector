@@ -8,8 +8,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-API_KEY = os.getenv("API_KEY")
-API_SECRET = os.getenv("API_SECRET")
+API_KEY = os.getenv("RUNSIGNUP_API_KEY")
+API_SECRET = os.getenv("RUNSIGNUP_API_SECRET")
 BASE_URL = "https://runsignup.com/Rest"
 OUTPUT_DIR = "optimizely_connector/output"
 OUTPUT_PATH = f"{OUTPUT_DIR}/runsignup_export_{datetime.now().strftime('%Y-%m-%d')}.csv"

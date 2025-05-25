@@ -1,3 +1,5 @@
+# run_signup_to_optimizely.py
+
 import os
 import csv
 import requests
@@ -22,6 +24,7 @@ def fetch_runsignup_data():
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
     all_regs = []
+
     with open(EVENT_IDS_PATH, newline="") as csvfile:
         reader = csv.DictReader(csvfile)
 
@@ -32,27 +35,37 @@ def fetch_runsignup_data():
 
             print(f"🎯 Fetching registrations for {race_name} (Race ID: {race_id}, Event ID: {event_id})")
 
-            try:
-                response = requests.get(
-                    f"{BASE_URL}/event/{event_id}/registrations",
-                    params={
-                        "api_key": API_KEY,
-                        "api_secret": API_SECRET,
-                        "format": "json"
-                    }
-                )
-                response.raise_for_status()
-            except requests.RequestException as e:
-                print(f"❌ Request failed for event {event_id}: {e}")
-                continue
+            page = 1
+            while True:
+                try:
+                    response = requests.get(
+                        f"{BASE_URL}/event/{event_id}/registrations",
+                        params={
+                            "api_key": API_KEY,
+                            "api_secret": API_SECRET,
+                            "format": "json",
+                            "page": page
+                        }
+                    )
+                    response.raise_for_status()
+                except requests.RequestException as e:
+                    print(f"❌ Request failed for event {event_id} on page {page}: {e}")
+                    break
 
-            regs = response.json().get("registrations", [])
-            print(f"✅ Found {len(regs)} registrations")
+                regs = response.json().get("registrations", [])
 
-            for reg in regs:
-                reg["race_id"] = race_id
-                reg["event_id"] = event_id
-                all_regs.append(reg)
+                if not regs:
+                    print(f"🛑 No more registrations for event {event_id} after page {page - 1}")
+                    break
+
+                print(f"📄 Page {page}: Found {len(regs)} registrations")
+
+                for reg in regs:
+                    reg["race_id"] = race_id
+                    reg["event_id"] = event_id
+                    all_regs.append(reg)
+
+                page += 1
 
     if not all_regs:
         print("⚠️ No registrations found — no file written.")
@@ -74,5 +87,5 @@ def fetch_runsignup_data():
                 "email": r.get("email", "")
             })
 
-def fetch_events_and_registrations():
-    print("(Skipping fetch_events_and_registrations – legacy test mode)")
+if __name__ == "__main__":
+    fetch_runsignup_data()

@@ -58,7 +58,7 @@ def run_sync():
                     attributes = {k: v for k, v in attributes.items() if v not in (None, "", "NULL")}
 
                     all_rows.append({
-                        "type": "customer_updated",
+                        "type": "customer_update",
                         "identifiers": identifiers,
                         "attributes": attributes
                     })
@@ -93,7 +93,7 @@ def run_sync():
             attributes["name"] = f"{first} {last}"
 
         all_rows.append({
-            "type": "customer_updated",
+            "type": "customer_update",
             "identifiers": identifiers,
             "attributes": attributes
         })

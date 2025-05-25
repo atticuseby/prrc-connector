@@ -50,7 +50,7 @@ def fetch_rics_data():
                 "email": customer.get("Email", "").strip(),
                 "first_name": customer.get("FirstName", "").strip(),
                 "last_name": customer.get("LastName", "").strip(),
-                "orders": customer.get("Orders", 0),
+                "orders": customer.get("OrderCount", 0),
                 "total_spent": customer.get("TotalSpent", 0),
                 "city": mailing.get("City", "").strip(),
                 "state": mailing.get("State", "").strip(),

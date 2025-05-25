@@ -1,10 +1,12 @@
-# main_runsignup.py
+# runsignup_connector/main_runsignup.py
 
 import os
 from dotenv import load_dotenv
+from datetime import datetime
 from extract_event_ids import extract_event_ids
 from run_signup_to_optimizely import fetch_runsignup_data
-from rics_connector.upload_to_gdrive import upload_to_drive  # reuse from RICS for now
+from rics_connector.upload_to_gdrive import upload_to_drive
+from sync_rics_to_optimizely import push_to_optimizely  # Assuming this is shared
 
 load_dotenv()
 
@@ -23,13 +25,22 @@ def run_runsignup_flow():
     except Exception as e:
         print(f"❌ Failed to fetch registration data: {e}\n")
 
+    # Build filename from today's date
+    today = datetime.now().strftime("%Y-%m-%d")
+    output_file = f"optimizely_connector/output/runsignup_export_{today}.csv"
+
     try:
-        # 🔄 Upload to Google Drive → RunSignUp folder
-        output_file = "optimizely_connector/output/runsignup_export_2025-05-25.csv"  # use dynamic path if needed
         upload_to_drive(local_file_path=output_file, drive_subfolder="RunSignUp")
         print("✅ Uploaded to Google Drive\n")
     except Exception as e:
         print(f"❌ Google Drive upload failed: {e}\n")
+
+    try:
+        print("🚀 Pushing RunSignUp profiles to Optimizely...")
+        push_to_optimizely(output_file)  # You may need to wrap this call
+        print("✅ Optimizely sync complete\n")
+    except Exception as e:
+        print(f"❌ Failed to push to Optimizely: {e}\n")
 
     print("=== RUNSIGNUP CONNECTOR END ===")
 

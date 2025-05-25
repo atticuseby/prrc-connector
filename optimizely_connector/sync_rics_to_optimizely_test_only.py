@@ -5,42 +5,38 @@ import os
 import requests
 import json
 
-# 🛠 Add parent directory to import path
+# Add parent directory to import path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from scripts.config import OPTIMIZELY_API_TOKEN
 
-OPTIMIZELY_ENDPOINT = "https://api.zaius.com/v3/events"
+OPTIMIZELY_ENDPOINT = "https://api.zaius.com/v3/profiles"
 
 def run_single_test_payload():
-    print("🧪 [START] Beginning single profile test sync...")
+    print("🧪 [START] Sending profile via /v3/profiles...")
 
-    email = "odp_test_2025_001@banditmediagroup.com"
-    user_id = "ODP_TEST_001"
+    email = "odp_test_2025_002@banditmediagroup.com"  # <- brand-new test email
 
-    # ✅ Construct payload
     payload = [
         {
-            "type": "customer_update",
             "identifiers": {
-                "email": email,
-                "user_id": user_id
+                "email": email
             },
             "properties": {
-                "first_name": "Test",
-                "last_name": "User",
-                "name": "Test User",
+                "first_name": "RealTime",
+                "last_name": "ProfileTest",
+                "name": "RealTime ProfileTest",
                 "city": "Nashville",
                 "state": "TN",
                 "zip": "37201",
-                "rics_id": "RICS-ODP-001",
-                "orders": "3",
-                "total_spent": "123.45"
+                "rics_id": "RICS-ODP-002",
+                "orders": "5",
+                "total_spent": "543.21"
             }
         }
     ]
 
-    print("📦 [PAYLOAD] Prepared payload:")
+    print("📦 [PAYLOAD]")
     print(json.dumps(payload, indent=2))
 
     headers = {
@@ -48,11 +44,11 @@ def run_single_test_payload():
         "Content-Type": "application/json"
     }
 
-    print("🧾 [HEADERS] Sending with headers:")
+    print("🧾 [HEADERS]")
     print(json.dumps(headers, indent=2))
 
     try:
-        print("🛰️ [REQUEST] Sending POST request to Optimizely...")
+        print("🛰️ [REQUEST] Sending POST to /v3/profiles...")
         response = requests.post(
             OPTIMIZELY_ENDPOINT,
             headers=headers,
@@ -64,15 +60,15 @@ def run_single_test_payload():
         print("📨 [RESPONSE BODY]")
         print(response.text)
 
-        if response.status_code == 202:
-            print("✅ [SUCCESS] 202 Accepted — Profile should now appear in ODP")
+        if response.status_code in [200, 202]:
+            print("✅ [SUCCESS] Profile should now appear in ODP immediately")
             exit(0)
         else:
-            print("❌ [FAILURE] Unexpected status code — investigate above.")
+            print("❌ [FAILURE] Unexpected status — check response above.")
             exit(1)
 
     except requests.exceptions.RequestException as e:
-        print("🚨 [NETWORK ERROR] Request failed with exception:")
+        print("🚨 [NETWORK ERROR]")
         print(e)
         exit(1)
 

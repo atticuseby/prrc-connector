@@ -60,7 +60,7 @@ def run_sync():
                     all_rows.append({
                         "type": "customer_update",
                         "identifiers": identifiers,
-                        "attributes": attributes
+                        "properties": attributes
                     })
 
     # Add test cases for verification
@@ -95,7 +95,7 @@ def run_sync():
         all_rows.append({
             "type": "customer_update",
             "identifiers": identifiers,
-            "attributes": attributes
+            "properties": attributes
         })
 
     # Batch requests

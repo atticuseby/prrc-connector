@@ -1,59 +1,49 @@
-import os
-import requests
-from dotenv import load_dotenv
+# optimizely_connector/main.py
 
-from run_signup_to_optimizely import fetch_runsignup_data, fetch_events_and_registrations
-from sync_rics_to_optimizely import run_sync
-from extract_event_ids import extract_event_ids
-from fetch_rics_data import fetch_rics_data
+import os
+from dotenv import load_dotenv
+from datetime import datetime
+from rics_connector.fetch_rics_data import fetch_rics_data
+from rics_connector.sync_rics_to_optimizely import run_sync
+from scripts.upload_to_gdrive import upload_to_drive
 
 load_dotenv()
 
-def run_all():
-    # 🟢 Green Light Script: Confirm DRY_RUN status
+def run_rics_flow():
     dry_run = os.getenv("DRY_RUN", "true").lower() == "true"
     if not dry_run:
         print("🟢 DRY_RUN is OFF — this run will push data to Optimizely.")
-        print("🚨 LIVE DATA MODE — Check Optimizely after run for profile updates.\n")
+        print("🚨 LIVE DATA MODE — Check Optimizely after run.\n")
     else:
-        print("🧪 DRY_RUN is ON — this is a test run only. No data will be sent.\n")
+        print("🧪 DRY_RUN is ON — no data will be sent.\n")
 
-    print("=== Starting Full Connector Sync ===")
-    print(f"API_KEY present: {bool(os.getenv('API_KEY'))}")
-    print(f"API_SECRET present: {bool(os.getenv('API_SECRET'))}")
-    print(f"OPTIMIZELY_API_TOKEN present: {bool(os.getenv('OPTIMIZELY_API_TOKEN'))}\n")
+    print("=== RICS CONNECTOR START ===")
 
-    # RunSignUp Sync (test mode for now)
-    print("=== Pulling RunSignUp Events & Registrations ===")
-    print("(Skipping fetch_events_and_registrations – test mode enabled)")
-    print("📥 Testing known race: Soldier Run (ID: 173466)")
-    print("ℹ️ No registrations found (test mode)\n")
-
-    # Event ID Extraction
-    print("=== Extracting Event IDs from RunSignUp ===")
     try:
-        extract_event_ids()
-        print()
-    except Exception as e:
-        print(f"❌ Error extracting event IDs: {e}\n")
-
-    # RICS Data Pull
-    print("=== Pulling RICS Customers ===")
-    try:
+        print("📥 Pulling RICS data...")
         fetch_rics_data()
+        print("✅ RICS data pull complete\n")
     except Exception as e:
         print(f"❌ RICS data pull error: {e}\n")
 
-    # Optimizely Sync
-    print("=== Syncing to Optimizely ===")
+    today = datetime.now().strftime("%Y-%m-%d")
+    output_file = f"optimizely_connector/output/rics_export_{today}.csv"
+
     try:
-        run_sync()
-        print("✅ Optimizely sync complete\n")
+        upload_to_drive(local_file_path=output_file, drive_subfolder="RICS")
+        print("✅ Uploaded RICS export to Google Drive\n")
     except Exception as e:
-        print(f"❌ Error syncing to Optimizely: {e}\n")
+        print(f"❌ RICS Google Drive upload failed: {e}\n")
+
+    if not dry_run:
+        try:
+            print("🚀 Pushing RICS data to Optimizely...")
+            run_sync()
+            print("✅ RICS Optimizely sync complete\n")
+        except Exception as e:
+            print(f"❌ RICS Optimizely sync failed: {e}\n")
+
+    print("=== RICS CONNECTOR END ===")
 
 if __name__ == "__main__":
-    try:
-        run_all()
-    except Exception as e:
-        print(f"🚨 Unhandled exception: {e}")
+    run_rics_flow()

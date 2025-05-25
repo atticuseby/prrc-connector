@@ -44,7 +44,7 @@ jobs:
         run: |
           if [[ "${{ github.event.inputs.mode || 'full' }}" == "test" ]]; then
             echo "⚙️ Running TEST sync only"
-            python sync_rics_to_optimizely_test_only.py
+            python optimizely_connector/sync_rics_to_optimizely_test_only.py
           else
             echo "🚀 Running FULL connector sync"
             python optimizely_connector/main.py

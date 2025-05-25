@@ -5,7 +5,7 @@ import os
 import requests
 import json
 
-# ✅ Ensure we can import from scripts/
+# 🛠 Add parent directory to import path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from scripts.config import OPTIMIZELY_API_TOKEN
@@ -13,13 +13,18 @@ from scripts.config import OPTIMIZELY_API_TOKEN
 OPTIMIZELY_ENDPOINT = "https://api.zaius.com/v3/events"
 
 def run_single_test_payload():
-    print("🧪 Starting test payload sync...")
+    print("🧪 [START] Beginning single profile test sync...")
 
+    email = "odp_test_2025_001@banditmediagroup.com"
+    user_id = "ODP_TEST_001"
+
+    # ✅ Construct payload
     payload = [
         {
             "type": "customer_update",
             "identifiers": {
-                "email": "atticus@banditmediagroup.com"
+                "email": email,
+                "user_id": user_id
             },
             "properties": {
                 "first_name": "Test",
@@ -28,37 +33,47 @@ def run_single_test_payload():
                 "city": "Nashville",
                 "state": "TN",
                 "zip": "37201",
-                "rics_id": "TEST-001",
+                "rics_id": "RICS-ODP-001",
                 "orders": "3",
                 "total_spent": "123.45"
             }
         }
     ]
 
+    print("📦 [PAYLOAD] Prepared payload:")
+    print(json.dumps(payload, indent=2))
+
+    headers = {
+        "x-api-key": OPTIMIZELY_API_TOKEN,
+        "Content-Type": "application/json"
+    }
+
+    print("🧾 [HEADERS] Sending with headers:")
+    print(json.dumps(headers, indent=2))
+
     try:
+        print("🛰️ [REQUEST] Sending POST request to Optimizely...")
         response = requests.post(
             OPTIMIZELY_ENDPOINT,
-            headers={
-                "x-api-key": OPTIMIZELY_API_TOKEN,
-                "Content-Type": "application/json"
-            },
+            headers=headers,
             json=payload,
             timeout=10
         )
 
-        print("📨 Sent single test payload")
-        print(f"🔁 Status: {response.status_code}")
-        print(f"📝 Response: {response.text}")
+        print("🔁 [RESPONSE STATUS] HTTP", response.status_code)
+        print("📨 [RESPONSE BODY]")
+        print(response.text)
 
         if response.status_code == 202:
-            print("✅ SUCCESS: 202 Accepted — Profile should now appear in ODP")
+            print("✅ [SUCCESS] 202 Accepted — Profile should now appear in ODP")
             exit(0)
         else:
-            print("❌ FAILED: Unexpected response — Check status and body above")
+            print("❌ [FAILURE] Unexpected status code — investigate above.")
             exit(1)
 
     except requests.exceptions.RequestException as e:
-        print(f"❌ Network error: {e}")
+        print("🚨 [NETWORK ERROR] Request failed with exception:")
+        print(e)
         exit(1)
 
 if __name__ == "__main__":

@@ -9,11 +9,12 @@ import json
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from scripts.config import OPTIMIZELY_API_TOKEN
-from scripts.helpers import log_message
 
 OPTIMIZELY_ENDPOINT = "https://api.zaius.com/v3/events"
 
 def run_single_test_payload():
+    print("🧪 Starting test payload sync...")
+
     payload = [
         {
             "type": "customer_update",
@@ -45,17 +46,20 @@ def run_single_test_payload():
             timeout=10
         )
 
-        log_message("📨 Sent single test payload")
-        log_message(f"🔁 Status: {response.status_code}")
-        log_message(f"📝 Response: {response.text}")
+        print("📨 Sent single test payload")
+        print(f"🔁 Status: {response.status_code}")
+        print(f"📝 Response: {response.text}")
 
         if response.status_code == 202:
-            log_message("✅ SUCCESS: 202 Accepted — Profile should now appear in ODP")
+            print("✅ SUCCESS: 202 Accepted — Profile should now appear in ODP")
+            exit(0)
         else:
-            log_message("❌ FAILED: Unexpected response — Check status and body above")
+            print("❌ FAILED: Unexpected response — Check status and body above")
+            exit(1)
 
     except requests.exceptions.RequestException as e:
-        log_message(f"❌ Network error: {e}")
+        print(f"❌ Network error: {e}")
+        exit(1)
 
 if __name__ == "__main__":
     run_single_test_payload()

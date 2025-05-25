@@ -11,24 +11,15 @@ from scripts.config import OPTIMIZELY_API_TOKEN
 OPTIMIZELY_ENDPOINT = "https://api.zaius.com/v3/profiles"
 
 def run_single_test_payload():
-    print("🧪 [START] Sending profile via /v3/profiles...")
-
-    email = "odp_test_2025_002@banditmediagroup.com"
+    print("🧪 [START] Sending profile to /v3/profiles...")
 
     payload = {
         "identifiers": {
-            "email": email
+            "email": "odp_test_minimal_2025@banditmediagroup.com"
         },
         "attributes": {
-            "first_name": "RealTime",
-            "last_name": "ProfileTest",
-            "name": "RealTime ProfileTest",
-            "city": "Nashville",
-            "state": "TN",
-            "zip": "37201",
-            "rics_id": "RICS-ODP-002",
-            "orders": "5",
-            "total_spent": "543.21"
+            "first_name": "Minimal",
+            "last_name": "Test"
         }
     }
 
@@ -40,11 +31,8 @@ def run_single_test_payload():
         "Content-Type": "application/json"
     }
 
-    print("🧾 [HEADERS]")
-    print(json.dumps(headers, indent=2))
-
     try:
-        print("🛰️ [REQUEST] Sending POST to /v3/profiles...")
+        print("🛰️ [REQUEST] Sending POST...")
         response = requests.post(
             OPTIMIZELY_ENDPOINT,
             headers=headers,
@@ -57,15 +45,14 @@ def run_single_test_payload():
         print(response.text)
 
         if response.status_code in [200, 202]:
-            print("✅ [SUCCESS] Profile should now appear in ODP immediately")
+            print("✅ [SUCCESS] Profile created")
             exit(0)
         else:
-            print("❌ [FAILURE] Unexpected status — check response above.")
+            print("❌ [FAILURE] Status:", response.status_code)
             exit(1)
 
     except requests.exceptions.RequestException as e:
-        print("🚨 [NETWORK ERROR]")
-        print(e)
+        print("🚨 [ERROR]", e)
         exit(1)
 
 if __name__ == "__main__":

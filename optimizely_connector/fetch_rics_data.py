@@ -5,9 +5,9 @@ import glob
 import shutil
 from datetime import datetime
 from scripts.helpers import log_message
-from scripts.config import OPTIMIZELY_API_TOKEN
+from scripts.config import RICS_API_TOKEN
 
-RICS_API_TOKEN = OPTIMIZELY_API_TOKEN.strip()
+RICS_API_TOKEN = RICS_API_TOKEN.strip()
 RICS_API_URL = "https://enterprise.ricssoftware.com/api/Customer/GetCustomer"
 TEST_EMAIL = os.getenv("TEST_EMAIL", "youremail@yourdomain.com").strip()
 
@@ -43,7 +43,7 @@ def fetch_rics_data():
             "StoreCode": 12132,
             "Skip": skip,
             "Take": take,
-            "FirstName": "%"  # Wildcard
+            "FirstName": "%"
         }
 
         print(f"📄 Requesting customers from skip: {skip}...")
@@ -127,7 +127,6 @@ def fetch_rics_data():
                 "zip": mailing.get("PostalCode", "")
             })
 
-        # ✅ Append test row inside the open block
         print(f"🔧 Appending test profile with email: {TEST_EMAIL}")
         writer.writerow({
             "rics_id": "test-rics-id",
@@ -143,7 +142,6 @@ def fetch_rics_data():
 
     log_message(f"✅ Export complete: {output_path}")
 
-    # ✅ Copy to /data for Optimizely sync
     data_dir = "data"
     os.makedirs(data_dir, exist_ok=True)
     shutil.copy(output_path, os.path.join(data_dir, os.path.basename(output_path)))

@@ -5,9 +5,7 @@ import os
 import requests
 import json
 
-# Add parent directory to import path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
 from scripts.config import OPTIMIZELY_API_TOKEN
 
 OPTIMIZELY_ENDPOINT = "https://api.zaius.com/v3/profiles"
@@ -17,24 +15,22 @@ def run_single_test_payload():
 
     email = "odp_test_2025_002@banditmediagroup.com"
 
-    payload = [
-        {
-            "identifiers": {
-                "email": email
-            },
-            "attributes": {
-                "first_name": "RealTime",
-                "last_name": "ProfileTest",
-                "name": "RealTime ProfileTest",
-                "city": "Nashville",
-                "state": "TN",
-                "zip": "37201",
-                "rics_id": "RICS-ODP-002",
-                "orders": "5",
-                "total_spent": "543.21"
-            }
+    payload = {
+        "identifiers": {
+            "email": email
+        },
+        "attributes": {
+            "first_name": "RealTime",
+            "last_name": "ProfileTest",
+            "name": "RealTime ProfileTest",
+            "city": "Nashville",
+            "state": "TN",
+            "zip": "37201",
+            "rics_id": "RICS-ODP-002",
+            "orders": "5",
+            "total_spent": "543.21"
         }
-    ]
+    }
 
     print("📦 [PAYLOAD]")
     print(json.dumps(payload, indent=2))

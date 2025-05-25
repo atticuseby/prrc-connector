@@ -17,7 +17,7 @@ def run_sync():
     for filename in os.listdir(data_folder):
         if filename.endswith(".csv"):
             filepath = os.path.join(data_folder, filename)
-            print(f"📂 Processing file: {filename}")
+            print(f"\U0001f4c2 Processing file: {filename}")
 
             with open(filepath, newline="") as csvfile:
                 reader = csv.DictReader(csvfile)
@@ -53,7 +53,7 @@ def run_sync():
                             response = requests.post(
                                 OPTIMIZELY_ENDPOINT,
                                 headers={
-                                    "Authorization": f"Bearer {OPTIMIZELY_API_TOKEN}",
+                                    "x-api-key": OPTIMIZELY_API_TOKEN,
                                     "Content-Type": "application/json"
                                 },
                                 json=payload,

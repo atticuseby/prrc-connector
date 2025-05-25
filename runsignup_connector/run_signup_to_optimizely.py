@@ -11,9 +11,12 @@ load_dotenv()
 API_KEY = os.getenv("RUNSIGNUP_API_KEY")
 API_SECRET = os.getenv("RUNSIGNUP_API_SECRET")
 BASE_URL = "https://runsignup.com/Rest"
-OUTPUT_DIR = "optimizely_connector/output"
-OUTPUT_PATH = f"{OUTPUT_DIR}/runsignup_export_{datetime.now().strftime('%Y-%m-%d')}.csv"
 EVENT_IDS_PATH = "data/event_ids.csv"
+
+# Use dynamic output filename
+today = datetime.now().strftime("%Y-%m-%d")
+OUTPUT_DIR = "optimizely_connector/output"
+OUTPUT_PATH = f"{OUTPUT_DIR}/runsignup_export_{today}.csv"
 
 def fetch_runsignup_data():
     if not os.path.exists(EVENT_IDS_PATH):
@@ -24,48 +27,36 @@ def fetch_runsignup_data():
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
     all_regs = []
-
     with open(EVENT_IDS_PATH, newline="") as csvfile:
         reader = csv.DictReader(csvfile)
-
         for row in reader:
-            race_id = row["race_id"]
             event_id = row["event_id"]
+            race_id = row["race_id"]
             race_name = row["race_name"]
 
             print(f"🎯 Fetching registrations for {race_name} (Race ID: {race_id}, Event ID: {event_id})")
 
-            page = 1
-            while True:
-                try:
-                    response = requests.get(
-                        f"{BASE_URL}/event/{event_id}/registrations",
-                        params={
-                            "api_key": API_KEY,
-                            "api_secret": API_SECRET,
-                            "format": "json",
-                            "page": page
-                        }
-                    )
-                    response.raise_for_status()
-                except requests.RequestException as e:
-                    print(f"❌ Request failed for event {event_id} on page {page}: {e}")
-                    break
+            try:
+                response = requests.get(
+                    f"{BASE_URL}/event/{event_id}/registrations",
+                    params={
+                        "api_key": API_KEY,
+                        "api_secret": API_SECRET,
+                        "format": "json"
+                    }
+                )
+                response.raise_for_status()
+            except requests.RequestException as e:
+                print(f"❌ Request failed for event {event_id}: {e}")
+                continue
 
-                regs = response.json().get("registrations", [])
+            regs = response.json().get("registrations", [])
+            print(f"✅ Found {len(regs)} registrations")
 
-                if not regs:
-                    print(f"🛑 No more registrations for event {event_id} after page {page - 1}")
-                    break
-
-                print(f"📄 Page {page}: Found {len(regs)} registrations")
-
-                for reg in regs:
-                    reg["race_id"] = race_id
-                    reg["event_id"] = event_id
-                    all_regs.append(reg)
-
-                page += 1
+            for reg in regs:
+                reg["race_id"] = race_id
+                reg["event_id"] = event_id
+                all_regs.append(reg)
 
     if not all_regs:
         print("⚠️ No registrations found — no file written.")
@@ -86,6 +77,3 @@ def fetch_runsignup_data():
                 "last_name": r.get("last_name", ""),
                 "email": r.get("email", "")
             })
-
-if __name__ == "__main__":
-    fetch_runsignup_data()

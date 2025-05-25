@@ -40,15 +40,20 @@ def extract_event_ids():
         writer.writeheader()
 
         for race in races:
-            race_id = race.get("race_id")
-            race_name = race.get("name")
+            race_data = race.get("race", {})
 
-            for event in race.get("events", []):
+            if race_data.get("is_draft_race"):
+                print(f"⏩ Skipping draft race: {race_data.get('name')}")
+                continue
+
+            race_id = race_data.get("race_id")
+            race_name = race_data.get("name")
+
+            for event in race_data.get("events", []):
                 event_id = event.get("event_id")
                 event_name = event.get("name")
 
-                # 🪵 Print to logs for debugging
-                print(f"{race_name} ({race_id}) → {event_name} ({event_id})")
+                print(f"✅ {race_name} ({race_id}) → {event_name} ({event_id})")
 
                 writer.writerow({
                     "race_id": race_id,
@@ -59,6 +64,5 @@ def extract_event_ids():
 
     log_message(f"✅ Saved event IDs to {output_path}")
 
-# ✅ Make sure this runs when the script is called directly
 if __name__ == "__main__":
     extract_event_ids()

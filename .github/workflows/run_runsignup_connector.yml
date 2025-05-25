@@ -1,0 +1,35 @@
+name: Run RunSignUp Connector
+
+on:
+  workflow_dispatch:  # allows manual run from GitHub UI
+
+jobs:
+  run-runsignup:
+    runs-on: ubuntu-latest
+
+    env:
+      API_KEY: ${{ secrets.API_KEY }}
+      API_SECRET: ${{ secrets.API_SECRET }}
+      OPTIMIZELY_API_TOKEN: ${{ secrets.OPTIMIZELY_API_TOKEN }}
+      GDRIVE_FOLDER_ID: ${{ secrets.GDRIVE_FOLDER_ID }}
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install --upgrade google-api-python-client google-auth google-auth-oauthlib google-auth-httplib2
+
+      - name: Write Google credentials file
+        run: echo '${{ secrets.GDRIVE_CREDENTIALS }}' > service_account.json
+
+      - name: Run RunSignUp connector
+        run: python runsignup_connector/main_runsignup.py

@@ -8,7 +8,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from scripts.config import OPTIMIZELY_API_TOKEN, DRY_RUN
 from scripts.helpers import log_message
 
-OPTIMIZELY_ENDPOINT = "https://api.optimizely.com/v3/profiles"
+OPTIMIZELY_ENDPOINT = "https://api.zaius.com/v3/profiles"
 
 def run_sync():
     data_folder = "data"

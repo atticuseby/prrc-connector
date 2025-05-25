@@ -43,7 +43,7 @@ def run_sync():
                         "attributes": attributes
                     }
 
-                    print(f"🔍 Syncing: {email}")  # ✅ Live debug
+                    print(f"🔍 Syncing: {email}")
                     if DRY_RUN:
                         log_message(f"[DRY RUN] Would send to Optimizely: {payload}")
                     else:

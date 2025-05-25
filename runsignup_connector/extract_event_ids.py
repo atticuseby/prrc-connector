@@ -1,31 +1,42 @@
 # extract_event_ids.py
 
 import os
-import sys
 import requests
 import csv
+from dotenv import load_dotenv
+from scripts.helpers import log_message
 
-# ✅ Allow import from scripts/helpers.py
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "scripts")))
-from helpers import log_message
+load_dotenv()
 
 API_KEY = os.getenv("RUNSIGNUP_API_KEY")
 API_SECRET = os.getenv("RUNSIGNUP_API_SECRET")
-PARTNER_ID = os.getenv("PARTNER_ID")
+PARTNER_ID = os.getenv("RUNSIGNUP_PARTNER_ID")
 
-RUNSIGNUP_RACES_ENDPOINT = f"https://runsignup.com/rest/races?format=json&events=T&event_type=R&api_key={API_KEY}&api_secret={API_SECRET}&partner_id={PARTNER_ID}"
+BASE_URL = "https://runsignup.com/rest/races?format=json&events=T&event_type=R"
+
+if PARTNER_ID:
+    BASE_URL += f"&partner_id={PARTNER_ID}"
 
 def extract_event_ids():
     print("🔍 Requesting race and event data from RunSignUp...")
 
     try:
-        response = requests.get(RUNSIGNUP_RACES_ENDPOINT)
+        response = requests.get(
+            BASE_URL,
+            params={
+                "api_key": API_KEY,
+                "api_secret": API_SECRET,
+                "results_per_page": 100
+            }
+        )
         response.raise_for_status()
     except requests.exceptions.RequestException as e:
         log_message(f"❌ Failed to fetch races from RunSignUp: {e}")
         return
 
-    races = response.json().get("races", [])
+    data = response.json()
+    races = data.get("races", [])
+
     if not races:
         print("⚠️ No races returned from RunSignUp")
         return
@@ -40,29 +51,16 @@ def extract_event_ids():
         writer.writeheader()
 
         for race in races:
-            race_data = race.get("race", {})
-
-            if race_data.get("is_draft_race"):
-                print(f"⏩ Skipping draft race: {race_data.get('name')}")
+            r = race.get("race", {})
+            if r.get("is_draft_race", False):
                 continue
 
-            race_id = race_data.get("race_id")
-            race_name = race_data.get("name")
-
-            for event in race_data.get("events", []):
-                event_id = event.get("event_id")
-                event_name = event.get("name")
-
-                print(f"✅ {race_name} ({race_id}) → {event_name} ({event_id})")
-
+            for event in r.get("events", []):
                 writer.writerow({
-                    "race_id": race_id,
-                    "race_name": race_name,
-                    "event_id": event_id,
-                    "event_name": event_name
+                    "race_id": r.get("race_id"),
+                    "race_name": r.get("name"),
+                    "event_id": event.get("event_id"),
+                    "event_name": event.get("name")
                 })
 
-    log_message(f"✅ Saved event IDs to {output_path}")
-
-if __name__ == "__main__":
-    extract_event_ids()
+    print("✅ Event IDs extracted")

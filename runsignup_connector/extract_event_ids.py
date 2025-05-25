@@ -9,8 +9,8 @@ import csv
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "scripts")))
 from helpers import log_message
 
-API_KEY = os.getenv("API_KEY")
-API_SECRET = os.getenv("API_SECRET")
+API_KEY = os.getenv("RUNSIGNUP_API_KEY")
+API_SECRET = os.getenv("RUNSIGNUP_API_SECRET")
 PARTNER_ID = os.getenv("PARTNER_ID")
 
 RUNSIGNUP_RACES_ENDPOINT = f"https://runsignup.com/rest/races?format=json&events=T&event_type=R&api_key={API_KEY}&api_secret={API_SECRET}&partner_id={PARTNER_ID}"

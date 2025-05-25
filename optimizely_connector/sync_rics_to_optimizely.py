@@ -1,9 +1,10 @@
+# sync_rics_to_optimizely.py
+
 import sys
 import os
 import csv
 import requests
 
-# Make sure scripts/ is in path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from scripts.config import OPTIMIZELY_API_TOKEN, DRY_RUN
@@ -11,21 +12,27 @@ from scripts.helpers import log_message
 
 OPTIMIZELY_ENDPOINT = "https://api.zaius.com/v3/profiles"
 
+
 def run_sync():
     data_folder = "data"
-
     for filename in os.listdir(data_folder):
         if filename.endswith(".csv"):
             filepath = os.path.join(data_folder, filename)
-            print(f"\U0001f4c2 Processing file: {filename}")
-
+            print(f"📂 Processing file: {filename}")
             with open(filepath, newline="") as csvfile:
                 reader = csv.DictReader(csvfile)
                 for row in reader:
                     email = row.get("email")
-                    if not email:
-                        log_message(f"❌ Missing email — skipping row: {row}")
+                    phone = row.get("phone")
+                    if not email and not phone:
+                        log_message(f"❌ No email or phone — skipping row: {row}")
                         continue
+
+                    identifiers = []
+                    if email:
+                        identifiers.append({"type": "email", "value": email})
+                    if phone:
+                        identifiers.append({"type": "phone_number", "value": phone})
 
                     attributes = {
                         "first_name": row.get("first_name"),
@@ -40,14 +47,12 @@ def run_sync():
                     attributes = {k: v for k, v in attributes.items() if v not in (None, "", "NULL")}
 
                     payload = {
-                        "identifiers": [
-                            {"type": "email", "value": email}
-                        ],
+                        "identifiers": identifiers,
                         "attributes": attributes
                     }
 
                     if DRY_RUN:
-                        log_message(f"[DRY RUN] Would send to Optimizely:\n{payload}")
+                        log_message(f"[DRY RUN] Would send to Optimizely: {payload}")
                     else:
                         try:
                             response = requests.post(
@@ -59,16 +64,12 @@ def run_sync():
                                 json=payload,
                                 timeout=10
                             )
-                            log_message(f"🔍 Syncing: {email}")
-
-                            if response.status_code == 200:
-                                log_message(f"✅ Success:\n↪️ Payload: {payload}\n↪️ Response: {response.text}")
+                            if response.status_code in [200, 202]:
+                                log_message(f"✅ Synced profile for: {email or phone}\n↪️ Response: {response.text}")
                             else:
-                                log_message(
-                                    f"❌ Failed:\n↪️ Status: {response.status_code}\n↪️ Response: {response.text}\n↪️ Payload: {payload}"
-                                )
+                                log_message(f"❌ Failed to sync {email or phone} — Status: {response.status_code} — Response: {response.text}")
                         except requests.exceptions.RequestException as e:
-                            log_message(f"❌ Network error for {email}: {e}")
+                            log_message(f"❌ Network error for {email or phone}: {e}")
 
     print("\n✅ Optimizely sync process completed.")
 

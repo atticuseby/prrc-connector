@@ -1,7 +1,7 @@
 name: Run RunSignUp Connector
 
 on:
-  workflow_dispatch:  # allows manual run from GitHub UI
+  workflow_dispatch:  # Allows manual run from the GitHub UI
 
 jobs:
   run-runsignup:
@@ -26,10 +26,13 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install --upgrade google-api-python-client google-auth google-auth-oauthlib google-auth-httplib2
+          pip install google-api-python-client google-auth google-auth-oauthlib google-auth-httplib2
 
       - name: Write Google credentials file
         run: echo '${{ secrets.GDRIVE_CREDENTIALS }}' > service_account.json
+
+      - name: Set PYTHONPATH so scripts folder is importable
+        run: echo "PYTHONPATH=$PYTHONPATH:$(pwd)" >> $GITHUB_ENV
 
       - name: Run RunSignUp connector
         run: python runsignup_connector/main_runsignup.py

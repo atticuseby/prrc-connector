@@ -4,6 +4,8 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
 # Load credentials from environment
 EMAIL = os.getenv("RUNSIGNUP_EMAIL")
@@ -22,9 +24,9 @@ try:
     driver.get("https://runsignup.com/Login")
 
     print("🔐 Logging in...")
-    email_input = driver.find_element(By.NAME, "email")
+    email_input = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.NAME, "email")))
     password_input = driver.find_element(By.NAME, "password")
-    login_button = driver.find_element(By.XPATH, "//button[@type='submit']")
+    login_button = WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.XPATH, "//button[@type='submit']")))
 
     email_input.send_keys(EMAIL)
     password_input.send_keys(PASSWORD)
@@ -33,8 +35,8 @@ try:
     time.sleep(3)
 
     # Confirm login success
-    if "Dashboard" not in driver.page_source:
-        raise Exception("Login failed — check credentials or for 2FA prompts.")
+    if "Dashboard" not in driver.page_source and "My Profile" not in driver.page_source:
+        raise Exception("Login failed — check credentials or 2FA prompts.")
 
     print("✅ Login successful!")
 
@@ -45,7 +47,9 @@ try:
     time.sleep(3)
 
     print("⬇️ Clicking Export to CSV...")
-    export_button = driver.find_element(By.XPATH, "//input[@type='submit' and contains(@value, 'Export to CSV')]")
+    export_button = WebDriverWait(driver, 10).until(
+        EC.element_to_be_clickable((By.XPATH, "//input[@type='submit' and contains(@value, 'Export to CSV')]"))
+    )
     export_button.click()
 
     print("✅ CSV export triggered!")

@@ -11,7 +11,7 @@ API_SECRET = os.getenv("RUNSIGNUP_API_SECRET")
 PARTNER_ID = os.getenv("RUNSIGNUP_PARTNER_ID")
 
 # Updated to use rsu_api_key param
-BASE_URL = "https://runsignup.com/rest/races?format=json&events=T&event_type=R"
+BASE_URL = "https://runsignup.com/rest/races?format=json&events=T&event_type=running_race"
 if PARTNER_ID:
     BASE_URL += f"&partner_id={PARTNER_ID}"
 

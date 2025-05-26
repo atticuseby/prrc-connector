@@ -6,66 +6,66 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from scripts.upload_to_gdrive import upload_to_drive
+from upload_to_gdrive import upload_to_drive  # ✅ Local import
 
-# ENV setup
-FULL_COOKIE_HEADER = os.getenv("RUNSIGNUP_FULL_COOKIE_HEADER", "").strip()
-DOWNLOAD_DIR = os.path.abspath("optimizely_connector/output")
+DOWNLOAD_DIR = os.path.join(os.getcwd(), "optimizely_connector", "output")
+FILENAME = "run_signup_export.csv"
 
-if not FULL_COOKIE_HEADER:
-    raise Exception("❌ RUNSIGNUP_FULL_COOKIE_HEADER not set in environment variables.")
+def setup_driver():
+    chrome_options = Options()
+    chrome_options.add_argument("--headless=new")
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--disable-dev-shm-usage")
+    chrome_options.add_experimental_option("prefs", {
+        "download.default_directory": DOWNLOAD_DIR,
+        "download.prompt_for_download": False,
+        "download.directory_upgrade": True,
+        "safebrowsing.enabled": True
+    })
+    driver = webdriver.Chrome(options=chrome_options)
+    return driver
 
-# Chrome config
-chrome_options = Options()
-chrome_options.add_argument("--headless=new")
-chrome_options.add_argument("--no-sandbox")
-chrome_options.add_argument("--disable-dev-shm-usage")
-chrome_options.add_experimental_option("prefs", {
-    "download.default_directory": DOWNLOAD_DIR,
-    "download.prompt_for_download": False,
-    "download.directory_upgrade": True,
-    "safebrowsing.enabled": True
-})
+def inject_cookies(driver):
+    cookie_header = os.environ.get("RUNSIGNUP_FULL_COOKIE_HEADER")
+    if not cookie_header:
+        raise ValueError("Missing RUNSIGNUP_FULL_COOKIE_HEADER env variable")
+    
+    driver.get("https://runsignup.com/Partner/Participants/Report/1385")
+    driver.execute_cdp_cmd("Network.setExtraHTTPHeaders", {
+        "headers": {
+            "Cookie": cookie_header
+        }
+    })
+    driver.refresh()
 
-print("🌐 Opening page...")
-driver = webdriver.Chrome(options=chrome_options)
-driver.get("https://runsignup.com/Partner/Participants/Report/1385")
+def download_csv(driver):
+    WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.LINK_TEXT, "Export CSV")))
+    export_button = driver.find_element(By.LINK_TEXT, "Export CSV")
+    ActionChains(driver).move_to_element(export_button).click().perform()
+    print("📥 CSV download triggered...")
 
-print("🍪 Injecting session cookies...")
-for cookie_str in FULL_COOKIE_HEADER.split(";"):
-    if "=" in cookie_str:
-        name, value = cookie_str.strip().split("=", 1)
-        driver.add_cookie({"name": name.strip(), "value": value.strip(), "domain": ".runsignup.com"})
-
-driver.refresh()
-
-try:
-    print("📄 Waiting for download button...")
-    download_button = WebDriverWait(driver, 10).until(
-        EC.element_to_be_clickable((By.CSS_SELECTOR, "form[action*='Download'] button[type='submit']"))
-    )
-
-    print("⬇️ Clicking download...")
-    ActionChains(driver).move_to_element(download_button).click().perform()
-
-    print("⏳ Waiting for file to finish downloading...")
-    timeout = time.time() + 15
-    downloaded_file = None
-
-    while time.time() < timeout:
-        for file in os.listdir(DOWNLOAD_DIR):
-            if file.startswith("ParticipantReport") and file.endswith(".csv"):
-                downloaded_file = os.path.join(DOWNLOAD_DIR, file)
-                break
-        if downloaded_file:
-            break
+def wait_for_download():
+    for _ in range(30):
+        files = [f for f in os.listdir(DOWNLOAD_DIR) if f.endswith(".csv")]
+        if files:
+            latest_file = max(files, key=lambda f: os.path.getctime(os.path.join(DOWNLOAD_DIR, f)))
+            print(f"✅ Downloaded: {latest_file}")
+            new_path = os.path.join(DOWNLOAD_DIR, FILENAME)
+            os.rename(os.path.join(DOWNLOAD_DIR, latest_file), new_path)
+            return new_path
         time.sleep(1)
+    raise FileNotFoundError("❌ Timed out waiting for CSV download.")
 
-    if not downloaded_file:
-        raise Exception("❌ Download failed — file not found.")
+def main():
+    print("🚀 Starting RunSignUp CSV download flow...")
+    driver = setup_driver()
+    try:
+        inject_cookies(driver)
+        download_csv(driver)
+        downloaded_file = wait_for_download()
+        upload_to_drive(downloaded_file)
+    finally:
+        driver.quit()
 
-    print(f"✅ File downloaded: {downloaded_file}")
-    upload_to_drive(downloaded_file)
-
-finally:
-    driver.quit()
+if __name__ == "__main__":
+    main()

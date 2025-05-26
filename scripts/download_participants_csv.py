@@ -1,62 +1,53 @@
-# scripts/download_participants_csv.py
-
 import os
 import time
 from selenium import webdriver
 from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.keys import Keys
 
-# 🔐 Environment variables
-RUNSIGNUP_EMAIL = os.getenv("RUNSIGNUP_EMAIL")
-RUNSIGNUP_PASSWORD = os.getenv("RUNSIGNUP_PASSWORD")
-DOWNLOAD_URL = "https://runsignup.com/Partner/ParticipantsReport/1385"
+# Load credentials from environment
+EMAIL = os.getenv("RUNSIGNUP_EMAIL")
+PASSWORD = os.getenv("RUNSIGNUP_PASSWORD")
 
-# 🧱 Chrome setup
+# Headless Chrome setup
 options = Options()
-options.add_argument('--no-sandbox')
-options.add_argument('--disable-dev-shm-usage')
-options.add_argument('--headless=new')  # Use old '--headless' if errors
-prefs = {"download.default_directory": os.getcwd()}
-options.add_experimental_option("prefs", prefs)
+options.add_argument("--headless=new")
+options.add_argument("--no-sandbox")
+options.add_argument("--disable-dev-shm-usage")
 
 driver = webdriver.Chrome(options=options)
 
 try:
-    # 🌐 Open login page
     print("🌐 Navigating to login page...")
     driver.get("https://runsignup.com/Login")
 
-    # 🧍 Log in
     print("🔐 Logging in...")
-    WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.NAME, "email"))).send_keys(RUNSIGNUP_EMAIL)
-    driver.find_element(By.NAME, "password").send_keys(RUNSIGNUP_PASSWORD + Keys.RETURN)
+    email_input = driver.find_element(By.ID, "user_email")
+    password_input = driver.find_element(By.ID, "user_password")
+    login_button = driver.find_element(By.NAME, "commit")
 
-    # ✅ Wait for login redirect
-    WebDriverWait(driver, 10).until(EC.url_contains("runsignup.com/Profile"))
-    print("✅ Logged in successfully")
+    email_input.send_keys(EMAIL)
+    password_input.send_keys(PASSWORD)
+    login_button.click()
 
-    # 📄 Go to participants report
-    print("📄 Navigating to participants report page...")
-    driver.get(DOWNLOAD_URL)
+    time.sleep(3)
 
-    # 🕐 Wait for export button to appear
-    export_button = WebDriverWait(driver, 10).until(
-        EC.element_to_be_clickable((By.LINK_TEXT, "Export All Columns"))
-    )
+    if "Dashboard" not in driver.page_source:
+        raise Exception("Login failed — credentials might be incorrect or 2FA is enabled.")
 
-    # 💾 Click export
-    print("💾 Clicking export button...")
+    print("✅ Login successful!")
+
+    # Navigate to participant export page
+    participants_url = "https://runsignup.com/Partner/Participants/Report/1385"
+    print(f"🌐 Navigating to {participants_url}")
+    driver.get(participants_url)
+    time.sleep(3)
+
+    print("⬇️ Clicking Export to CSV...")
+    export_button = driver.find_element(By.XPATH, "//input[@type='submit' and contains(@value, 'Export to CSV')]")
     export_button.click()
 
-    # ⏳ Wait for download
-    print("⏳ Waiting for download to complete...")
-    time.sleep(10)
-
-    print("✅ CSV download complete (check your output folder)")
+    print("✅ CSV export triggered!")
 
 except Exception as e:
     print(f"❌ Script failed: {e}")

@@ -38,6 +38,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install selenium
+          pip install google-api-python-client google-auth google-auth-oauthlib google-auth-httplib2
 
       - name: 🏃 Run download script
         run: python scripts/download_participants_csv.py

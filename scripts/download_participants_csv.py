@@ -22,9 +22,9 @@ try:
     driver.get("https://runsignup.com/Login")
 
     print("🔐 Logging in...")
-    email_input = driver.find_element(By.ID, "user_email")
-    password_input = driver.find_element(By.ID, "user_password")
-    login_button = driver.find_element(By.NAME, "commit")
+    email_input = driver.find_element(By.NAME, "email")
+    password_input = driver.find_element(By.NAME, "password")
+    login_button = driver.find_element(By.XPATH, "//button[@type='submit']")
 
     email_input.send_keys(EMAIL)
     password_input.send_keys(PASSWORD)
@@ -32,8 +32,9 @@ try:
 
     time.sleep(3)
 
+    # Confirm login success
     if "Dashboard" not in driver.page_source:
-        raise Exception("Login failed — credentials might be incorrect or 2FA is enabled.")
+        raise Exception("Login failed — check credentials or for 2FA prompts.")
 
     print("✅ Login successful!")
 

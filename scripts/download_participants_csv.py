@@ -5,7 +5,6 @@ from urllib.parse import unquote
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
-from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from upload_to_gdrive import upload_to_drive
@@ -60,19 +59,9 @@ def download_csv(driver):
     print("📸 Capturing screenshot for debug...")
     driver.save_screenshot(DEBUG_SCREENSHOT)
 
-    print("🔍 Waiting for 'Export Options' div...")
-    export_div = WebDriverWait(driver, 10).until(
-        EC.presence_of_element_located((By.XPATH, "//div[contains(@class, 'dropdown-toggle') and contains(., 'Export Options')]"))
-    )
-
-    driver.execute_script("arguments[0].scrollIntoView(true);", export_div)
-    driver.execute_script("arguments[0].click();", export_div)
-
-    print("📥 Clicking 'Download Report As CSV' link...")
-    csv_link = WebDriverWait(driver, 5).until(
-        EC.element_to_be_clickable((By.XPATH, "//a[contains(text(), 'Download Report As CSV')]"))
-    )
-    driver.execute_script("arguments[0].click();", csv_link)
+    print("📥 Navigating directly to CSV download endpoint...")
+    csv_url = PARTICIPANT_URL.replace("Participants/Report", "Participants/ReportDownloadCSV")
+    driver.get(csv_url)
 
 def wait_for_download():
     print("⏳ Waiting for file download...")

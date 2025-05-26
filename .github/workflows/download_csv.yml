@@ -10,6 +10,7 @@ jobs:
     env:
       RUNSIGNUP_EMAIL: ${{ secrets.RUNSIGNUP_EMAIL }}
       RUNSIGNUP_PASSWORD: ${{ secrets.RUNSIGNUP_PASSWORD }}
+      RUNSIGNUP_FULL_COOKIE_HEADER: ${{ secrets.RUNSIGNUP_FULL_COOKIE_HEADER }}
 
     steps:
       - name: 📂 Checkout repo

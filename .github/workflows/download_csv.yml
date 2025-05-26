@@ -2,13 +2,12 @@ name: 📥 Download RunSignUp CSV
 
 on:
   workflow_dispatch:
+  schedule:
+    - cron: '0 10 * * *'  # every day at 10:00 UTC
 
 jobs:
   download_csv:
     runs-on: ubuntu-latest
-
-    env:
-      RUNSIGNUP_FULL_COOKIE_HEADER: ${{ secrets.RUNSIGNUP_FULL_COOKIE_HEADER }}
 
     steps:
       - name: 📂 Checkout repo
@@ -32,11 +31,10 @@ jobs:
         with:
           python-version: '3.10'
 
-      - name: 📦 Install Python dependencies
+      - name: 📦 Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install selenium
-          pip install google-api-python-client google-auth google-auth-oauthlib google-auth-httplib2
+          pip install selenium google-api-python-client google-auth google-auth-httplib2 google-auth-oauthlib
 
-      - name: 🏃 Run download + upload
+      - name: 🏃 Run script
         run: python scripts/download_participants_csv.py

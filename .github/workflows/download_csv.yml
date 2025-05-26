@@ -8,15 +8,13 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      RUNSIGNUP_EMAIL: ${{ secrets.RUNSIGNUP_EMAIL }}
-      RUNSIGNUP_PASSWORD: ${{ secrets.RUNSIGNUP_PASSWORD }}
       RUNSIGNUP_FULL_COOKIE_HEADER: ${{ secrets.RUNSIGNUP_FULL_COOKIE_HEADER }}
 
     steps:
       - name: 📂 Checkout repo
         uses: actions/checkout@v3
 
-      - name: 🧰 Install Chrome & ChromeDriver (version-matched)
+      - name: 🧰 Install Chrome & ChromeDriver
         run: |
           sudo apt-get update
           sudo apt-get install -y wget unzip curl jq libnss3 libxss1 libasound2t64 libatk-bridge2.0-0 libgtk-3-0 xvfb
@@ -40,12 +38,5 @@ jobs:
           pip install selenium
           pip install google-api-python-client google-auth google-auth-oauthlib google-auth-httplib2
 
-      - name: 🏃 Run download script
+      - name: 🏃 Run download + upload
         run: python scripts/download_participants_csv.py
-
-      - name: 📤 Upload debug screenshot
-        if: always()
-        uses: actions/upload-artifact@v2
-        with:
-          name: debug-output
-          path: optimizely_connector/output/debug_screen.png

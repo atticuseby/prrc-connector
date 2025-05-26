@@ -25,14 +25,25 @@ try:
     driver.find_element(By.NAME, "email").send_keys(EMAIL)
     driver.find_element(By.NAME, "password").send_keys(PASSWORD)
 
-    login_button = driver.find_element(By.XPATH, "//button[@type='submit']")
+    login_button = WebDriverWait(driver, 10).until(
+        EC.presence_of_element_located((By.XPATH, "//button[@type='submit']"))
+    )
 
-    # Scroll button into view and wait for it to be clickable
+    # Scroll button into view
     driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", login_button)
-    WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.XPATH, "//button[@type='submit']")))
+    time.sleep(1)
 
-    time.sleep(1)  # Let overlays finish animating
-    login_button.click()
+    # Close possible overlays
+    try:
+        overlays = driver.find_elements(By.CSS_SELECTOR, ".fs-xs-2.margin-0.padding-tb-5")
+        for overlay in overlays:
+            driver.execute_script("arguments[0].remove();", overlay)
+            print("🧹 Overlay removed")
+    except:
+        pass
+
+    # Force click with JavaScript
+    driver.execute_script("arguments[0].click();", login_button)
 
     time.sleep(3)
     if "Dashboard" not in driver.page_source and "My Profile" not in driver.page_source:
@@ -51,7 +62,7 @@ try:
         EC.element_to_be_clickable((By.XPATH, "//input[@type='submit' and contains(@value, 'Export to CSV')]"))
     )
     driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", export_button)
-    export_button.click()
+    driver.execute_script("arguments[0].click();", export_button)
 
     print("✅ CSV export triggered!")
 

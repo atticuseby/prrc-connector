@@ -1,5 +1,3 @@
-# run_signup_to_optimizely.py
-
 import os
 import csv
 import requests
@@ -13,7 +11,6 @@ API_SECRET = os.getenv("RUNSIGNUP_API_SECRET")
 BASE_URL = "https://runsignup.com/Rest"
 EVENT_IDS_PATH = "data/event_ids.csv"
 
-# Use dynamic output filename
 today = datetime.now().strftime("%Y-%m-%d")
 OUTPUT_DIR = "optimizely_connector/output"
 OUTPUT_PATH = f"{OUTPUT_DIR}/runsignup_export_{today}.csv"
@@ -40,9 +37,11 @@ def fetch_runsignup_data():
                 response = requests.get(
                     f"{BASE_URL}/event/{event_id}/registrations",
                     params={
-                        "api_key": API_KEY,
-                        "api_secret": API_SECRET,
+                        "rsu_api_key": API_KEY,
                         "format": "json"
+                    },
+                    headers={
+                        "X-RSU-API-SECRET": API_SECRET
                     }
                 )
                 response.raise_for_status()
@@ -51,6 +50,10 @@ def fetch_runsignup_data():
                 continue
 
             regs = response.json().get("registrations", [])
+            if not regs:
+                print(f"⚠️ 0 registrants for event {event_id}")
+                continue
+
             print(f"✅ Found {len(regs)} registrations")
 
             for reg in regs:

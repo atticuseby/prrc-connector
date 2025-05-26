@@ -3,49 +3,44 @@ from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 
-SERVICE_ACCOUNT_FILE = "service_account.json"
-SCOPES = ["https://www.googleapis.com/auth/drive.file"]
+def upload_to_drive(filepath):
+    print(f"📤 Uploading {filepath} to Google Drive...")
 
-# Top-level shared folder ID
-PARENT_FOLDER_ID = os.getenv("GDRIVE_FOLDER_ID", "").strip()
-
-def upload_to_drive(local_file_path, drive_subfolder="General"):
-    """Upload a single CSV file to a subfolder inside a shared Google Drive folder."""
-    if not os.path.exists(local_file_path):
-        print(f"❌ File not found: {local_file_path}")
+    creds_path = os.path.join("optimizely_connector", "output", "service_account.json")
+    if not os.path.exists(creds_path):
+        print(f"❌ Credentials file not found: {creds_path}")
         return
 
     creds = service_account.Credentials.from_service_account_file(
-        SERVICE_ACCOUNT_FILE, scopes=SCOPES
+        creds_path,
+        scopes=["https://www.googleapis.com/auth/drive.file"]
     )
-    drive_service = build("drive", "v3", credentials=creds)
 
-    # Check or create subfolder inside shared folder
-    query = (
-        f"'{PARENT_FOLDER_ID}' in parents and name='{drive_subfolder}' and mimeType='application/vnd.google-apps.folder' and trashed=false"
-    )
-    response = drive_service.files().list(q=query, fields="files(id)").execute()
-    folders = response.get("files", [])
+    service = build("drive", "v3", credentials=creds)
 
-    if folders:
-        folder_id = folders[0]["id"]
-        print(f"📁 Found folder '{drive_subfolder}' (ID: {folder_id})")
+    # Decide which folder to use
+    if "runsignup_export" in filepath:
+        folder_id = os.getenv("GDRIVE_FOLDER_ID_RUNSIGNUP", "").strip()
+    elif "rics_export" in filepath:
+        folder_id = os.getenv("GDRIVE_FOLDER_ID", "").strip()
     else:
-        metadata = {
-            "name": drive_subfolder,
-            "mimeType": "application/vnd.google-apps.folder",
-            "parents": [PARENT_FOLDER_ID]
-        }
-        folder = drive_service.files().create(body=metadata, fields="id").execute()
-        folder_id = folder["id"]
-        print(f"📁 Created folder '{drive_subfolder}' (ID: {folder_id})")
+        folder_id = ""  # fallback to root
 
-    # Upload file
-    file_metadata = {"name": os.path.basename(local_file_path), "parents": [folder_id]}
-    media = MediaFileUpload(local_file_path, mimetype="text/csv")
+    file_metadata = {
+        "name": os.path.basename(filepath)
+    }
 
-    uploaded = drive_service.files().create(
-        body=file_metadata, media_body=media, fields="id"
+    if folder_id:
+        file_metadata["parents"] = [folder_id]
+        print(f"📂 Uploading to folder ID: {folder_id}")
+    else:
+        print("⚠️ No folder ID found — uploading to root folder")
+
+    media = MediaFileUpload(filepath, mimetype="text/csv")
+    uploaded_file = service.files().create(
+        body=file_metadata,
+        media_body=media,
+        fields="id"
     ).execute()
 
-    print(f"✅ Uploaded {os.path.basename(local_file_path)} → Google Drive ID: {uploaded.get('id')}")
+    print(f"✅ Uploaded to Drive with file ID: {uploaded_file.get('id')}")

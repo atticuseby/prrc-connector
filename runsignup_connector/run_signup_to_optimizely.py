@@ -10,6 +10,8 @@ API_KEY = os.getenv("RUNSIGNUP_API_KEY")
 API_SECRET = os.getenv("RUNSIGNUP_API_SECRET")
 PARTNER_IDS = os.getenv("RUNSIGNUP_PARTNER_IDS", "").split(",")
 
+print(f"🔢 Partner IDs loaded from env: {PARTNER_IDS}")
+
 today = datetime.now().strftime("%Y-%m-%d")
 OUTPUT_DIR = "optimizely_connector/output"
 OUTPUT_PATH = f"{OUTPUT_DIR}/runsignup_export_{today}.csv"
@@ -23,11 +25,18 @@ def fetch_runsignup_data():
 
     for partner_id in PARTNER_IDS:
         partner_id = partner_id.strip()
+        if not partner_id:
+            print("⚠️ Skipping empty partner_id value")
+            continue
+
         print(f"🔍 Pulling registrations for Partner ID: {partner_id}")
+
+        url = f"{BASE_URL}/partners/{partner_id}/registrations"
+        print(f"🌐 Request URL: {url}")
 
         try:
             response = requests.get(
-                f"{BASE_URL}/partners/{partner_id}/registrations",
+                url,
                 params={
                     "rsu_api_key": API_KEY,
                     "format": "json"
@@ -46,7 +55,7 @@ def fetch_runsignup_data():
             print(f"⚠️ No registrants found for partner {partner_id}")
             continue
 
-        print(f"✅ Found {len(regs)} registrations")
+        print(f"✅ Found {len(regs)} registrations for partner {partner_id}")
 
         for reg in regs:
             all_regs.append({

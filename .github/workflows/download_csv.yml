@@ -42,3 +42,10 @@ jobs:
 
       - name: 🏃 Run download script
         run: python scripts/download_participants_csv.py
+
+      - name: 📤 Upload debug screenshot
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: debug-output
+          path: optimizely_connector/output/debug_screen.png

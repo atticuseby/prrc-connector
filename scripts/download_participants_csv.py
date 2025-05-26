@@ -1,6 +1,7 @@
 import os
 import time
 import base64
+from urllib.parse import unquote
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
@@ -14,7 +15,6 @@ FILENAME = "run_signup_export.csv"
 TARGET_URL = "https://runsignup.com/Partner/Participants/Report/1385"
 DEBUG_SCREENSHOT = os.path.join(DOWNLOAD_DIR, "debug_screen.png")
 
-# Ensure output folder exists
 os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 
 def setup_driver():
@@ -29,7 +29,6 @@ def setup_driver():
         "safebrowsing.enabled": True
     })
     driver = webdriver.Chrome(options=chrome_options)
-    driver.execute_cdp_cmd("Network.enable", {})
     return driver
 
 def inject_cookies(driver):
@@ -37,12 +36,19 @@ def inject_cookies(driver):
     if not cookie_header:
         raise ValueError("❌ Missing RUNSIGNUP_FULL_COOKIE_HEADER")
 
-    driver.execute_cdp_cmd("Network.setExtraHTTPHeaders", {
-        "headers": {
-            "Cookie": cookie_header,
-            "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36"
-        }
-    })
+    print("🍪 Injecting cookies...")
+    driver.get("https://runsignup.com")  # Required before setting cookies
+
+    for pair in cookie_header.split("; "):
+        if "=" not in pair:
+            continue
+        name, value = pair.split("=", 1)
+        driver.add_cookie({
+            "name": name,
+            "value": unquote(value),
+            "domain": "runsignup.com",
+            "path": "/"
+        })
 
     driver.get(TARGET_URL)
 
@@ -57,20 +63,20 @@ def download_csv(driver):
 
     export_button = driver.find_element(By.LINK_TEXT, "Export CSV")
     ActionChains(driver).move_to_element(export_button).click().perform()
-    print("📥 Export clicked")
+    print("📥 Export triggered.")
 
 def wait_for_download():
-    print("⏳ Waiting for CSV download...")
+    print("⏳ Waiting for file download...")
     for _ in range(30):
         files = [f for f in os.listdir(DOWNLOAD_DIR) if f.endswith(".csv")]
         if files:
             latest = max(files, key=lambda f: os.path.getctime(os.path.join(DOWNLOAD_DIR, f)))
             final_path = os.path.join(DOWNLOAD_DIR, FILENAME)
             os.rename(os.path.join(DOWNLOAD_DIR, latest), final_path)
-            print(f"✅ File downloaded: {final_path}")
+            print(f"✅ File saved as: {final_path}")
             return final_path
         time.sleep(1)
-    raise FileNotFoundError("❌ Timed out waiting for CSV file.")
+    raise FileNotFoundError("❌ Timed out waiting for CSV download.")
 
 def dump_debug_image():
     if os.path.exists(DEBUG_SCREENSHOT):
@@ -79,14 +85,14 @@ def dump_debug_image():
             print(f"\n--- DEBUG SCREENSHOT BASE64 ---\n{b64}\n--- END DEBUG SCREENSHOT ---\n")
 
 def main():
-    print("🚀 Starting RunSignUp download automation...")
+    print("🚀 Starting RunSignUp automation...")
     driver = setup_driver()
     try:
         inject_cookies(driver)
         download_csv(driver)
         csv_path = wait_for_download()
         upload_to_drive(csv_path)
-        print("📤 Upload complete")
+        print("📤 Upload to Drive complete.")
     except Exception as e:
         print(f"❌ ERROR: {e}")
         dump_debug_image()

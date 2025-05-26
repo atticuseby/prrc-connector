@@ -1,57 +1,65 @@
-from pathlib import Path
+# scripts/download_participants_csv.py
 
-# Create the full Python Playwright script content
-script_path = Path("scripts/download_participants_csv.py")
-script_path.parent.mkdir(parents=True, exist_ok=True)
-
-script_code = '''
 import os
 import time
-from playwright.sync_api import sync_playwright
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
-# Load credentials from environment variables
-RSU_USERNAME = os.getenv("RSU_USERNAME")
-RSU_PASSWORD = os.getenv("RSU_PASSWORD")
+# 🔐 Environment variables
+RUNSIGNUP_EMAIL = os.getenv("RUNSIGNUP_EMAIL")
+RUNSIGNUP_PASSWORD = os.getenv("RUNSIGNUP_PASSWORD")
+DOWNLOAD_URL = "https://runsignup.com/Partner/ParticipantsReport/1385"
 
-# Participant export URL (adjust partner ID if needed)
-EXPORT_URL = "https://runsignup.com/Partner/Participants/Report/1385"
+# 🧱 Chrome setup
+options = Options()
+options.add_argument('--no-sandbox')
+options.add_argument('--disable-dev-shm-usage')
+options.add_argument('--headless=new')  # Use old '--headless' if errors
+prefs = {"download.default_directory": os.getcwd()}
+options.add_experimental_option("prefs", prefs)
 
-# Download directory
-DOWNLOAD_DIR = os.path.abspath("optimizely_connector/output")
+driver = webdriver.Chrome(options=options)
 
-def run():
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=False)
-        context = browser.new_context(accept_downloads=True)
-        page = context.new_page()
+try:
+    # 🌐 Open login page
+    print("🌐 Navigating to login page...")
+    driver.get("https://runsignup.com/Login")
 
-        print("🔐 Navigating to login...")
-        page.goto("https://runsignup.com/Login")
+    # 🧍 Log in
+    print("🔐 Logging in...")
+    WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.NAME, "email"))).send_keys(RUNSIGNUP_EMAIL)
+    driver.find_element(By.NAME, "password").send_keys(RUNSIGNUP_PASSWORD + Keys.RETURN)
 
-        page.fill('input[name="email"]', RSU_USERNAME)
-        page.fill('input[name="password"]', RSU_PASSWORD)
-        page.click('button:has-text("Login")')
+    # ✅ Wait for login redirect
+    WebDriverWait(driver, 10).until(EC.url_contains("runsignup.com/Profile"))
+    print("✅ Logged in successfully")
 
-        page.wait_for_url("https://runsignup.com/MyDashboard", timeout=10000)
-        print("✅ Logged in!")
+    # 📄 Go to participants report
+    print("📄 Navigating to participants report page...")
+    driver.get(DOWNLOAD_URL)
 
-        print(f"🌐 Navigating to {EXPORT_URL}...")
-        page.goto(EXPORT_URL)
+    # 🕐 Wait for export button to appear
+    export_button = WebDriverWait(driver, 10).until(
+        EC.element_to_be_clickable((By.LINK_TEXT, "Export All Columns"))
+    )
 
-        print("📥 Clicking Export CSV...")
-        with page.expect_download() as download_info:
-            page.click("button:has-text('Export to CSV')")
-        download = download_info.value
+    # 💾 Click export
+    print("💾 Clicking export button...")
+    export_button.click()
 
-        file_path = os.path.join(DOWNLOAD_DIR, download.suggested_filename)
-        download.save_as(file_path)
-        print(f"✅ Downloaded CSV to {file_path}")
+    # ⏳ Wait for download
+    print("⏳ Waiting for download to complete...")
+    time.sleep(10)
 
-        browser.close()
+    print("✅ CSV download complete (check your output folder)")
 
-if __name__ == "__main__":
-    run()
-'''
+except Exception as e:
+    print(f"❌ Script failed: {e}")
 
-script_path.write_text(script_code.strip())
-import ace_tools as tools; tools.display_dataframe_to_user(name="📁 Script Created", dataframe=None)
+finally:
+    driver.quit()

@@ -1,38 +1,32 @@
-name: Run RunSignUp Connector
+name: Run RunSignUp connector
 
 on:
-  workflow_dispatch:  # Allows manual run from the GitHub UI
+  workflow_dispatch:
+  schedule:
+    - cron: '0 8 * * *'  # Runs daily at 3:00 AM EST / 8:00 AM UTC
 
 jobs:
-  run-runsignup:
+  run-signup:
     runs-on: ubuntu-latest
 
     env:
       RUNSIGNUP_API_KEY: ${{ secrets.RUNSIGNUP_API_KEY }}
       RUNSIGNUP_API_SECRET: ${{ secrets.RUNSIGNUP_API_SECRET }}
-      OPTIMIZELY_API_TOKEN: ${{ secrets.OPTIMIZELY_API_TOKEN }}
-      GDRIVE_FOLDER_ID: ${{ secrets.GDRIVE_FOLDER_ID }}
+      RUNSIGNUP_PARTNER_IDS: ${{ secrets.RUNSIGNUP_PARTNER_IDS }}
+      GDRIVE_FOLDER_ID_RUNSIGNUP: ${{ secrets.GDRIVE_FOLDER_ID_RUNSIGNUP }}
 
     steps:
-      - name: Checkout repo
+      - name: ⬇️ Checkout repository
         uses: actions/checkout@v3
 
-      - name: Set up Python
+      - name: 🐍 Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.10'
 
-      - name: Install dependencies
+      - name: 📦 Install dependencies
         run: |
-          python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install google-api-python-client google-auth google-auth-oauthlib google-auth-httplib2
 
-      - name: Write Google credentials file
-        run: echo '${{ secrets.GDRIVE_CREDENTIALS }}' > service_account.json
-
-      - name: Set PYTHONPATH so scripts folder is importable
-        run: echo "PYTHONPATH=$PYTHONPATH:$(pwd)" >> $GITHUB_ENV
-
-      - name: Run RunSignUp connector
+      - name: 🚀 Run RunSignUp connector
         run: python runsignup_connector/main_runsignup.py

@@ -1,5 +1,3 @@
-# extract_event_ids.py
-
 import os
 import requests
 import csv
@@ -35,8 +33,12 @@ def extract_event_ids():
         return
 
     data = response.json()
-    races = data.get("races", [])
 
+    # 👇 Add full response debug logging
+    print("📄 Full RunSignUp response:")
+    print(data)
+
+    races = data.get("races", [])
     if not races:
         print("⚠️ No races returned from RunSignUp")
         return

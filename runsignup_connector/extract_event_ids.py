@@ -10,8 +10,8 @@ API_KEY = os.getenv("RUNSIGNUP_API_KEY")
 API_SECRET = os.getenv("RUNSIGNUP_API_SECRET")
 PARTNER_ID = os.getenv("RUNSIGNUP_PARTNER_ID")
 
+# Updated to use rsu_api_key param
 BASE_URL = "https://runsignup.com/rest/races?format=json&events=T&event_type=R"
-
 if PARTNER_ID:
     BASE_URL += f"&partner_id={PARTNER_ID}"
 
@@ -22,9 +22,11 @@ def extract_event_ids():
         response = requests.get(
             BASE_URL,
             params={
-                "api_key": API_KEY,
-                "api_secret": API_SECRET,
+                "rsu_api_key": API_KEY,
                 "results_per_page": 100
+            },
+            headers={
+                "X-RSU-API-SECRET": API_SECRET
             }
         )
         response.raise_for_status()
@@ -33,8 +35,6 @@ def extract_event_ids():
         return
 
     data = response.json()
-
-    # 👇 Add full response debug logging
     print("📄 Full RunSignUp response:")
     print(data)
 

@@ -1,6 +1,7 @@
 import os
 import time
 import base64
+from datetime import datetime
 from urllib.parse import unquote
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
@@ -10,7 +11,6 @@ from selenium.webdriver.support import expected_conditions as EC
 from upload_to_gdrive import upload_to_drive
 
 DOWNLOAD_DIR = os.path.join(os.getcwd(), "optimizely_connector", "output")
-FILENAME = "run_signup_export.csv"
 LOGIN_URL = "https://runsignup.com/"
 PARTICIPANT_URL = "https://runsignup.com/Partner/Participants/Report/1385"
 DEBUG_SCREENSHOT = os.path.join(DOWNLOAD_DIR, "debug_screen.png")
@@ -28,7 +28,15 @@ def setup_driver():
         "download.directory_upgrade": True,
         "safebrowsing.enabled": True
     })
+
     driver = webdriver.Chrome(options=chrome_options)
+
+    # ✅ Enable downloads in headless mode
+    driver.execute_cdp_cmd("Page.setDownloadBehavior", {
+        "behavior": "allow",
+        "downloadPath": DOWNLOAD_DIR
+    })
+
     return driver
 
 def inject_cookies(driver):
@@ -69,7 +77,9 @@ def wait_for_download():
         files = [f for f in os.listdir(DOWNLOAD_DIR) if f.endswith(".csv")]
         if files:
             latest = max(files, key=lambda f: os.path.getctime(os.path.join(DOWNLOAD_DIR, f)))
-            final_path = os.path.join(DOWNLOAD_DIR, FILENAME)
+            timestamp = datetime.now().strftime("%Y-%m-%d")
+            final_filename = f"run_signup_export_{timestamp}.csv"
+            final_path = os.path.join(DOWNLOAD_DIR, final_filename)
             os.rename(os.path.join(DOWNLOAD_DIR, latest), final_path)
             print(f"✅ File saved as: {final_path}")
             return final_path

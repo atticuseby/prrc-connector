@@ -45,7 +45,7 @@ jobs:
 
       - name: 📤 Upload debug screenshot
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v2
         with:
           name: debug-output
           path: optimizely_connector/output/debug_screen.png

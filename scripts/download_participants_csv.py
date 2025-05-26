@@ -12,6 +12,9 @@ DOWNLOAD_DIR = os.path.join(os.getcwd(), "optimizely_connector", "output")
 FILENAME = "run_signup_export.csv"
 TARGET_URL = "https://runsignup.com/Partner/Participants/Report/1385"
 
+# Ensure the output directory exists
+os.makedirs(DOWNLOAD_DIR, exist_ok=True)
+
 def setup_driver():
     chrome_options = Options()
     chrome_options.add_argument("--headless=new")
@@ -24,8 +27,6 @@ def setup_driver():
         "safebrowsing.enabled": True
     })
     driver = webdriver.Chrome(options=chrome_options)
-
-    # Enable CDP (Chrome DevTools Protocol)
     driver.execute_cdp_cmd("Network.enable", {})
     return driver
 
@@ -34,7 +35,6 @@ def inject_cookies(driver):
     if not cookie_header:
         raise ValueError("Missing RUNSIGNUP_FULL_COOKIE_HEADER env variable")
 
-    # Set cookie header before navigation
     driver.execute_cdp_cmd("Network.setExtraHTTPHeaders", {
         "headers": {
             "Cookie": cookie_header,
@@ -42,7 +42,6 @@ def inject_cookies(driver):
         }
     })
 
-    # Navigate (again) after setting headers
     driver.get(TARGET_URL)
 
 def download_csv(driver):

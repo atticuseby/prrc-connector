@@ -1,33 +1,31 @@
-name: 📥 Run CSV download script
+name: 📥 Download RunSignUp CSV
 
 on:
   workflow_dispatch:
 
 jobs:
-  run-script:
+  download_csv:
     runs-on: ubuntu-latest
 
     env:
-      RUNSIGNUP_USERNAME: ${{ secrets.RUNSIGNUP_USERNAME }}
+      RUNSIGNUP_EMAIL: ${{ secrets.RUNSIGNUP_EMAIL }}
       RUNSIGNUP_PASSWORD: ${{ secrets.RUNSIGNUP_PASSWORD }}
-      RUNSIGNUP_PARTNER_IDS: ${{ secrets.RUNSIGNUP_PARTNER_IDS }}
-      GDRIVE_FOLDER_ID: ${{ secrets.GDRIVE_FOLDER_ID }}
-      SERVICE_ACCOUNT_JSON: ${{ secrets.SERVICE_ACCOUNT_JSON }}
 
     steps:
       - name: 📂 Checkout repo
         uses: actions/checkout@v3
 
-      - name: 🧰 Install Chrome & ChromeDriver (Ubuntu 24.04 compatible)
+      - name: 🧰 Install Chrome & ChromeDriver (version-matched)
         run: |
           sudo apt-get update
-          sudo apt-get install -y wget unzip curl libnss3 libxss1 libasound2t64 libatk-bridge2.0-0 libgtk-3-0 xvfb
+          sudo apt-get install -y wget unzip curl jq libnss3 libxss1 libasound2t64 libatk-bridge2.0-0 libgtk-3-0 xvfb
           wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
           sudo dpkg -i google-chrome-stable_current_amd64.deb || sudo apt-get -f install -y
-          CHROMEDRIVER_VERSION=$(curl -sS https://chromedriver.storage.googleapis.com/LATEST_RELEASE)
-          wget https://chromedriver.storage.googleapis.com/${CHROMEDRIVER_VERSION}/chromedriver_linux64.zip
+          CHROME_VERSION=$(google-chrome --version | grep -oP '\d+\.\d+\.\d+')
+          CHROMEDRIVER_URL=$(curl -s "https://googlechromelabs.github.io/chrome-for-testing/last-known-good-versions-with-downloads.json" | jq -r --arg ver "$CHROME_VERSION" '.channels.Stable.downloads.chromedriver[] | select(.platform == "linux64") | .url')
+          wget -O chromedriver_linux64.zip "$CHROMEDRIVER_URL"
           unzip chromedriver_linux64.zip
-          sudo mv chromedriver /usr/local/bin/
+          sudo mv chromedriver-linux64/chromedriver /usr/local/bin/
           sudo chmod +x /usr/local/bin/chromedriver
 
       - name: 🐍 Set up Python
@@ -35,10 +33,10 @@ jobs:
         with:
           python-version: '3.10'
 
-      - name: 📦 Install dependencies
+      - name: 📦 Install Python dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install selenium
 
       - name: 🏃 Run download script
         run: python scripts/download_participants_csv.py

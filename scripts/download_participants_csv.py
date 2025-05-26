@@ -1,48 +1,39 @@
+import os
+import time
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-import time
-import os
-
-# Setup
-options = Options()
-options.add_argument('--headless')
-options.add_argument('--no-sandbox')
-options.add_argument('--disable-dev-shm-usage')
-
-driver = webdriver.Chrome(options=options)
-wait = WebDriverWait(driver, 20)
 
 try:
     print("🌐 Opening page...")
+
+    options = Options()
+    options.add_argument("--headless=new")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+
+    driver = webdriver.Chrome(options=options)
     driver.get("https://runsignup.com/Partner/Participants/Report/1385")
 
-    print("🍪 Injecting session cookie...")
-    cookie_value = os.getenv("RUNSIGNUP_SESSION_COOKIE")
-    if not cookie_value:
-        raise Exception("RUNSIGNUP_SESSION_COOKIE not set")
+    print("🍪 Injecting session cookies...")
+    cookie_header = os.getenv("RUNSIGNUP_FULL_COOKIE_HEADER")
+    if not cookie_header:
+        raise ValueError("RUNSIGNUP_FULL_COOKIE_HEADER not set")
 
-    driver.add_cookie({
-        'name': 'RSUSession',
-        'value': cookie_value,
-        'domain': 'runsignup.com',
-        'path': '/'
-    })
+    # Parse cookie header and add cookies to Selenium session
+    for pair in cookie_header.split(";"):
+        if "=" in pair:
+            name, value = pair.strip().split("=", 1)
+            driver.add_cookie({"name": name, "value": value})
 
-    # Refresh to apply cookie
+    # Reload page after cookies are injected
     driver.get("https://runsignup.com/Partner/Participants/Report/1385")
-    time.sleep(3)
+    time.sleep(5)
 
-    print("📥 Downloading CSV...")
-    export_button = wait.until(EC.element_to_be_clickable((By.XPATH, '//button[contains(text(), "Export CSV")]')))
-    export_button.click()
+    print("✅ Page loaded with session cookies. (Placeholder for download logic)")
+    driver.quit()
 
-    print("✅ Export initiated (check downloads or logs)")
 except Exception as e:
     print(f"❌ Script failed: {e}")
-finally:
     driver.quit()
+    raise e

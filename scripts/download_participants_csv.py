@@ -80,4 +80,34 @@ def wait_for_download():
         files = [f for f in os.listdir(DOWNLOAD_DIR) if f.endswith(".csv")]
         if files:
             latest = max(files, key=lambda f: os.path.getctime(os.path.join(DOWNLOAD_DIR, f)))
-            final_path = os.path.join(DOWNLOAD_D
+            final_path = os.path.join(DOWNLOAD_DIR, FILENAME)
+            os.rename(os.path.join(DOWNLOAD_DIR, latest), final_path)
+            print(f"✅ File saved as: {final_path}")
+            return final_path
+        time.sleep(1)
+    raise FileNotFoundError("❌ Timed out waiting for CSV download.")
+
+def dump_debug_image():
+    if os.path.exists(DEBUG_SCREENSHOT):
+        with open(DEBUG_SCREENSHOT, "rb") as f:
+            b64 = base64.b64encode(f.read()).decode("utf-8")
+            print(f"\n--- DEBUG SCREENSHOT BASE64 ---\n{b64}\n--- END DEBUG SCREENSHOT ---\n")
+
+def main():
+    print("🚀 Starting RunSignUp automation...")
+    driver = setup_driver()
+    try:
+        inject_cookies(driver)
+        download_csv(driver)
+        csv_path = wait_for_download()
+        upload_to_drive(csv_path)
+        print("📤 Upload to Drive complete.")
+    except Exception as e:
+        print(f"❌ ERROR: {e}")
+        dump_debug_image()
+        raise
+    finally:
+        driver.quit()
+
+if __name__ == "__main__":
+    main()

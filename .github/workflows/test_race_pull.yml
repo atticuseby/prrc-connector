@@ -1,0 +1,28 @@
+name: 🔍 Test Single Race Pull
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test-single-race:
+    runs-on: ubuntu-latest
+
+    env:
+      RUNSIGNUP_API_KEY: ${{ secrets.RUNSIGNUP_API_KEY }}
+      RUNSIGNUP_API_SECRET: ${{ secrets.RUNSIGNUP_API_SECRET }}
+
+    steps:
+      - name: ⬇️ Checkout repo
+        uses: actions/checkout@v3
+
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: 📦 Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: 🧪 Run test script
+        run: python scripts/test_single_race_pull.py

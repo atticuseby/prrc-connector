@@ -12,7 +12,8 @@ from upload_to_gdrive import upload_to_drive
 
 DOWNLOAD_DIR = os.path.join(os.getcwd(), "optimizely_connector", "output")
 FILENAME = "run_signup_export.csv"
-TARGET_URL = "https://runsignup.com/Partner/Participants/Report/1385"
+LOGIN_URL = "https://runsignup.com/"
+PARTICIPANT_URL = "https://runsignup.com/Partner/Participants/Report/1385"
 DEBUG_SCREENSHOT = os.path.join(DOWNLOAD_DIR, "debug_screen.png")
 
 os.makedirs(DOWNLOAD_DIR, exist_ok=True)
@@ -37,33 +38,41 @@ def inject_cookies(driver):
         raise ValueError("❌ Missing RUNSIGNUP_FULL_COOKIE_HEADER")
 
     print("🍪 Injecting cookies...")
-    driver.get("https://runsignup.com")  # Required before setting cookies
+    driver.get(LOGIN_URL)
 
     for pair in cookie_header.split("; "):
         if "=" not in pair:
             continue
         name, value = pair.split("=", 1)
-        driver.add_cookie({
-            "name": name,
-            "value": unquote(value),
-            "domain": "runsignup.com",
-            "path": "/"
-        })
+        try:
+            driver.add_cookie({
+                "name": name,
+                "value": unquote(value),
+                "domain": "runsignup.com",
+                "path": "/"
+            })
+        except Exception as e:
+            print(f"⚠️ Skipping cookie '{name}': {e}")
 
-    driver.get(TARGET_URL)
+    driver.get(PARTICIPANT_URL)
 
 def download_csv(driver):
     print("📸 Capturing screenshot for debug...")
     driver.save_screenshot(DEBUG_SCREENSHOT)
 
-    print("🔍 Waiting for 'Export CSV' button...")
-    WebDriverWait(driver, 10).until(
-        EC.presence_of_element_located((By.LINK_TEXT, "Export CSV"))
+    print("🔍 Waiting for Export dropdown...")
+    export_button = WebDriverWait(driver, 10).until(
+        EC.element_to_be_clickable((By.XPATH, "//button[contains(., 'Export Options')]"))
     )
 
-    export_button = driver.find_element(By.LINK_TEXT, "Export CSV")
     ActionChains(driver).move_to_element(export_button).click().perform()
-    print("📥 Export triggered.")
+
+    print("📥 Clicking 'Download Report As CSV'...")
+    csv_link = WebDriverWait(driver, 5).until(
+        EC.element_to_be_clickable((By.XPATH, "//a[contains(text(), 'Download Report As CSV')]"))
+    )
+
+    csv_link.click()
 
 def wait_for_download():
     print("⏳ Waiting for file download...")

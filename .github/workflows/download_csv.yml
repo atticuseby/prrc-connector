@@ -1,4 +1,4 @@
-name: 📥 Download RunSignUp CSV
+name: 📥 Run CSV download script
 
 on:
   workflow_dispatch:
@@ -7,12 +7,8 @@ jobs:
   download_csv:
     runs-on: ubuntu-latest
 
-    env:
-      RSU_USERNAME: ${{ secrets.RSU_USERNAME }}
-      RSU_PASSWORD: ${{ secrets.RSU_PASSWORD }}
-
     steps:
-      - name: ⬇️ Checkout repo
+      - name: 📂 Checkout repo
         uses: actions/checkout@v3
 
       - name: 🐍 Set up Python
@@ -23,8 +19,23 @@ jobs:
       - name: 📦 Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install selenium
 
-      - name: 📥 Run CSV download script
+      - name: 🧰 Install Chrome & ChromeDriver
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget unzip xvfb libxi6 libgconf-2-4 libappindicator1 libindicator7
+          wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+          sudo dpkg -i google-chrome-stable_current_amd64.deb || sudo apt-get -f install -y
+          export CHROME_VERSION=$(google-chrome --version | grep -oP '\d+\.\d+\.\d+')
+          wget -N https://chromedriver.storage.googleapis.com/$(curl -s https://chromedriver.storage.googleapis.com/LATEST_RELEASE)/chromedriver_linux64.zip
+          unzip chromedriver_linux64.zip
+          sudo mv chromedriver /usr/local/bin/
+          sudo chmod +x /usr/local/bin/chromedriver
+
+      - name: ✅ Run download script
+        env:
+          RUNSIGNUP_EMAIL: ${{ secrets.RUNSIGNUP_EMAIL }}
+          RUNSIGNUP_PASSWORD: ${{ secrets.RUNSIGNUP_PASSWORD }}
         run: |
           python scripts/download_participants_csv.py

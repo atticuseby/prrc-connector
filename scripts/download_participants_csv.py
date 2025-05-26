@@ -60,19 +60,20 @@ def download_csv(driver):
     print("📸 Capturing screenshot for debug...")
     driver.save_screenshot(DEBUG_SCREENSHOT)
 
-    print("🔍 Waiting for 'Export Options' dropdown...")
+    print("🔍 Waiting for 'Export Options' button...")
     export_button = WebDriverWait(driver, 10).until(
-        EC.element_to_be_clickable((By.XPATH, "//div[@class='btn btn-default dropdown-toggle'][contains(text(), 'Export Options')]"))
+        EC.presence_of_element_located((By.XPATH, "//button[contains(., 'Export Options')]"))
     )
 
+    driver.execute_script("arguments[0].scrollIntoView(true);", export_button)
     ActionChains(driver).move_to_element(export_button).click().perform()
 
     print("📥 Clicking 'Download Report As CSV'...")
     csv_link = WebDriverWait(driver, 5).until(
-        EC.element_to_be_clickable((By.XPATH, "//a[text()='Download Report As CSV']"))
+        EC.element_to_be_clickable((By.XPATH, "//a[contains(text(), 'Download Report As CSV')]"))
     )
 
-    csv_link.click()
+    driver.execute_script("arguments[0].click();", csv_link)
 
 def wait_for_download():
     print("⏳ Waiting for file download...")

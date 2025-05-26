@@ -4,65 +4,15 @@ import base64
 import requests
 from datetime import datetime
 from urllib.parse import unquote
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
 from upload_to_gdrive import upload_to_drive
 
 DOWNLOAD_DIR = os.path.join(os.getcwd(), "optimizely_connector", "output")
-LOGIN_URL = "https://runsignup.com/"
 PARTICIPANT_URL = "https://runsignup.com/Partner/Participants/Report/1385"
-DEBUG_SCREENSHOT = os.path.join(DOWNLOAD_DIR, "debug_screen.png")
+DEBUG_DUMP = os.path.join(DOWNLOAD_DIR, "debug_response.html")
 
 os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 
-def setup_driver():
-    chrome_options = Options()
-    chrome_options.add_argument("--headless=new")
-    chrome_options.add_argument("--no-sandbox")
-    chrome_options.add_argument("--disable-dev-shm-usage")
-    chrome_options.add_experimental_option("prefs", {
-        "download.default_directory": DOWNLOAD_DIR,
-        "download.prompt_for_download": False,
-        "download.directory_upgrade": True,
-        "safebrowsing.enabled": True
-    })
-
-    driver = webdriver.Chrome(options=chrome_options)
-
-    # Allow downloads in headless mode
-    driver.execute_cdp_cmd("Page.setDownloadBehavior", {
-        "behavior": "allow",
-        "downloadPath": DOWNLOAD_DIR
-    })
-
-    return driver
-
-def inject_cookies(driver):
-    cookie_header = os.environ.get("RUNSIGNUP_FULL_COOKIE_HEADER")
-    if not cookie_header:
-        raise ValueError("❌ Missing RUNSIGNUP_FULL_COOKIE_HEADER")
-
-    print("🍪 Injecting cookies...")
-    driver.get(LOGIN_URL)
-
-    for pair in cookie_header.split("; "):
-        if "=" not in pair:
-            continue
-        name, value = pair.split("=", 1)
-        try:
-            driver.add_cookie({
-                "name": name,
-                "value": unquote(value),
-                "domain": "runsignup.com",
-                "path": "/"
-            })
-        except Exception as e:
-            print(f"⚠️ Skipping cookie '{name}': {e}")
-
-    driver.get(PARTICIPANT_URL)
-    driver.save_screenshot(DEBUG_SCREENSHOT)
-
-def download_csv_via_requests():
+def download_csv():
     print("📥 Downloading CSV directly via requests...")
 
     cookie_header = os.environ.get("RUNSIGNUP_FULL_COOKIE_HEADER")
@@ -83,8 +33,9 @@ def download_csv_via_requests():
     response = requests.get(csv_url, cookies=cookies)
 
     if "text/csv" not in response.headers.get("Content-Type", ""):
-        print("❌ Unexpected response type. Dumping content for inspection:")
-        print(response.text[:500])
+        print("❌ Unexpected response. Dumping for debug...")
+        with open(DEBUG_DUMP, "w", encoding="utf-8") as f:
+            f.write(response.text)
         raise ValueError("❌ CSV download failed or returned unexpected content.")
 
     with open(final_path, "wb") as f:
@@ -93,26 +44,18 @@ def download_csv_via_requests():
     print(f"✅ File downloaded and saved as: {final_path}")
     return final_path
 
-def dump_debug_image():
-    if os.path.exists(DEBUG_SCREENSHOT):
-        with open(DEBUG_SCREENSHOT, "rb") as f:
-            b64 = base64.b64encode(f.read()).decode("utf-8")
-            print(f"\n--- DEBUG SCREENSHOT BASE64 ---\n{b64}\n--- END DEBUG SCREENSHOT ---\n")
-
 def main():
-    print("🚀 Starting RunSignUp automation...")
-    driver = setup_driver()
+    print("🚀 Starting RunSignUp CSV pull...")
     try:
-        inject_cookies(driver)
-        csv_path = download_csv_via_requests()
+        csv_path = download_csv()
         upload_to_drive(csv_path)
         print("📤 Upload to Drive complete.")
     except Exception as e:
         print(f"❌ ERROR: {e}")
-        dump_debug_image()
+        if os.path.exists(DEBUG_DUMP):
+            with open(DEBUG_DUMP, "rb") as f:
+                print(f"\n--- DEBUG HTML DUMP ---\n{f.read()[:500]}\n--- END DUMP ---\n")
         raise
-    finally:
-        driver.quit()
 
 if __name__ == "__main__":
     main()

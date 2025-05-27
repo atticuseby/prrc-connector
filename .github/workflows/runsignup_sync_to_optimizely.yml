@@ -1,0 +1,28 @@
+name: 🔁 Sync RunSignUp Data to Optimizely
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '30 8 * * *'  # Every day at 3:30 AM EST
+
+jobs:
+  sync-to-optimizely:
+    runs-on: ubuntu-latest
+
+    env:
+      OPTIMIZELY_API_TOKEN: ${{ secrets.OPTIMIZELY_API_TOKEN }}
+
+    steps:
+      - name: ⬇️ Checkout repository
+        uses: actions/checkout@v3
+
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: 📦 Install Python dependencies
+        run: pip install -r requirements.txt
+
+      - name: 🔄 Process & sync to Optimizely
+        run: python runsignup_connector/main_runsignup.py

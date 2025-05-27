@@ -15,7 +15,7 @@ OUTPUT_DIR = "optimizely_connector/output"
 DATA_DIR = "data"
 BATCH_SIZE = 500
 STORE_CODE = 12132
-MAX_SKIP_LIMIT = 2000  # 🔒 TEMP CAP: remove when ready to scale
+MAX_SKIP_LIMIT = 2000  # Raise to float("inf") when ready
 IS_TEST_BRANCH = os.getenv("GITHUB_REF", "").endswith("/test")
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
@@ -80,6 +80,7 @@ def fetch_rics_data():
 
         if skip == 0 and customers:
             log(f"📄 RAW sample record:\n{customers[0]}")
+            log(f"🧪 OrderCount = {customers[0].get('OrderCount')}, TotalSpent = {customers[0].get('TotalSpent')}")
 
         for i, c in enumerate(customers, start=1):
             mailing = c.get("MailingAddress", {})
@@ -95,9 +96,6 @@ def fetch_rics_data():
                 "zip": mailing.get("PostalCode", "").strip(),
                 "phone": c.get("PhoneNumber", "").strip()
             }
-
-            if row["orders"] == 0 and row["total_spent"] == 0:
-                continue
 
             all_rows.append(row)
             log_customer(row, len(all_rows))

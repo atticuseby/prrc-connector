@@ -12,7 +12,7 @@ on:
           - test
           - full
   schedule:
-    - cron: '0 8 * * *'    # 3AM EST = 8AM UTC
+    - cron: '0 8 * * *'
 
 jobs:
   run-connector:
@@ -24,6 +24,7 @@ jobs:
       PARTNER_ID: ${{ secrets.PARTNER_ID }}
       OPTIMIZELY_API_TOKEN: ${{ secrets.OPTIMIZELY_API_TOKEN }}
       GDRIVE_FOLDER_ID: ${{ secrets.GDRIVE_FOLDER_ID }}
+      GDRIVE_FOLDER_ID_RUNSIGNUP: ${{ secrets.GDRIVE_FOLDER_ID_RUNSIGNUP }}
       TEST_EMAIL: ${{ secrets.TEST_EMAIL }}
       DRY_RUN: ${{ secrets.DRY_RUN }}
       RICS_API_TOKEN: ${{ secrets.RICS_API_TOKEN }}
@@ -40,18 +41,8 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Run connector
-        run: |
-          if [[ "${{ github.event.inputs.mode || 'full' }}" == "test" ]]; then
-            echo "⚙️ Running TEST sync only"
-            python optimizely_connector/sync_rics_to_optimizely_test_only.py
-          else
-            echo "🚀 Running FULL connector sync"
-            python optimizely_connector/main.py
-          fi
-
       - name: Save Google Drive credentials
         run: echo '${{ secrets.GDRIVE_CREDENTIALS }}' > optimizely_connector/service_account.json
 
-      - name: Upload CSVs to Google Drive
-        run: python optimizely_connector/upload_to_gdrive.py
+      - name: Run full connector
+        run: python optimizely_connector/main.py

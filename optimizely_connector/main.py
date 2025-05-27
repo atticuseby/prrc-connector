@@ -1,8 +1,10 @@
 # optimizely_connector/main.py
 
+import sys
 import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
 from dotenv import load_dotenv
-from datetime import datetime
 from rics_connector.fetch_rics_data import fetch_rics_data
 from rics_connector.sync_rics_to_optimizely import run_sync
 from scripts.upload_to_gdrive import upload_to_drive

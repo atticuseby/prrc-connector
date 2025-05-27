@@ -3,7 +3,7 @@ name: 📥 Download RunSignUp CSVs (All Partners)
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 8 * * *'  # Every day at 3:00 AM EST / 8:00 AM UTC
+    - cron: '0 8 * * *'  # Every day at 3:00 AM EST
 
 jobs:
   download_all_csvs:

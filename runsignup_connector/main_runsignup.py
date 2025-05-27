@@ -1,4 +1,8 @@
-# runsignup_connector/main_runsignup.py
+import os
+import sys
+
+# 🔧 Fix import path for GitHub Actions
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from scripts.process_runsignup_csvs import process_runsignup_csvs
 

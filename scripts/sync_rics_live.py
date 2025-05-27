@@ -19,7 +19,7 @@ LOG_DIR = "logs"
 BATCH_SIZE = 500
 STORE_CODE = 12132
 MAX_SKIP_LIMIT = 10000
-UPDATED_AFTER_DAYS = 7
+UPDATED_AFTER_DAYS = 1  # Only fetch customers updated in the last 24 hours
 SLOW_RESPONSE_THRESHOLD = 10  # seconds
 IS_TEST_BRANCH = os.getenv("GITHUB_REF", "").endswith("/test")
 

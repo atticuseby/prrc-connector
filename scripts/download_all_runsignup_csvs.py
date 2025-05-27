@@ -33,7 +33,6 @@ PARTNERS = [
 
 DOWNLOAD_DIR = os.path.join(os.getcwd(), "optimizely_connector", "output")
 COOKIE_PATH = os.path.join(DOWNLOAD_DIR, "runsignup_cookies.json")
-DEBUG_SCREENSHOT = os.path.join(DOWNLOAD_DIR, "debug_screen.png")
 
 os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 
@@ -66,28 +65,43 @@ def load_cookies(driver):
             driver.add_cookie(cookie)
 
 def wait_for_and_download(driver, partner_url, partner_id):
+    print(f"🌐 Navigating to: {partner_url}")
     driver.get(partner_url)
 
     try:
+        print("⏳ Waiting for table to load...")
         WebDriverWait(driver, 20).until(
             EC.presence_of_element_located((By.XPATH, "//table"))
         )
+        print("✅ Table found.")
+
+        print("⏳ Waiting for Export Options button...")
         WebDriverWait(driver, 20).until(
             EC.presence_of_element_located((By.XPATH, "//button[contains(text(), 'Export Options')]"))
         )
+        print("✅ Export Options button present.")
+
         export_button = WebDriverWait(driver, 10).until(
             EC.element_to_be_clickable((By.XPATH, "//button[contains(text(), 'Export Options')]"))
         )
+        print("🖱️ Clicking Export Options...")
         export_button.click()
 
+        print("⏳ Waiting for 'Download Report As CSV' link...")
         download_link = WebDriverWait(driver, 20).until(
             EC.element_to_be_clickable((By.XPATH, "//a[contains(text(), 'Download Report As CSV')]"))
         )
+        print("🖱️ Clicking CSV download link...")
         download_link.click()
+
     except Exception as e:
-        print(f"❌ Failed for partner {partner_id}: {e}")
+        print(f"❌ Error in wait_for_and_download for partner {partner_id}: {e}")
+        screenshot_path = os.path.join(DOWNLOAD_DIR, f"debug_{partner_id}.png")
+        driver.save_screenshot(screenshot_path)
+        print(f"📸 Screenshot saved to {screenshot_path}")
         raise
 
+    print("⏳ Waiting for file download...")
     for _ in range(30):
         files = [f for f in os.listdir(DOWNLOAD_DIR) if f.endswith(".csv")]
         if files:
@@ -96,11 +110,11 @@ def wait_for_and_download(driver, partner_url, partner_id):
             new_name = f"runsignup_export_{partner_id}_{timestamp}.csv"
             new_path = os.path.join(DOWNLOAD_DIR, new_name)
             os.rename(os.path.join(DOWNLOAD_DIR, latest), new_path)
-            print(f"✅ Downloaded: {new_name}")
+            print(f"✅ File downloaded and renamed: {new_name}")
             return new_path
         time.sleep(1)
 
-    raise FileNotFoundError(f"❌ Timed out waiting for CSV for partner {partner_id}")
+    raise FileNotFoundError(f"❌ Timed out waiting for CSV download for partner {partner_id}")
 
 def main():
     print("🚀 Starting full RunSignUp CSV download for all partners...")

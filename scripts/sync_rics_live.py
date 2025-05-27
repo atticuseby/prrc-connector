@@ -62,12 +62,16 @@ def fetch_rics_data():
             log(f"✅ RICS response status: {res.status_code}")
             res.raise_for_status()
             customers = res.json().get("Customers", [])
-        except requests.exceptions.Timeout:
-            log(f"⏳ Timeout on skip {skip} — skipping ahead")
-            skip += 100
-            continue
+        except requests.exceptions.HTTPError as e:
+            if res.status_code >= 500:
+                log(f"❌ Server error on skip {skip}: {res.status_code} — stopping sync early")
+                break
+            else:
+                log(f"❌ Client error on skip {skip}: {res.status_code} — skipping ahead")
+                skip += 100
+                continue
         except Exception as e:
-            log(f"❌ Error on skip {skip}: {e}")
+            log(f"❌ Unexpected error on skip {skip}: {e}")
             break
 
         if not customers:

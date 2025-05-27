@@ -2,9 +2,9 @@
 
 import os
 import time
+import json
 import base64
 from datetime import datetime
-from urllib.parse import unquote
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
@@ -13,6 +13,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from upload_to_gdrive import upload_to_drive
 
 DOWNLOAD_DIR = os.path.join(os.getcwd(), "optimizely_connector", "output")
+COOKIE_PATH = os.path.join(DOWNLOAD_DIR, "runsignup_cookies.json")
 PARTICIPANT_URL = "https://runsignup.com/Partner/Participants/Report/1385"
 DEBUG_SCREENSHOT = os.path.join(DOWNLOAD_DIR, "debug_screen.png")
 
@@ -37,19 +38,17 @@ def setup_driver():
     })
     return driver
 
-def inject_cookie_header(driver):
-    cookie_header = os.environ.get("RUNSIGNUP_FULL_COOKIE_HEADER")
-    if not cookie_header:
-        raise ValueError("❌ Missing RUNSIGNUP_FULL_COOKIE_HEADER secret")
+def load_cookies(driver):
+    if not os.path.exists(COOKIE_PATH):
+        raise FileNotFoundError("❌ Cookie file not found. Run save_cookies.py first.")
 
-    print("🍪 Injecting cookie header...")
-    driver.execute_cdp_cmd("Network.enable", {})
-    driver.execute_cdp_cmd("Network.setExtraHTTPHeaders", {
-        "headers": {
-            "Cookie": cookie_header,
-            "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36"
-        }
-    })
+    print("🍪 Loading saved cookies...")
+    driver.get("https://runsignup.com")
+    with open(COOKIE_PATH, "r") as f:
+        cookies = json.load(f)
+        for cookie in cookies:
+            driver.add_cookie(cookie)
+
     driver.get(PARTICIPANT_URL)
 
 def download_csv(driver):
@@ -85,7 +84,7 @@ def main():
     print("🚀 Starting RunSignUp automation...")
     driver = setup_driver()
     try:
-        inject_cookie_header(driver)
+        load_cookies(driver)
         download_csv(driver)
         csv_path = wait_for_download()
         upload_to_drive(csv_path)

@@ -23,7 +23,7 @@ IS_TEST_BRANCH = os.getenv("GITHUB_REF", "").endswith("/test")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 os.makedirs(DATA_DIR, exist_ok=True)
 
-def log(msg): print(f"[log] {msg}")
+def log(msg): print(f"[log] {msg}", flush=True)
 
 def get_drive_service():
     creds = service_account.Credentials.from_service_account_file(
@@ -48,12 +48,14 @@ def fetch_rics_data():
     while skip < MAX_SKIP:
         log(f"📦 Fetching customers from skip {skip}")
         try:
+            log(f"📡 Preparing RICS request for skip {skip}")
             res = requests.post(
                 url="https://enterprise.ricssoftware.com/api/Customer/GetCustomer",
                 headers={"Token": RICS_API_TOKEN},
                 json={"StoreCode": STORE_CODE, "Skip": skip, "Take": 100},
                 timeout=20
             )
+            log(f"✅ RICS response status: {res.status_code}")
             res.raise_for_status()
             customers = res.json().get("Customers", [])
         except requests.exceptions.Timeout:
@@ -209,6 +211,7 @@ def save_csv(rows, filename):
     return os.path.join(OUTPUT_DIR, filename)
 
 def main():
+    log("🔥 ENTERED MAIN FUNCTION")
     log("🚀 Starting real-time RICS → Optimizely sync")
     log(f"GITHUB_REF: {os.getenv('GITHUB_REF')}")
     log(f"IS_TEST_BRANCH: {IS_TEST_BRANCH}")

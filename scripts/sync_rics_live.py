@@ -16,7 +16,7 @@ OUTPUT_DIR = "optimizely_connector/output"
 DATA_DIR = "data"
 BATCH_SIZE = 500
 STORE_CODE = 12132
-MAX_SKIP = 50000  # Full export
+MAX_SKIP = 50000
 
 IS_TEST_BRANCH = os.getenv("GITHUB_REF", "").endswith("/test")
 
@@ -50,17 +50,22 @@ def fetch_rics_data():
         try:
             res = requests.post(
                 url="https://enterprise.ricssoftware.com/api/Customer/GetCustomer",
-                headers={"Token": RICS_API_TOKEN},  # <-- Fixed header
+                headers={"Token": RICS_API_TOKEN},
                 json={"StoreCode": STORE_CODE, "Skip": skip, "Take": 100},
                 timeout=20
             )
             res.raise_for_status()
             customers = res.json().get("Customers", [])
+        except requests.exceptions.Timeout:
+            log(f"⏳ Timeout on skip {skip} — skipping ahead")
+            skip += 100
+            continue
         except Exception as e:
-            log(f"❌ Failed to fetch RICS data: {e}")
+            log(f"❌ Error on skip {skip}: {e}")
             break
 
         if not customers:
+            log(f"📭 No customers returned at skip {skip} — ending")
             break
 
         for c in customers:
@@ -78,6 +83,7 @@ def fetch_rics_data():
                 "phone": c.get("PhoneNumber", "").strip()
             })
 
+        log(f"✅ Pulled {len(customers)} customers from skip {skip}")
         skip += 100
 
     if IS_TEST_BRANCH:

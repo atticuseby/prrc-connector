@@ -1,4 +1,4 @@
-name: 📥 Download RunSignUp CSVs (All Partners)
+name: Download RunSignUp CSVs (All Partners)
 
 on:
   workflow_dispatch:

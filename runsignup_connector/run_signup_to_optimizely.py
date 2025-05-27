@@ -1,3 +1,5 @@
+# runsignup_connector/run_signup_to_optimizely.py
+
 import os
 import csv
 import requests
@@ -60,11 +62,16 @@ def fetch_runsignup_data():
         for reg in regs:
             all_regs.append({
                 "first_name": reg.get("first_name", ""),
+                "middle_name": reg.get("middle_name", ""),
                 "last_name": reg.get("last_name", ""),
                 "email": reg.get("email", ""),
-                "partner_id": partner_id,
-                "race_name": reg.get("race_name", ""),
-                "event_name": reg.get("event_name", "")
+                "gender": reg.get("gender", ""),
+                "age": reg.get("age", ""),
+                "race": reg.get("race_name", ""),
+                "event": reg.get("event_name", ""),
+                "event_year": reg.get("event_year", ""),
+                "registration_date": reg.get("registration_date", ""),
+                "partner_id": partner_id
             })
 
     if not all_regs:
@@ -75,7 +82,8 @@ def fetch_runsignup_data():
 
     with open(OUTPUT_PATH, mode="w", newline="") as file:
         writer = csv.DictWriter(file, fieldnames=[
-            "first_name", "last_name", "email", "partner_id", "race_name", "event_name"
+            "first_name", "middle_name", "last_name", "email", "gender", "age",
+            "race", "event", "event_year", "registration_date", "partner_id"
         ])
         writer.writeheader()
         for row in all_regs:

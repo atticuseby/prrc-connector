@@ -6,7 +6,6 @@ from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 
-# === CONFIG ===
 RICS_API_TOKEN = os.getenv("RICS_API_TOKEN")
 OPTIMIZELY_API_TOKEN = os.getenv("OPTIMIZELY_API_TOKEN")
 TEST_EMAIL = os.getenv("TEST_EMAIL", "test@example.com")
@@ -16,7 +15,7 @@ OUTPUT_DIR = "optimizely_connector/output"
 DATA_DIR = "data"
 BATCH_SIZE = 500
 STORE_CODE = 12132
-MAX_SKIP = 50000
+MAX_SKIP = float("inf")
 
 IS_TEST_BRANCH = os.getenv("GITHUB_REF", "").endswith("/test")
 
@@ -41,11 +40,17 @@ def upload_to_drive(filepath):
     file = service.files().create(body=file_metadata, media_body=media, fields="id").execute()
     log(f"✅ Uploaded to Drive as file ID: {file.get('id')}")
 
+def log_customer(c, index):
+    log(f"👤 Customer {index}: {c['first_name']} {c['last_name']} | "
+        f"Email: {c['email'] or '—'} | Phone: {c['phone'] or '—'} | "
+        f"Orders: {c['orders']} | Spent: ${c['total_spent']} | "
+        f"{c['city']}, {c['state']} {c['zip']}")
+
 def fetch_rics_data():
     all_rows = []
     skip = 0
 
-    while skip < MAX_SKIP:
+    while True:
         log(f"📦 Fetching customers from skip {skip}")
         try:
             log(f"📡 Preparing RICS request for skip {skip}")
@@ -70,9 +75,9 @@ def fetch_rics_data():
             log(f"📭 No customers returned at skip {skip} — ending")
             break
 
-        for c in customers:
+        for i, c in enumerate(customers, start=1):
             mailing = c.get("MailingAddress", {})
-            all_rows.append({
+            row = {
                 "rics_id": c.get("CustomerId"),
                 "email": c.get("Email", "").strip(),
                 "first_name": c.get("FirstName", "").strip(),
@@ -83,7 +88,9 @@ def fetch_rics_data():
                 "state": mailing.get("State", "").strip(),
                 "zip": mailing.get("PostalCode", "").strip(),
                 "phone": c.get("PhoneNumber", "").strip()
-            })
+            }
+            all_rows.append(row)
+            log_customer(row, len(all_rows))
 
         log(f"✅ Pulled {len(customers)} customers from skip {skip}")
         skip += 100
@@ -129,6 +136,7 @@ def fetch_rics_data():
             }
         ])
 
+    log(f"📊 Finished fetching. Total rows: {len(all_rows)}")
     return all_rows
 
 def push_to_optimizely(rows):
@@ -223,7 +231,7 @@ def main():
     push_to_optimizely(rows)
 
     timestamp = datetime.now().strftime("%m_%d_%Y_%H%M")
-    filename = f"rics_export_{timestamp}.csv"
+    filename = f"rics_export_{timestamp}_{len(rows)}rows.csv"
     csv_path = save_csv(rows, filename)
 
     upload_to_drive(csv_path)

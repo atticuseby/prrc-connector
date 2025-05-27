@@ -15,7 +15,7 @@ OUTPUT_DIR = "optimizely_connector/output"
 DATA_DIR = "data"
 BATCH_SIZE = 500
 STORE_CODE = 12132
-MAX_SKIP = float("inf")
+MAX_SKIP_LIMIT = 2000  # 🔒 TEMP CAP: remove when ready to scale
 IS_TEST_BRANCH = os.getenv("GITHUB_REF", "").endswith("/test")
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
@@ -49,7 +49,7 @@ def fetch_rics_data():
     all_rows = []
     skip = 0
 
-    while True:
+    while skip < MAX_SKIP_LIMIT:
         log(f"📦 Fetching customers from skip {skip}")
         try:
             log(f"📡 Preparing RICS request for skip {skip}")

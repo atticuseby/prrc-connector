@@ -1,4 +1,4 @@
-name: 🔁 Sync RunSignUp Data to Optimizely
+name: Sync RunSignUp Data to Optimizely
 
 on:
   workflow_dispatch:

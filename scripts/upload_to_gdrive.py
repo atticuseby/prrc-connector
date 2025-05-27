@@ -14,21 +14,21 @@ def upload_to_drive(filepath):
     creds = service_account.Credentials.from_service_account_file(
         creds_path, scopes=["https://www.googleapis.com/auth/drive.file"]
     )
-
     service = build("drive", "v3", credentials=creds)
 
-    # Determine folder
-    if "runsignup_export" in filepath:
+    # Determine folder based on filename
+    filename = os.path.basename(filepath).lower()
+    if "rics_export" in filename:
+        folder_id = os.getenv("GDRIVE_FOLDER_ID_RICS", "").strip()
+    elif "runsignup_export" in filename:
         folder_id = os.getenv("GDRIVE_FOLDER_ID_RUNSIGNUP", "").strip()
-    elif "rics_export" in filepath:
-        folder_id = os.getenv("GDRIVE_FOLDER_ID", "").strip()
     else:
         folder_id = ""
 
     file_metadata = {"name": os.path.basename(filepath)}
     if folder_id:
         file_metadata["parents"] = [folder_id]
-        print(f"📁 Target folder ID: {folder_id}")
+        print(f"📁 Uploading to folder ID: {folder_id}")
     else:
         print("⚠️ No folder ID found — uploading to root")
 

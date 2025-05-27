@@ -1,33 +1,19 @@
-name: Run PRRC Connector
+name: Run PRRC RICS Sync
 
 on:
-  workflow_dispatch:
-    inputs:
-      mode:
-        description: 'Choose sync mode (test or full)'
-        required: true
-        default: 'full'
-        type: choice
-        options:
-          - test
-          - full
   schedule:
-    - cron: '0 8 * * *'  # 8AM UTC = 3AM EST every day
+    - cron: '0 8 * * *'  # 3AM EST = 8AM UTC daily
+  workflow_dispatch:
 
 jobs:
-  run-connector:
+  run-rics-sync:
     runs-on: ubuntu-latest
 
     env:
-      API_KEY: ${{ secrets.API_KEY }}
-      API_SECRET: ${{ secrets.API_SECRET }}
-      PARTNER_ID: ${{ secrets.PARTNER_ID }}
-      OPTIMIZELY_API_TOKEN: ${{ secrets.OPTIMIZELY_API_TOKEN }}
-      GDRIVE_FOLDER_ID_RICS: ${{ secrets.GDRIVE_FOLDER_ID_RICS }}
-      GDRIVE_FOLDER_ID_RUNSIGNUP: ${{ secrets.GDRIVE_FOLDER_ID_RUNSIGNUP }}
-      TEST_EMAIL: ${{ secrets.TEST_EMAIL }}
-      DRY_RUN: ${{ secrets.DRY_RUN }}
       RICS_API_TOKEN: ${{ secrets.RICS_API_TOKEN }}
+      OPTIMIZELY_API_TOKEN: ${{ secrets.OPTIMIZELY_API_TOKEN }}
+      TEST_EMAIL: ${{ secrets.TEST_EMAIL }}
+      GDRIVE_FOLDER_ID_RICS: ${{ secrets.GDRIVE_FOLDER_ID_RICS }}
 
     steps:
       - name: ⬇️ Checkout repo
@@ -44,11 +30,5 @@ jobs:
       - name: 🔐 Save Google Drive credentials
         run: echo '${{ secrets.GDRIVE_CREDENTIALS }}' > optimizely_connector/service_account.json
 
-      - name: 🚀 Run connector
-        run: |
-          if [[ "${{ github.event.inputs.mode || 'full' }}" == "test" ]]; then
-            echo "⚙️ Running TEST sync only"
-            python optimizely_connector/sync_rics_to_optimizely_test_only.py
-          else
-            echo "🚀 Running FULL connector sync"
-            python optimizely_connector/main.py
+      - name: 🚀 Run real-time RICS to Optimizely sync
+        run: python scripts/sync_rics_live.py

@@ -1,12 +1,12 @@
-name: Download RunSignUp CSVs
+name: 📥 Download RunSignUp CSVs (All Partners)
 
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 8 * * *'  # Every day at 3:00 AM EST
+    - cron: '0 8 * * *'  # Every day at 3:00 AM EST / 8:00 AM UTC
 
 jobs:
-  download_csv:
+  download_all_csvs:
     runs-on: ubuntu-latest
 
     steps:
@@ -35,5 +35,5 @@ jobs:
         run: |
           pip install selenium google-api-python-client google-auth google-auth-httplib2 google-auth-oauthlib
 
-      - name: 🚀 Run download + upload script
-        run: python scripts/download_participants_csv.py
+      - name: 🚀 Run download_all_runsignup_csvs.py
+        run: python scripts/download_all_runsignup_csvs.py

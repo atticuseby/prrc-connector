@@ -16,7 +16,10 @@ OUTPUT_DIR = "optimizely_connector/output"
 DATA_DIR = "data"
 BATCH_SIZE = 500
 STORE_CODE = 12132
-MAX_SKIP = 100  # Adjust for full export
+MAX_SKIP = 50000  # Production volume
+
+# Detect if we're in the test branch
+IS_TEST_BRANCH = os.getenv("GITHUB_REF", "").endswith("/test")
 
 # === SETUP ===
 os.makedirs(OUTPUT_DIR, exist_ok=True)
@@ -79,45 +82,46 @@ def fetch_rics_data():
 
         skip += 100
 
-    # Inject 3 test profiles
-    all_rows.extend([
-        {
-            "rics_id": "test-001",
-            "email": TEST_EMAIL,
-            "first_name": "Test",
-            "last_name": "Email",
-            "orders": 1,
-            "total_spent": 10,
-            "city": "Testville",
-            "state": "TN",
-            "zip": "37201",
-            "phone": ""
-        },
-        {
-            "rics_id": "test-002",
-            "email": "",
-            "first_name": "Phone",
-            "last_name": "Only",
-            "orders": 0,
-            "total_spent": 0,
-            "city": "Franklin",
-            "state": "TN",
-            "zip": "37064",
-            "phone": "5551234567"
-        },
-        {
-            "rics_id": "test-003",
-            "email": "test+both@bandit.com",
-            "first_name": "Dual",
-            "last_name": "Contact",
-            "orders": 2,
-            "total_spent": 200,
-            "city": "Memphis",
-            "state": "TN",
-            "zip": "38103",
-            "phone": "5559876543"
-        }
-    ])
+    if IS_TEST_BRANCH:
+        log("🧪 Injecting 3 test contacts (test branch only)")
+        all_rows.extend([
+            {
+                "rics_id": "test-001",
+                "email": TEST_EMAIL,
+                "first_name": "Test",
+                "last_name": "Email",
+                "orders": 1,
+                "total_spent": 10,
+                "city": "Testville",
+                "state": "TN",
+                "zip": "37201",
+                "phone": ""
+            },
+            {
+                "rics_id": "test-002",
+                "email": "",
+                "first_name": "Phone",
+                "last_name": "Only",
+                "orders": 0,
+                "total_spent": 0,
+                "city": "Franklin",
+                "state": "TN",
+                "zip": "37064",
+                "phone": "5551234567"
+            },
+            {
+                "rics_id": "test-003",
+                "email": "test+both@bandit.com",
+                "first_name": "Dual",
+                "last_name": "Contact",
+                "orders": 2,
+                "total_spent": 200,
+                "city": "Memphis",
+                "state": "TN",
+                "zip": "38103",
+                "phone": "5559876543"
+            }
+        ])
 
     return all_rows
 
@@ -137,7 +141,7 @@ def push_to_optimizely(rows):
         if phone:
             identifiers["phone_number"] = phone
         if rics_id:
-            identifiers["customer_id"] = rics_id  # deduplication key
+            identifiers["customer_id"] = rics_id
 
         props = {
             "first_name": row.get("first_name", ""),

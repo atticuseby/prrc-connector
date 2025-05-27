@@ -16,7 +16,6 @@ DATA_DIR = "data"
 BATCH_SIZE = 500
 STORE_CODE = 12132
 MAX_SKIP = float("inf")
-
 IS_TEST_BRANCH = os.getenv("GITHUB_REF", "").endswith("/test")
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
@@ -75,6 +74,9 @@ def fetch_rics_data():
             log(f"📭 No customers returned at skip {skip} — ending")
             break
 
+        if skip == 0 and customers:
+            log(f"📄 RAW sample record:\n{customers[0]}")
+
         for i, c in enumerate(customers, start=1):
             mailing = c.get("MailingAddress", {})
             row = {
@@ -89,6 +91,10 @@ def fetch_rics_data():
                 "zip": mailing.get("PostalCode", "").strip(),
                 "phone": c.get("PhoneNumber", "").strip()
             }
+
+            if row["orders"] == 0 and row["total_spent"] == 0:
+                continue
+
             all_rows.append(row)
             log_customer(row, len(all_rows))
 
@@ -136,7 +142,7 @@ def fetch_rics_data():
             }
         ])
 
-    log(f"📊 Finished fetching. Total rows: {len(all_rows)}")
+    log(f"📊 Finished fetching. Total rows to sync: {len(all_rows)}")
     return all_rows
 
 def push_to_optimizely(rows):

@@ -1,0 +1,39 @@
+name: 📥 Download RunSignUp CSVs (All Partners)
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 8 * * *'  # Every day at 3:00 AM EST
+
+jobs:
+  download_all_csvs:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📂 Checkout repository
+        uses: actions/checkout@v3
+
+      - name: 🧰 Install Chrome & ChromeDriver
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget unzip curl jq libnss3 libxss1 libasound2t64 libatk-bridge2.0-0 libgtk-3-0 xvfb
+          wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+          sudo dpkg -i google-chrome-stable_current_amd64.deb || sudo apt-get -f install -y
+          CHROME_VERSION=$(google-chrome --version | grep -oP '\d+\.\d+\.\d+')
+          CHROMEDRIVER_URL=$(curl -s "https://googlechromelabs.github.io/chrome-for-testing/last-known-good-versions-with-downloads.json" | jq -r --arg ver "$CHROME_VERSION" '.channels.Stable.downloads.chromedriver[] | select(.platform == "linux64") | .url')
+          wget -O chromedriver_linux64.zip "$CHROMEDRIVER_URL"
+          unzip chromedriver_linux64.zip
+          sudo mv chromedriver-linux64/chromedriver /usr/local/bin/
+          sudo chmod +x /usr/local/bin/chromedriver
+
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: 📦 Install Python dependencies
+        run: |
+          pip install selenium google-api-python-client google-auth google-auth-httplib2 google-auth-oauthlib
+
+      - name: 🚀 Run download_all_runsignup_csvs.py
+        run: python scripts/download_all_runsignup_csvs.py

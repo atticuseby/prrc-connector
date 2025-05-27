@@ -1,11 +1,13 @@
 import os
 import csv
 import requests
-from datetime import datetime
+import time
+from datetime import datetime, timedelta
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 
+# === CONFIG ===
 RICS_API_TOKEN = os.getenv("RICS_API_TOKEN")
 OPTIMIZELY_API_TOKEN = os.getenv("OPTIMIZELY_API_TOKEN")
 TEST_EMAIL = os.getenv("TEST_EMAIL", "test@example.com")
@@ -13,15 +15,25 @@ GDRIVE_FOLDER_ID_RICS = os.getenv("GDRIVE_FOLDER_ID_RICS")
 CREDS_PATH = "optimizely_connector/service_account.json"
 OUTPUT_DIR = "optimizely_connector/output"
 DATA_DIR = "data"
+LOG_DIR = "logs"
 BATCH_SIZE = 500
 STORE_CODE = 12132
-MAX_SKIP_LIMIT = 2000  # Raise to float("inf") when ready
+MAX_SKIP_LIMIT = 10000
+UPDATED_AFTER_DAYS = 7
+SLOW_RESPONSE_THRESHOLD = 10  # seconds
 IS_TEST_BRANCH = os.getenv("GITHUB_REF", "").endswith("/test")
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 os.makedirs(DATA_DIR, exist_ok=True)
+os.makedirs(LOG_DIR, exist_ok=True)
 
-def log(msg): print(f"[log] {msg}", flush=True)
+log_file_path = os.path.join(LOG_DIR, f"sync_log_{datetime.now().strftime('%m_%d_%Y_%H%M')}.log")
+def log(msg):
+    timestamp = datetime.now().strftime("[%Y-%m-%d %H:%M:%S]")
+    line = f"{timestamp} {msg}"
+    print(line, flush=True)
+    with open(log_file_path, "a") as f:
+        f.write(line + "\n")
 
 def get_drive_service():
     creds = service_account.Credentials.from_service_account_file(
@@ -29,15 +41,15 @@ def get_drive_service():
     )
     return build("drive", "v3", credentials=creds)
 
-def upload_to_drive(filepath):
+def upload_to_drive(filepath, folder_id):
     service = get_drive_service()
     file_metadata = {
         "name": os.path.basename(filepath),
-        "parents": [GDRIVE_FOLDER_ID_RICS]
+        "parents": [folder_id]
     }
-    media = MediaFileUpload(filepath, mimetype="text/csv")
-    file = service.files().create(body=file_metadata, media_body=media, fields="id").execute()
-    log(f"✅ Uploaded to Drive as file ID: {file.get('id')}")
+    media = MediaFileUpload(filepath)
+    uploaded = service.files().create(body=file_metadata, media_body=media, fields="id").execute()
+    log(f"✅ Uploaded {os.path.basename(filepath)} to Drive as ID: {uploaded['id']}")
 
 def log_customer(c, index):
     log(f"👤 Customer {index}: {c['first_name']} {c['last_name']} | "
@@ -48,20 +60,34 @@ def log_customer(c, index):
 def fetch_rics_data():
     all_rows = []
     skip = 0
+    updated_after = (datetime.utcnow() - timedelta(days=UPDATED_AFTER_DAYS)).isoformat() + "Z"
 
     while skip < MAX_SKIP_LIMIT:
         log(f"📦 Fetching customers from skip {skip}")
         try:
-            log(f"📡 Preparing RICS request for skip {skip}")
+            start_time = time.time()
             res = requests.post(
                 url="https://enterprise.ricssoftware.com/api/Customer/GetCustomer",
                 headers={"Token": RICS_API_TOKEN},
-                json={"StoreCode": STORE_CODE, "Skip": skip, "Take": 100},
+                json={
+                    "StoreCode": STORE_CODE,
+                    "Skip": skip,
+                    "Take": 100,
+                    "UpdatedAfter": updated_after
+                },
                 timeout=20
             )
-            log(f"✅ RICS response status: {res.status_code}")
+            response_time = time.time() - start_time
+            log(f"⏱️ RICS response time: {response_time:.2f}s")
+
+            if response_time > SLOW_RESPONSE_THRESHOLD:
+                log(f"❌ Aborting: response time exceeded threshold ({SLOW_RESPONSE_THRESHOLD}s)")
+                break
+
             res.raise_for_status()
             customers = res.json().get("Customers", [])
+            log(f"✅ RICS response status: {res.status_code} | Retrieved: {len(customers)}")
+
         except requests.exceptions.HTTPError as e:
             if res.status_code >= 500:
                 log(f"❌ Server error on skip {skip}: {res.status_code} — stopping sync early")
@@ -102,47 +128,6 @@ def fetch_rics_data():
 
         log(f"✅ Pulled {len(customers)} customers from skip {skip}")
         skip += 100
-
-    if IS_TEST_BRANCH:
-        log("🧪 Injecting 3 test contacts (test branch only)")
-        all_rows.extend([
-            {
-                "rics_id": "test-001",
-                "email": TEST_EMAIL,
-                "first_name": "Test",
-                "last_name": "Email",
-                "orders": 1,
-                "total_spent": 10,
-                "city": "Testville",
-                "state": "TN",
-                "zip": "37201",
-                "phone": ""
-            },
-            {
-                "rics_id": "test-002",
-                "email": "",
-                "first_name": "Phone",
-                "last_name": "Only",
-                "orders": 0,
-                "total_spent": 0,
-                "city": "Franklin",
-                "state": "TN",
-                "zip": "37064",
-                "phone": "5551234567"
-            },
-            {
-                "rics_id": "test-003",
-                "email": "test+both@bandit.com",
-                "first_name": "Dual",
-                "last_name": "Contact",
-                "orders": 2,
-                "total_spent": 200,
-                "city": "Memphis",
-                "state": "TN",
-                "zip": "38103",
-                "phone": "5559876543"
-            }
-        ])
 
     log(f"📊 Finished fetching. Total rows to sync: {len(all_rows)}")
     return all_rows
@@ -236,13 +221,14 @@ def main():
     rows = fetch_rics_data()
     log(f"📊 Fetched {len(rows)} customers from RICS")
 
-    push_to_optimizely(rows)
+    if rows:
+        push_to_optimizely(rows)
+        timestamp = datetime.now().strftime("%m_%d_%Y_%H%M")
+        filename = f"rics_export_{timestamp}_{len(rows)}rows.csv"
+        csv_path = save_csv(rows, filename)
+        upload_to_drive(csv_path, GDRIVE_FOLDER_ID_RICS)
 
-    timestamp = datetime.now().strftime("%m_%d_%Y_%H%M")
-    filename = f"rics_export_{timestamp}_{len(rows)}rows.csv"
-    csv_path = save_csv(rows, filename)
-
-    upload_to_drive(csv_path)
+    upload_to_drive(log_file_path, GDRIVE_FOLDER_ID_RICS)
     log("✅ All done!")
 
 if __name__ == "__main__":

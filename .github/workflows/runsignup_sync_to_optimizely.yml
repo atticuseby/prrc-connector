@@ -1,4 +1,4 @@
-name: Sync RunSignUp Data to Optimizely
+name: 🔁 Sync RunSignUp Data to Optimizely
 
 on:
   workflow_dispatch:
@@ -26,3 +26,4 @@ jobs:
 
       - name: 🔄 Process & sync to Optimizely
         run: python runsignup_connector/main_runsignup.py
+        working-directory: ${{ github.workspace }}

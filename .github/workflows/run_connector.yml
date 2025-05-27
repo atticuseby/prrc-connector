@@ -24,6 +24,7 @@ jobs:
       PARTNER_ID: ${{ secrets.PARTNER_ID }}
       OPTIMIZELY_API_TOKEN: ${{ secrets.OPTIMIZELY_API_TOKEN }}
       GDRIVE_FOLDER_ID: ${{ secrets.GDRIVE_FOLDER_ID }}
+      GDRIVE_FOLDER_ID_RICS: ${{ secrets.GDRIVE_FOLDER_ID_RICS }}
       GDRIVE_FOLDER_ID_RUNSIGNUP: ${{ secrets.GDRIVE_FOLDER_ID_RUNSIGNUP }}
       TEST_EMAIL: ${{ secrets.TEST_EMAIL }}
       DRY_RUN: ${{ secrets.DRY_RUN }}

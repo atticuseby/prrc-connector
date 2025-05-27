@@ -55,9 +55,32 @@ def download_csv(driver):
     print("📸 Capturing screenshot for debug...")
     driver.save_screenshot(DEBUG_SCREENSHOT)
 
-    print("📥 Clicking Export > Download Report As CSV...")
-    WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.XPATH, "//button[contains(text(), 'Export Options')]"))).click()
-    WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.XPATH, "//a[contains(text(), 'Download Report As CSV')]"))).click()
+    print("📥 Waiting for Export Options button...")
+    try:
+        WebDriverWait(driver, 20).until(
+            EC.presence_of_element_located((By.XPATH, "//table"))
+        )
+
+        WebDriverWait(driver, 20).until(
+            EC.presence_of_element_located((By.XPATH, "//button[contains(text(), 'Export Options')]"))
+        )
+
+        export_button = WebDriverWait(driver, 10).until(
+            EC.element_to_be_clickable((By.XPATH, "//button[contains(text(), 'Export Options')]"))
+        )
+        print("✅ Export button found. Clicking now...")
+        export_button.click()
+
+        print("📥 Waiting for 'Download Report As CSV' link...")
+        download_link = WebDriverWait(driver, 20).until(
+            EC.element_to_be_clickable((By.XPATH, "//a[contains(text(), 'Download Report As CSV')]"))
+        )
+        print("✅ CSV link found. Clicking now...")
+        download_link.click()
+    except Exception as e:
+        print("❌ Exception encountered in download_csv")
+        print(f"Exception: {e}")
+        raise TimeoutError("❌ Could not find or click Export dropdown or CSV link.") from e
 
 def wait_for_download():
     print("⏳ Waiting for file download...")
@@ -81,6 +104,7 @@ def dump_debug_image():
             print(f"\n--- DEBUG SCREENSHOT BASE64 ---\n{b64}\n--- END DEBUG SCREENSHOT ---\n")
 
 def main():
+    print("🧪 Script is running...")
     print("🚀 Starting RunSignUp automation...")
     driver = setup_driver()
     try:

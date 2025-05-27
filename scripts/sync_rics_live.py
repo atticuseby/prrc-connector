@@ -16,12 +16,10 @@ OUTPUT_DIR = "optimizely_connector/output"
 DATA_DIR = "data"
 BATCH_SIZE = 500
 STORE_CODE = 12132
-MAX_SKIP = 50000  # Production volume
+MAX_SKIP = 50000  # Full export
 
-# Detect if we're in the test branch
 IS_TEST_BRANCH = os.getenv("GITHUB_REF", "").endswith("/test")
 
-# === SETUP ===
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 os.makedirs(DATA_DIR, exist_ok=True)
 
@@ -52,7 +50,7 @@ def fetch_rics_data():
         try:
             res = requests.post(
                 url="https://enterprise.ricssoftware.com/api/Customer/GetCustomer",
-                headers={"Authorization": f"Bearer {RICS_API_TOKEN}"},
+                headers={"Token": RICS_API_TOKEN},  # <-- Fixed header
                 json={"StoreCode": STORE_CODE, "Skip": skip, "Take": 100},
                 timeout=20
             )
@@ -206,6 +204,10 @@ def save_csv(rows, filename):
 
 def main():
     log("🚀 Starting real-time RICS → Optimizely sync")
+    log(f"GITHUB_REF: {os.getenv('GITHUB_REF')}")
+    log(f"IS_TEST_BRANCH: {IS_TEST_BRANCH}")
+    log(f"RICS_API_TOKEN present? {'✅' if RICS_API_TOKEN else '❌'}")
+
     rows = fetch_rics_data()
     log(f"📊 Fetched {len(rows)} customers from RICS")
 

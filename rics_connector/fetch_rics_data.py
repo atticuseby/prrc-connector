@@ -1,11 +1,15 @@
 import os
 import csv
+import time
 import requests
 from datetime import datetime
 from scripts.config import RICS_API_TOKEN, TEST_EMAIL
 from scripts.helpers import log_message
 
-MAX_SKIP = 100  # Test mode — update to full later
+MAX_SKIP = 100  # Can increase for full production
+MAX_RETRIES = 3
+MAX_RESPONSE_TIME_SECONDS = 15
+
 data_fields = [
     "rics_id", "email", "first_name", "last_name", "orders",
     "total_spent", "city", "state", "zip", "phone"
@@ -25,20 +29,43 @@ def fetch_rics_data():
 
     while skip < MAX_SKIP:
         log_message(f"\n📄 Requesting customers from skip: {skip}...")
-        try:
-            response = requests.post(
-                url="https://enterprise.ricssoftware.com/api/Customer/GetCustomer",
-                headers={"Authorization": f"Bearer {RICS_API_TOKEN}"},
-                json={"StoreCode": 12132, "Skip": skip, "Take": 100},
-                timeout=20
-            )
-            response.raise_for_status()
-            customers = response.json().get("Customers", [])
-        except Exception as e:
-            log_message(f"❌ Failed to retrieve data: {e}")
+
+        attempt = 0
+        customers = []
+
+        while attempt < MAX_RETRIES:
+            try:
+                start = time.time()
+                response = requests.post(
+                    url="https://enterprise.ricssoftware.com/api/Customer/GetCustomer",
+                    headers={"Authorization": f"Bearer {RICS_API_TOKEN}"},
+                    json={"StoreCode": 12132, "Skip": skip, "Take": 100},
+                    timeout=30  # 30s absolute timeout on the request itself
+                )
+                duration = time.time() - start
+                log_message(f"⏱️ Attempt {attempt+1} response time: {duration:.2f}s")
+
+                if duration > MAX_RESPONSE_TIME_SECONDS:
+                    log_message(f"⚠️ Attempt {attempt+1} exceeded {MAX_RESPONSE_TIME_SECONDS}s, retrying...")
+                    attempt += 1
+                    time.sleep(3)
+                    continue
+
+                response.raise_for_status()
+                customers = response.json().get("Customers", [])
+                break  # success!
+
+            except Exception as e:
+                log_message(f"❌ Attempt {attempt+1} failed: {e}")
+                attempt += 1
+                time.sleep(3)
+
+        if attempt == MAX_RETRIES:
+            log_message("❌ Aborting: RICS too slow or unresponsive after 3 attempts.")
             break
 
         if not customers:
+            log_message("📭 No more customers returned. Ending fetch.")
             break
 
         for customer in customers:
@@ -56,6 +83,7 @@ def fetch_rics_data():
                 "phone": customer.get("PhoneNumber", "").strip()
             }
             all_rows.append(row)
+
         skip += 100
 
     log_message(f"\n🔧 Appending test profiles (x3)...")

@@ -8,7 +8,8 @@ from scripts.helpers import log_message
 
 MAX_SKIP = 100  # Can increase for full production
 MAX_RETRIES = 3
-MAX_RESPONSE_TIME_SECONDS = 15
+MAX_RESPONSE_TIME_SECONDS = 60  # Only warn if exceeded — don’t abort
+ABSOLUTE_TIMEOUT_SECONDS = 120  # This ensures the request doesn’t hang forever
 
 data_fields = [
     "rics_id", "email", "first_name", "last_name", "orders",
@@ -40,20 +41,23 @@ def fetch_rics_data():
                     url="https://enterprise.ricssoftware.com/api/Customer/GetCustomer",
                     headers={"Authorization": f"Bearer {RICS_API_TOKEN}"},
                     json={"StoreCode": 12132, "Skip": skip, "Take": 100},
-                    timeout=30  # 30s absolute timeout on the request itself
+                    timeout=ABSOLUTE_TIMEOUT_SECONDS
                 )
                 duration = time.time() - start
                 log_message(f"⏱️ Attempt {attempt+1} response time: {duration:.2f}s")
 
-                if duration > MAX_RESPONSE_TIME_SECONDS:
-                    log_message(f"⚠️ Attempt {attempt+1} exceeded {MAX_RESPONSE_TIME_SECONDS}s, retrying...")
-                    attempt += 1
-                    time.sleep(3)
-                    continue
-
                 response.raise_for_status()
                 customers = response.json().get("Customers", [])
-                break  # success!
+
+                if duration > MAX_RESPONSE_TIME_SECONDS:
+                    log_message(f"⚠️ Warning: Response exceeded {MAX_RESPONSE_TIME_SECONDS}s, but continuing anyway.")
+
+                if customers:
+                    break  # Success
+                else:
+                    log_message(f"⚠️ No customers returned on attempt {attempt+1}. Retrying...")
+                    attempt += 1
+                    time.sleep(3)
 
             except Exception as e:
                 log_message(f"❌ Attempt {attempt+1} failed: {e}")
@@ -61,12 +65,8 @@ def fetch_rics_data():
                 time.sleep(3)
 
         if attempt == MAX_RETRIES:
-            log_message("❌ Aborting: RICS too slow or unresponsive after 3 attempts.")
-            break
-
-        if not customers:
-            log_message("📭 No more customers returned. Ending fetch.")
-            break
+            log_message("❌ Aborting: RICS failed or unresponsive after 3 attempts.")
+            raise SystemExit(1)
 
         for customer in customers:
             mailing = customer.get("MailingAddress", {})

@@ -20,7 +20,9 @@ BATCH_SIZE = 500
 STORE_CODE = 12132
 MAX_SKIP_LIMIT = 10000
 UPDATED_AFTER_DAYS = 1  # Only fetch customers updated in the last 24 hours
-SLOW_RESPONSE_THRESHOLD = 10  # seconds
+SLOW_RESPONSE_THRESHOLD = 60  # Warn at 60s, but keep going
+ABSOLUTE_TIMEOUT_SECONDS = 120  # Max time to allow a RICS API call
+MAX_RETRIES = 3
 IS_TEST_BRANCH = os.getenv("GITHUB_REF", "").endswith("/test")
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
@@ -64,41 +66,49 @@ def fetch_rics_data():
 
     while skip < MAX_SKIP_LIMIT:
         log(f"📦 Fetching customers from skip {skip}")
-        try:
-            start_time = time.time()
-            res = requests.post(
-                url="https://enterprise.ricssoftware.com/api/Customer/GetCustomer",
-                headers={"Token": RICS_API_TOKEN},
-                json={
-                    "StoreCode": STORE_CODE,
-                    "Skip": skip,
-                    "Take": 100,
-                    "UpdatedAfter": updated_after
-                },
-                timeout=20
-            )
-            response_time = time.time() - start_time
-            log(f"⏱️ RICS response time: {response_time:.2f}s")
 
-            if response_time > SLOW_RESPONSE_THRESHOLD:
-                log(f"❌ Aborting: response time exceeded threshold ({SLOW_RESPONSE_THRESHOLD}s)")
-                break
+        attempt = 0
+        customers = []
 
-            res.raise_for_status()
-            customers = res.json().get("Customers", [])
-            log(f"✅ RICS response status: {res.status_code} | Retrieved: {len(customers)}")
+        while attempt < MAX_RETRIES:
+            try:
+                start_time = time.time()
+                res = requests.post(
+                    url="https://enterprise.ricssoftware.com/api/Customer/GetCustomer",
+                    headers={"Token": RICS_API_TOKEN},
+                    json={
+                        "StoreCode": STORE_CODE,
+                        "Skip": skip,
+                        "Take": 100,
+                        "UpdatedAfter": updated_after
+                    },
+                    timeout=ABSOLUTE_TIMEOUT_SECONDS
+                )
+                response_time = time.time() - start_time
+                log(f"⏱️ Attempt {attempt+1} RICS response time: {response_time:.2f}s")
 
-        except requests.exceptions.HTTPError as e:
-            if res.status_code >= 500:
-                log(f"❌ Server error on skip {skip}: {res.status_code} — stopping sync early")
-                break
-            else:
-                log(f"❌ Client error on skip {skip}: {res.status_code} — skipping ahead")
-                skip += 100
-                continue
-        except Exception as e:
-            log(f"❌ Unexpected error on skip {skip}: {e}")
-            break
+                if response_time > SLOW_RESPONSE_THRESHOLD:
+                    log(f"⚠️ Warning: Response time exceeded {SLOW_RESPONSE_THRESHOLD}s, but continuing.")
+
+                res.raise_for_status()
+                customers = res.json().get("Customers", [])
+                log(f"✅ RICS response status: {res.status_code} | Retrieved: {len(customers)}")
+                break  # success
+
+            except requests.exceptions.HTTPError as e:
+                if res.status_code >= 500:
+                    log(f"❌ Server error on skip {skip}: {res.status_code} — retrying...")
+                else:
+                    log(f"❌ Client error on skip {skip}: {res.status_code} — skipping ahead")
+                    break
+            except Exception as e:
+                log(f"❌ Error on attempt {attempt+1}: {e}")
+            attempt += 1
+            time.sleep(3)
+
+        if attempt == MAX_RETRIES:
+            log(f"❌ Failed after {MAX_RETRIES} attempts on skip {skip}. Aborting sync.")
+            raise SystemExit(1)
 
         if not customers:
             log(f"📭 No customers returned at skip {skip} — ending")

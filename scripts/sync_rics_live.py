@@ -2,7 +2,7 @@ import os
 import csv
 import requests
 import time
-from datetime import datetime, timedelta
+from datetime import datetime
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
@@ -19,9 +19,8 @@ LOG_DIR = "logs"
 BATCH_SIZE = 500
 STORE_CODE = 12132
 MAX_SKIP_LIMIT = 10000
-UPDATED_AFTER_DAYS = 1  # Only fetch customers updated in the last 24 hours
-SLOW_RESPONSE_THRESHOLD = 60  # Warn at 60s, but keep going
-ABSOLUTE_TIMEOUT_SECONDS = 120  # Max time to allow a RICS API call
+SLOW_RESPONSE_THRESHOLD = 60  # warn if > 60s
+ABSOLUTE_TIMEOUT_SECONDS = 120
 MAX_RETRIES = 3
 IS_TEST_BRANCH = os.getenv("GITHUB_REF", "").endswith("/test")
 
@@ -62,7 +61,6 @@ def log_customer(c, index):
 def fetch_rics_data():
     all_rows = []
     skip = 0
-    updated_after = (datetime.utcnow() - timedelta(days=UPDATED_AFTER_DAYS)).isoformat() + "Z"
 
     while skip < MAX_SKIP_LIMIT:
         log(f"📦 Fetching customers from skip {skip}")
@@ -79,8 +77,7 @@ def fetch_rics_data():
                     json={
                         "StoreCode": STORE_CODE,
                         "Skip": skip,
-                        "Take": 100,
-                        "UpdatedAfter": updated_after
+                        "Take": 100
                     },
                     timeout=ABSOLUTE_TIMEOUT_SECONDS
                 )

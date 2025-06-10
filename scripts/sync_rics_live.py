@@ -2,6 +2,7 @@ import os
 import csv
 import requests
 import time
+import traceback
 from datetime import datetime
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
@@ -16,10 +17,11 @@ CREDS_PATH = "optimizely_connector/service_account.json"
 OUTPUT_DIR = "optimizely_connector/output"
 DATA_DIR = "data"
 LOG_DIR = "logs"
+SKIP_TRACKER = os.path.join(OUTPUT_DIR, "last_successful_skip.txt")
 BATCH_SIZE = 500
 STORE_CODE = 12132
 MAX_SKIP_LIMIT = 10000
-SLOW_RESPONSE_THRESHOLD = 60  # warn if > 60s
+SLOW_RESPONSE_THRESHOLD = 60
 ABSOLUTE_TIMEOUT_SECONDS = 120
 MAX_RETRIES = 3
 IS_TEST_BRANCH = os.getenv("GITHUB_REF", "").endswith("/test")
@@ -44,10 +46,7 @@ def get_drive_service():
 
 def upload_to_drive(filepath, folder_id):
     service = get_drive_service()
-    file_metadata = {
-        "name": os.path.basename(filepath),
-        "parents": [folder_id]
-    }
+    file_metadata = {"name": os.path.basename(filepath), "parents": [folder_id]}
     media = MediaFileUpload(filepath)
     uploaded = service.files().create(body=file_metadata, media_body=media, fields="id").execute()
     log(f"✅ Uploaded {os.path.basename(filepath)} to Drive as ID: {uploaded['id']}")
@@ -60,25 +59,24 @@ def log_customer(c, index):
 
 def fetch_rics_data():
     all_rows = []
-    skip = 0
+
+    try:
+        with open(SKIP_TRACKER, "r") as f:
+            skip = int(f.read().strip())
+    except Exception:
+        skip = 0
 
     while skip < MAX_SKIP_LIMIT:
         log(f"📦 Fetching customers from skip {skip}")
 
-        attempt = 0
         customers = []
-
-        while attempt < MAX_RETRIES:
+        for attempt in range(MAX_RETRIES):
             try:
                 start_time = time.time()
                 res = requests.post(
                     url="https://enterprise.ricssoftware.com/api/Customer/GetCustomer",
                     headers={"Token": RICS_API_TOKEN},
-                    json={
-                        "StoreCode": STORE_CODE,
-                        "Skip": skip,
-                        "Take": 100
-                    },
+                    json={"StoreCode": STORE_CODE, "Skip": skip, "Take": 100},
                     timeout=ABSOLUTE_TIMEOUT_SECONDS
                 )
                 response_time = time.time() - start_time
@@ -90,7 +88,7 @@ def fetch_rics_data():
                 res.raise_for_status()
                 customers = res.json().get("Customers", [])
                 log(f"✅ RICS response status: {res.status_code} | Retrieved: {len(customers)}")
-                break  # success
+                break
 
             except requests.exceptions.HTTPError as e:
                 if res.status_code >= 500:
@@ -100,14 +98,13 @@ def fetch_rics_data():
                     break
             except Exception as e:
                 log(f"❌ Error on attempt {attempt+1}: {e}")
-            attempt += 1
-            time.sleep(3)
-
-        if attempt == MAX_RETRIES:
-            log(f"❌ Failed after {MAX_RETRIES} attempts on skip {skip}. Aborting sync.")
-            raise SystemExit(1)
+                log(traceback.format_exc())
+            time.sleep([0, 10, 30][attempt])
 
         if not customers:
+            if attempt == MAX_RETRIES - 1:
+                log(f"❌ Failed after {MAX_RETRIES} attempts on skip {skip}. Aborting sync.")
+                raise SystemExit(1)
             log(f"📭 No customers returned at skip {skip} — ending")
             break
 
@@ -129,12 +126,14 @@ def fetch_rics_data():
                 "zip": mailing.get("PostalCode", "").strip(),
                 "phone": c.get("PhoneNumber", "").strip()
             }
-
             all_rows.append(row)
             log_customer(row, len(all_rows))
 
         log(f"✅ Pulled {len(customers)} customers from skip {skip}")
         skip += 100
+
+        with open(SKIP_TRACKER, "w") as f:
+            f.write(str(skip))
 
     log(f"📊 Finished fetching. Total rows to sync: {len(all_rows)}")
     return all_rows
@@ -145,7 +144,6 @@ def push_to_optimizely(rows):
         email = row.get("email")
         phone = row.get("phone")
         rics_id = row.get("rics_id")
-
         if not email and not phone:
             continue
 
@@ -206,10 +204,7 @@ def send_batch(batch):
 
 def save_csv(rows, filename):
     fields = ["rics_id", "email", "first_name", "last_name", "orders", "total_spent", "city", "state", "zip", "phone"]
-    paths = [
-        os.path.join(OUTPUT_DIR, filename),
-        os.path.join(DATA_DIR, filename)
-    ]
+    paths = [os.path.join(OUTPUT_DIR, filename), os.path.join(DATA_DIR, filename)]
     for path in paths:
         with open(path, "w", newline="") as f:
             writer = csv.DictWriter(f, fieldnames=fields)

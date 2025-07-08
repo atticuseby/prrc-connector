@@ -1,0 +1,21 @@
+  rics-to-meta:
+    name: Sync RICS → Meta Offline Events
+    runs-on: ubuntu-latest
+    needs: [sync-rics-live, run-signup-to-optimizely]  # wait until your other jobs finish
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+      - name: Install deps
+        run: pip install -r requirements.txt
+      - name: Pull RICS CSV
+        # reuse your existing action or step that pulls data/rics.csv
+        run: echo "Assume data/rics.csv is present"
+      - name: Run Meta upload
+        env:
+          META_OFFLINE_SET_ID: ${{ secrets.META_OFFLINE_SET_ID }}
+          META_OFFLINE_TOKEN:   ${{ secrets.META_OFFLINE_TOKEN }}
+          RICS_CSV_PATH:        data/rics.csv
+        run: python scripts/sync_rics_to_meta.py

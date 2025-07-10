@@ -1,10 +1,7 @@
 # .github/workflows/rics_to_meta.yml
 
-# Trigger manually or every day at 08:00 UTC
 on:
   workflow_dispatch:
-  schedule:
-    - cron: '0 8 * * *'
 
 jobs:
   rics-to-meta:
@@ -21,7 +18,6 @@ jobs:
           python-version: '3.x'
 
       - name: Install dependencies
-        # Include Drive client libs alongside your existing requirements
         run: |
           pip install -r requirements.txt
           pip install google-api-python-client google-auth
@@ -34,10 +30,7 @@ jobs:
           GDRIVE_SA_KEY:          ${{ secrets.GDRIVE_SA_KEY }}
           GDRIVE_FOLDER_ID_RICS:  ${{ secrets.GDRIVE_FOLDER_ID_RICS }}
         run: |
-          # Write the service account key to a file
           echo "$GDRIVE_SA_KEY" | base64 --decode > /tmp/sa.json
-
-          # Inline Python to pick the newest log and download it as data/rics.csv
           python - <<'PYCODE'
 import os, io
 from google.oauth2 import service_account
@@ -73,17 +66,4 @@ with io.FileIO("data/rics.csv", mode="wb") as fh:
     downloader = MediaIoBaseDownload(fh, request)
     done = False
     while not done:
-        status, done = downloader.next_chunk()
-        print(f"   Download {int(status.progress() * 100)}%")
-
-print("✅ Downloaded to data/rics.csv")
-PYCODE
-
-      - name: Run Meta upload
-        env:
-          META_OFFLINE_SET_ID: ${{ secrets.META_OFFLINE_SET_ID }}
-          META_OFFLINE_TOKEN:   ${{ secrets.META_OFFLINE_TOKEN }}
-          RICS_CSV_PATH:        data/rics.csv
-        run: |
-          set -e
-          python scripts/sync_rics_to_meta.py
+        status, done = downloader.next_ch_

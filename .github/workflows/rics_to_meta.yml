@@ -5,12 +5,10 @@ on:
 
 jobs:
   rics-to-meta:
-    name: Sync RICS → Meta Offline Events
     runs-on: ubuntu-latest
 
     steps:
-      - name: Check out repo
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -25,52 +23,17 @@ jobs:
       - name: Ensure data directory
         run: mkdir -p data
 
-      - name: Download latest RICS export from Google Drive
+      - name: Configure Google creds
         env:
-          GDRIVE_SA_KEY:         ${{ secrets.GDRIVE_SA_KEY }}
-          GDRIVE_FOLDER_ID_RICS: ${{ secrets.GDRIVE_FOLDER_ID_RICS }}
+          GDRIVE_SA_KEY: ${{ secrets.GDRIVE_SA_KEY }}
         run: |
-          echo "$GDRIVE_SA_KEY" | base64 --decode > /tmp/sa.json
-          python - <<'PYCODE'
-import os, io
-from google.oauth2 import service_account
-from googleapiclient.discovery import build
-from googleapiclient.http import MediaIoBaseDownload
+          echo "$GDRIVE_SA_KEY" | base64 --decode > sa.json
+          export GOOGLE_APPLICATION_CREDENTIALS=sa.json
 
-# Authenticate
-creds = service_account.Credentials.from_service_account_file(
-    "/tmp/sa.json",
-    scopes=["https://www.googleapis.com/auth/drive.readonly"]
-)
-drive = build("drive", "v3", credentials=creds)
-
-# List files in the RICS folder
-folder_id = os.environ["GDRIVE_FOLDER_ID_RICS"]
-resp = drive.files().list(
-    q=f"'{folder_id}' in parents and trashed = false",
-    fields="files(id,name,createdTime)"
-).execute()
-
-files = resp.get("files", [])
-if not files:
-    raise SystemExit("❌ No files found in the RICS Drive folder!")
-
-# Select the latest by creation timestamp
-latest = max(files, key=lambda f: f["createdTime"])
-file_id, name = latest["id"], latest["name"]
-print(f"➡️ Downloading latest file: {name} ({file_id})")
-
-# Download it to data/rics.csv
-request = drive.files().get_media(fileId=file_id)
-with io.FileIO("data/rics.csv", mode="wb") as fh:
-    downloader = MediaIoBaseDownload(fh, request)
-    done = False
-    while not done:
-        status, done = downloader.next_chunk()
-        print(f"   Download {int(status.progress() * 100)}%")
-
-print("✅ Downloaded to data/rics.csv")
-PYCODE
+      - name: Download latest RICS export
+        env:
+          GDRIVE_FOLDER_ID_RICS: ${{ secrets.GDRIVE_FOLDER_ID_RICS }}
+        run: python scripts/download_rics.py
 
       - name: Run Meta upload
         env:

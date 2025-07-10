@@ -5,10 +5,12 @@ on:
 
 jobs:
   rics-to-meta:
+    name: Sync RICS → Meta Offline Events
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - name: Check out repo
+        uses: actions/checkout@v3
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -23,12 +25,12 @@ jobs:
       - name: Ensure data directory
         run: mkdir -p data
 
-      - name: Configure Google creds
+      - name: Configure Google credentials
         env:
           GDRIVE_SA_KEY: ${{ secrets.GDRIVE_SA_KEY }}
         run: |
           echo "$GDRIVE_SA_KEY" | base64 --decode > sa.json
-          export GOOGLE_APPLICATION_CREDENTIALS=sa.json
+          echo "GOOGLE_APPLICATION_CREDENTIALS=/home/runner/work/${{ github.repository }}/sa.json" >> $GITHUB_ENV
 
       - name: Download latest RICS export
         env:

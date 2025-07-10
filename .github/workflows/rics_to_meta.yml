@@ -9,7 +9,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - name: Check out repo
+        uses: actions/checkout@v3
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -26,8 +27,8 @@ jobs:
 
       - name: Download latest RICS export from Google Drive
         env:
-          GDRIVE_SA_KEY:          ${{ secrets.GDRIVE_SA_KEY }}
-          GDRIVE_FOLDER_ID_RICS:  ${{ secrets.GDRIVE_FOLDER_ID_RICS }}
+          GDRIVE_SA_KEY:         ${{ secrets.GDRIVE_SA_KEY }}
+          GDRIVE_FOLDER_ID_RICS: ${{ secrets.GDRIVE_FOLDER_ID_RICS }}
         run: |
           echo "$GDRIVE_SA_KEY" | base64 --decode > /tmp/sa.json
           python - <<'PYCODE'
@@ -36,12 +37,14 @@ from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseDownload
 
+# Authenticate
 creds = service_account.Credentials.from_service_account_file(
     "/tmp/sa.json",
     scopes=["https://www.googleapis.com/auth/drive.readonly"]
 )
 drive = build("drive", "v3", credentials=creds)
 
+# List files in the RICS folder
 folder_id = os.environ["GDRIVE_FOLDER_ID_RICS"]
 resp = drive.files().list(
     q=f"'{folder_id}' in parents and trashed = false",
@@ -50,25 +53,28 @@ resp = drive.files().list(
 
 files = resp.get("files", [])
 if not files:
-    raise SystemExit("❌ No files found!")
+    raise SystemExit("❌ No files found in the RICS Drive folder!")
 
+# Select the latest by creation timestamp
 latest = max(files, key=lambda f: f["createdTime"])
 file_id, name = latest["id"], latest["name"]
-print(f"Downloading {name}")
+print(f"➡️ Downloading latest file: {name} ({file_id})")
 
+# Download it to data/rics.csv
 request = drive.files().get_media(fileId=file_id)
 with io.FileIO("data/rics.csv", mode="wb") as fh:
     downloader = MediaIoBaseDownload(fh, request)
     done = False
     while not done:
         status, done = downloader.next_chunk()
-        print(f"{int(status.progress() * 100)}% done")
-print("Downloaded to data/rics.csv")
+        print(f"   Download {int(status.progress() * 100)}%")
+
+print("✅ Downloaded to data/rics.csv")
 PYCODE
 
       - name: Run Meta upload
         env:
           META_OFFLINE_SET_ID: ${{ secrets.META_OFFLINE_SET_ID }}
-          META_OFFLINE_TOKEN:   ${{ secrets.META_OFFLINE_TOKEN }}
-          RICS_CSV_PATH:        data/rics.csv
+          META_OFFLINE_TOKEN:  ${{ secrets.META_OFFLINE_TOKEN }}
+          RICS_CSV_PATH:       data/rics.csv
         run: python scripts/sync_rics_to_meta.py

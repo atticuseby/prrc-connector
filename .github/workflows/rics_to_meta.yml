@@ -10,7 +10,6 @@ jobs:
   rics-to-meta:
     name: Sync RICS → Meta Offline Events
     runs-on: ubuntu-latest
-    needs: [sync-rics-live, run-signup-to-optimizely]  # wait until your other jobs finish
     steps:
       - name: Check out repo
         uses: actions/checkout@v3

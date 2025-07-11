@@ -30,7 +30,7 @@ jobs:
           GDRIVE_SA_KEY: ${{ secrets.GDRIVE_SA_KEY }}
         run: |
           echo "$GDRIVE_SA_KEY" | base64 --decode > sa.json
-          echo "GOOGLE_APPLICATION_CREDENTIALS=/home/runner/work/${{ github.repository }}/sa.json" >> $GITHUB_ENV
+          echo "GOOGLE_APPLICATION_CREDENTIALS=$PWD/sa.json" >> $GITHUB_ENV
 
       - name: Download latest RICS export
         env:

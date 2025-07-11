@@ -20,7 +20,6 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
-          pip install google-api-python-client google-auth
 
       - name: Ensure data directory
         run: mkdir -p data
@@ -30,10 +29,24 @@ jobs:
           GDRIVE_SA_KEY: ${{ secrets.GDRIVE_SA_KEY }}
         run: |
           echo "$GDRIVE_SA_KEY" | base64 --decode > sa.json
-          echo "GOOGLE_APPLICATION_CREDENTIALS=/home/runner/work/${{ github.repository }}/sa.json" >> $GITHUB_ENV
+          echo "GOOGLE_APPLICATION_CREDENTIALS=$PWD/sa.json" >> $GITHUB_ENV
+
+      - name: List files and print working directory
+        run: |
+          echo "Current working directory: $PWD"
+          ls -l
+          ls -l $PWD
+
+      - name: Debug Google credentials file
+        run: |
+          echo "GOOGLE_APPLICATION_CREDENTIALS=$GOOGLE_APPLICATION_CREDENTIALS"
+          ls -l $GOOGLE_APPLICATION_CREDENTIALS
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ env.GOOGLE_APPLICATION_CREDENTIALS }}
 
       - name: Download latest RICS export
         env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ env.GOOGLE_APPLICATION_CREDENTIALS }}
           GDRIVE_FOLDER_ID_RICS: ${{ secrets.GDRIVE_FOLDER_ID_RICS }}
         run: python scripts/download_rics.py
 

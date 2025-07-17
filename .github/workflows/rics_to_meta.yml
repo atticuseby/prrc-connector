@@ -37,9 +37,21 @@ jobs:
           GDRIVE_FOLDER_ID_RICS: ${{ secrets.GDRIVE_FOLDER_ID_RICS }}
         run: python scripts/download_rics.py
 
+      - name: Run Meta diagnostics
+        env:
+          META_OFFLINE_SET_ID: ${{ secrets.META_OFFLINE_SET_ID }}
+          META_OFFLINE_TOKEN: ${{ secrets.META_OFFLINE_TOKEN }}
+          RICS_CSV_PATH: data/rics.csv
+        run: |
+          echo "🔍 Running Meta sync diagnostics..."
+          python scripts/debug_meta_sync.py
+
       - name: Run Meta upload
         env:
           META_OFFLINE_SET_ID: ${{ secrets.META_OFFLINE_SET_ID }}
-          META_OFFLINE_TOKEN:  ${{ secrets.META_OFFLINE_TOKEN }}
-          RICS_CSV_PATH:       data/rics.csv
-        run: python scripts/sync_rics_to_meta.py
+          META_OFFLINE_TOKEN: ${{ secrets.META_OFFLINE_TOKEN }}
+          RICS_CSV_PATH: data/rics.csv
+          BATCH_SIZE: 25  # Smaller batch size for better error handling
+        run: |
+          echo "🚀 Starting Meta sync..."
+          python scripts/sync_rics_to_meta.py

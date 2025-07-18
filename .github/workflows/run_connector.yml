@@ -33,6 +33,9 @@ jobs:
       - name: 🚀 Run real-time RICS to Optimizely sync
         run: python scripts/sync_rics_live.py
 
+      - name: 🗂 List data directory contents
+        run: ls -l data/
+
       - name: 🕵️‍♂️ Symlink latest RICS export to predictable filename
         run: |
           LATEST=$(ls -t data/rics_customer_purchase_history_*.csv | grep -v 'latest' | head -n1)

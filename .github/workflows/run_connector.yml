@@ -35,9 +35,13 @@ jobs:
 
       - name: 🕵️‍♂️ Symlink latest RICS export to predictable filename
         run: |
-          LATEST=$(ls -t data/rics_customer_purchase_history_*.csv | head -n1)
-          ln -sf "$LATEST" data/rics_customer_purchase_history_latest.csv
-          echo "Symlinked $LATEST to data/rics_customer_purchase_history_latest.csv"
+          LATEST=$(ls -t data/rics_customer_purchase_history_*.csv | grep -v 'latest' | head -n1)
+          if [ -n "$LATEST" ]; then
+            ln -sf "$LATEST" data/rics_customer_purchase_history_latest.csv
+            echo "Symlinked $LATEST to data/rics_customer_purchase_history_latest.csv"
+          else
+            echo "No new timestamped file found to symlink."
+          fi
 
       - name: 🧹 Clean and filter RICS export (last 24h)
         run: python scripts/clean_and_filter_rics_export.py data/rics_customer_purchase_history_latest.csv data/rics_cleaned_last24h.csv

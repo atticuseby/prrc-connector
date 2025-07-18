@@ -33,6 +33,12 @@ jobs:
       - name: 🚀 Run real-time RICS to Optimizely sync
         run: python scripts/sync_rics_live.py
 
+      - name: 🕵️‍♂️ Find and copy latest RICS export to predictable filename
+        run: |
+          LATEST=$(ls -t data/rics_customer_purchase_history_*.csv | head -n1)
+          cp "$LATEST" data/rics_customer_purchase_history_latest.csv
+          echo "Copied $LATEST to data/rics_customer_purchase_history_latest.csv"
+
       - name: 🧹 Clean and filter RICS export (last 24h)
         run: python scripts/clean_and_filter_rics_export.py data/rics_customer_purchase_history_latest.csv data/rics_cleaned_last24h.csv
 

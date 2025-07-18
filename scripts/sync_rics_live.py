@@ -5,6 +5,7 @@ from datetime import datetime
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
+import shutil
 
 # Add repo root to path for imports
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -46,6 +47,10 @@ def main():
         # Fetch RICS data with purchase history (uses default/test mode limits unless overridden)
         output_csv = fetch_rics_data_with_purchase_history()
         log(f"📊 Exported RICS customer purchase history to: {output_csv}")
+        # Copy to predictable filename for downstream scripts
+        latest_path = os.path.join("data", "rics_customer_purchase_history_latest.csv")
+        shutil.copyfile(output_csv, latest_path)
+        log(f"📁 Copied to latest: {latest_path}")
         upload_to_drive(output_csv, GDRIVE_FOLDER_ID_RICS)
     except Exception as e:
         log(f"❌ Error during RICS data export: {e}")

@@ -3,8 +3,8 @@ import sys
 import os
 from collections import OrderedDict
 
-INPUT_PATH = sys.argv[1] if len(sys.argv) > 1 else 'data/rics_customer_purchase_history_latest.csv'
-OUTPUT_PATH = sys.argv[2] if len(sys.argv) > 2 else 'data/rics_customers_deduped.csv'
+INPUT_PATH = sys.argv[1] if len(sys.argv) > 1 else 'optimizely_connector/output/rics_cleaned_last24h.csv'
+OUTPUT_PATH = sys.argv[2] if len(sys.argv) > 2 else 'optimizely_connector/output/rics_customers_deduped.csv'
 
 # Fields to keep for customer profile
 customer_fields = [

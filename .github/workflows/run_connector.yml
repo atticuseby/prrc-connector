@@ -33,28 +33,28 @@ jobs:
       - name: 🚀 Run real-time RICS to Optimizely sync
         run: python scripts/sync_rics_live.py
 
-      - name: 🗂 List data directory contents
-        run: ls -l data/
+      - name: 🗂 List output directory contents
+        run: ls -l optimizely_connector/output/
 
       - name: 🕵️‍♂️ Symlink latest RICS export to predictable filename
         run: |
-          LATEST=$(ls -t data/rics_customer_purchase_history_*.csv | grep -v 'latest' | head -n1)
+          LATEST=$(ls -t optimizely_connector/output/rics_customer_purchase_history_*.csv | grep -v 'latest' | head -n1)
           if [ -n "$LATEST" ]; then
-            ln -sf "$LATEST" data/rics_customer_purchase_history_latest.csv
-            echo "Symlinked $LATEST to data/rics_customer_purchase_history_latest.csv"
+            ln -sf "$LATEST" optimizely_connector/output/rics_customer_purchase_history_latest.csv
+            echo "Symlinked $LATEST to optimizely_connector/output/rics_customer_purchase_history_latest.csv"
           else
             echo "No new timestamped file found to symlink."
           fi
 
       - name: 🧹 Clean and filter RICS export (last 24h)
-        run: python scripts/clean_and_filter_rics_export.py data/rics_customer_purchase_history_latest.csv data/rics_cleaned_last24h.csv
+        run: python scripts/clean_and_filter_rics_export.py optimizely_connector/output/rics_customer_purchase_history_latest.csv optimizely_connector/output/rics_cleaned_last24h.csv
 
       - name: 🧑‍🤝‍🧑 Deduplicate customers for Optimizely
-        run: python scripts/deduplicate_rics_customers.py data/rics_cleaned_last24h.csv data/rics_customers_deduped.csv
+        run: python scripts/deduplicate_rics_customers.py optimizely_connector/output/rics_cleaned_last24h.csv optimizely_connector/output/rics_customers_deduped.csv
 
       - name: 🚀 Sync to Meta (offline events)
         env:
           META_OFFLINE_SET_ID: ${{ secrets.META_OFFLINE_SET_ID }}
           META_OFFLINE_TOKEN: ${{ secrets.META_OFFLINE_TOKEN }}
-          RICS_CSV_PATH: data/rics_cleaned_last24h.csv
+          RICS_CSV_PATH: optimizely_connector/output/rics_cleaned_last24h.csv
         run: python scripts/sync_rics_to_meta.py

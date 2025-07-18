@@ -48,7 +48,7 @@ def main():
         output_csv = fetch_rics_data_with_purchase_history()
         log(f"📊 Exported RICS customer purchase history to: {output_csv}")
         # Copy to predictable filename for downstream scripts
-        latest_path = os.path.join("data", "rics_customer_purchase_history_latest.csv")
+        latest_path = os.path.join("optimizely_connector", "output", "rics_customer_purchase_history_latest.csv")
         shutil.copyfile(output_csv, latest_path)
         log(f"📁 Copied to latest: {latest_path}")
         upload_to_drive(output_csv, GDRIVE_FOLDER_ID_RICS)

@@ -127,9 +127,10 @@ def fetch_purchase_history_for_customer(cust_id, customer_info, max_purchase_pag
 def fetch_rics_data_with_purchase_history(max_customers=None, max_purchase_pages=None, debug_mode=False):
     timestamp = datetime.now().strftime("%m_%d_%Y_%H%M")
     filename = f"rics_customer_purchase_history_{timestamp}.csv"
-    output_path = os.path.join("data", filename)
+    output_dir = os.path.join("optimizely_connector", "output")
+    output_path = os.path.join(output_dir, filename)
 
-    os.makedirs("data", exist_ok=True)
+    os.makedirs(output_dir, exist_ok=True)
 
     all_rows = []
     skip = 0

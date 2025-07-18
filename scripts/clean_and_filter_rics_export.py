@@ -4,8 +4,8 @@ import os
 from datetime import datetime, timedelta
 
 # Usage: python scripts/clean_and_filter_rics_export.py [input_csv] [output_csv]
-INPUT_PATH = sys.argv[1] if len(sys.argv) > 1 else 'data/rics_customer_purchase_history_latest.csv'
-OUTPUT_PATH = sys.argv[2] if len(sys.argv) > 2 else 'data/rics_cleaned_last24h.csv'
+INPUT_PATH = sys.argv[1] if len(sys.argv) > 1 else 'optimizely_connector/output/rics_customer_purchase_history_latest.csv'
+OUTPUT_PATH = sys.argv[2] if len(sys.argv) > 2 else 'optimizely_connector/output/rics_cleaned_last24h.csv'
 
 # Columns to keep for both Meta and Optimizely
 COLUMNS_TO_KEEP = [

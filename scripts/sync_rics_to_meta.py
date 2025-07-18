@@ -49,7 +49,7 @@ def validate_csv_format(csv_path):
             print(f"📋 CSV headers found: {headers}")
             
             # Check for required fields
-            required_fields = ["email", "phone", "first_name", "last_name", "total_spent"]
+            required_fields = ["email", "phone", "first_name", "last_name"]
             missing_fields = [field for field in required_fields if headers and field not in headers]
             
             if missing_fields:
@@ -74,7 +74,6 @@ def load_rics_events(csv_path):
             # Validate required data
             email = row.get("email", "").strip()
             phone = row.get("phone", "").strip()
-            total_spent = row.get("total_spent", "0")
             
             # Skip rows without any contact info
             if not email and not phone:
@@ -83,10 +82,10 @@ def load_rics_events(csv_path):
             
             # Parse timestamp
             event_time = int(time.time())  # Default to current time
-            if "timestamp" in row and row["timestamp"]:
+            if "TicketDateTime" in row and row["TicketDateTime"]:
                 try:
                     # Try multiple timestamp formats
-                    timestamp_str = row["timestamp"].strip()
+                    timestamp_str = row["TicketDateTime"].strip()
                     for fmt in ["%Y-%m-%dT%H:%M:%S", "%Y-%m-%d %H:%M:%S", "%Y-%m-%d"]:
                         try:
                             event_time = int(time.mktime(time.strptime(timestamp_str, fmt)))
@@ -94,14 +93,7 @@ def load_rics_events(csv_path):
                         except ValueError:
                             continue
                 except Exception as e:
-                    print(f"⚠️ Invalid timestamp in row {row_count}: {row.get('timestamp')} - using current time")
-            
-            # Parse total_spent
-            try:
-                value = float(total_spent) if total_spent else 0.0
-            except ValueError:
-                print(f"⚠️ Invalid total_spent in row {row_count}: {total_spent} - using 0.0")
-                value = 0.0
+                    print(f"⚠️ Invalid timestamp in row {row_count}: {row.get('TicketDateTime')} - using current time")
             
             # Create event
             event = {
@@ -115,7 +107,6 @@ def load_rics_events(csv_path):
                     "ln": sha256(row.get("last_name", "")),
                 },
                 "custom_data": {
-                    "value": value,
                     "currency": "USD"
                 }
             }
@@ -130,7 +121,6 @@ def load_rics_events(csv_path):
                 print(f"📝 Sample event {row_count}:")
                 print(f"   Email: {email[:20]}{'...' if len(email) > 20 else ''}")
                 print(f"   Phone: {phone[:10]}{'...' if len(phone) > 10 else ''}")
-                print(f"   Value: ${value}")
                 print(f"   Event time: {datetime.fromtimestamp(event_time)}")
     
     print(f"✅ Loaded {len(events)} valid events from {row_count} CSV rows")

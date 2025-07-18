@@ -32,3 +32,16 @@ jobs:
 
       - name: 🚀 Run real-time RICS to Optimizely sync
         run: python scripts/sync_rics_live.py
+
+      - name: 🧹 Clean and filter RICS export (last 24h)
+        run: python scripts/clean_and_filter_rics_export.py data/rics_customer_purchase_history_latest.csv data/rics_cleaned_last24h.csv
+
+      - name: 🧑‍🤝‍🧑 Deduplicate customers for Optimizely
+        run: python scripts/deduplicate_rics_customers.py data/rics_cleaned_last24h.csv data/rics_customers_deduped.csv
+
+      - name: 🚀 Sync to Meta (offline events)
+        env:
+          META_OFFLINE_SET_ID: ${{ secrets.META_OFFLINE_SET_ID }}
+          META_OFFLINE_TOKEN: ${{ secrets.META_OFFLINE_TOKEN }}
+          RICS_CSV_PATH: data/rics_cleaned_last24h.csv
+        run: python scripts/sync_rics_to_meta.py

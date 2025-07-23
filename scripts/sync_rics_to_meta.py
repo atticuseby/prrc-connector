@@ -65,36 +65,50 @@ def load_rics_events(csv_path):
     """Load and validate RICS events from CSV"""
     events = []
     row_count = 0
-    
+
     with open(csv_path, newline="") as f:
         reader = csv.DictReader(f)
         for row in reader:
             row_count += 1
-            
+
             # Validate required data
             email = row.get("email", "").strip()
             phone = row.get("phone", "").strip()
-            
-            # Skip rows without any contact info
+
             if not email and not phone:
                 print(f"⚠️ Skipping row {row_count}: no email or phone")
                 continue
-            
-            # Parse timestamp
-            event_time = int(time.time())  # Default to current time
+
+            # Safely parse AmountPaid
+            try:
+                amount_paid = float(row.get("AmountPaid", 0))
+            except (ValueError, TypeError):
+                print(f"⚠️ Skipping row {row_count}: invalid AmountPaid")
+                continue
+
+            if amount_paid <= 0:
+                print(f"⚠️ Skipping row {row_count}: AmountPaid is zero or missing")
+                continue
+
+            # Safely parse recent TicketDateTime
+            event_time = int(time.time())  # fallback to now
             if "TicketDateTime" in row and row["TicketDateTime"]:
                 try:
-                    # Try multiple timestamp formats
                     timestamp_str = row["TicketDateTime"].strip()
                     for fmt in ["%Y-%m-%dT%H:%M:%S", "%Y-%m-%d %H:%M:%S", "%Y-%m-%d"]:
                         try:
-                            event_time = int(time.mktime(time.strptime(timestamp_str, fmt)))
+                            parsed_time = int(time.mktime(time.strptime(timestamp_str, fmt)))
+                            if parsed_time > int(time.time()) - 7 * 86400:
+                                event_time = parsed_time
+                            else:
+                                print(f"⚠️ Skipping row {row_count}: event too old")
+                                raise ValueError
                             break
                         except ValueError:
                             continue
-                except Exception as e:
-                    print(f"⚠️ Invalid timestamp in row {row_count}: {row.get('TicketDateTime')} - using current time")
-            
+                except Exception:
+                    continue
+
             # Create event
             event = {
                 "event_name": "Purchase",
@@ -107,23 +121,22 @@ def load_rics_events(csv_path):
                     "ln": sha256(row.get("last_name", "")),
                 },
                 "custom_data": {
-                    "value": float(row.get("AmountPaid", 0)) if row.get("AmountPaid") else 0,
+                    "value": round(amount_paid, 2),
                     "currency": "USD"
                 }
             }
-            
-            # Remove empty user_data fields
+
+            # Remove empty hashed user_data fields
             event["user_data"] = {k: v for k, v in event["user_data"].items() if v}
-            
+
             events.append(event)
-            
-            # Show first few events for debugging
+
             if row_count <= 3:
                 print(f"📝 Sample event {row_count}:")
                 print(f"   Email: {email[:20]}{'...' if len(email) > 20 else ''}")
                 print(f"   Phone: {phone[:10]}{'...' if len(phone) > 10 else ''}")
                 print(f"   Event time: {datetime.fromtimestamp(event_time)}")
-    
+
     print(f"✅ Loaded {len(events)} valid events from {row_count} CSV rows")
     return events
 

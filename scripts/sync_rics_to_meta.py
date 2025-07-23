@@ -107,7 +107,7 @@ def load_rics_events(csv_path):
                     "ln": sha256(row.get("last_name", "")),
                 },
                 "custom_data": {
-                    "value": row["AmountPaid"],  # or "total_spent" if you want to use total
+                    "value": float(row.get("AmountPaid", 0)) if row.get("AmountPaid") else 0,
                     "currency": "USD"
                 }
             }

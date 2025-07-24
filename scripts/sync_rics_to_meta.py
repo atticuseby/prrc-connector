@@ -121,11 +121,17 @@ def load_rics_events(csv_path):
                     "ln": sha256(row.get("last_name", "")),
                 },
                 "custom_data": {
-                    "value": round(amount_paid, 2),
                     "currency": "USD"
                 }
             }
-
+            
+            # Add value only if valid
+            if isinstance(amount_paid, (int, float)) and amount_paid > 0:
+                event["custom_data"]["value"] = round(amount_paid, 2)
+            else:
+                print(f"⚠️ Row {row_count}: invalid amount_paid = {amount_paid} — skipping")
+                continue
+            
             # Remove empty hashed user_data fields
             event["user_data"] = {k: v for k, v in event["user_data"].items() if v}
 

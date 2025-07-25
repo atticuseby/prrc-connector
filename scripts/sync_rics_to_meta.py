@@ -86,10 +86,6 @@ def load_rics_events(csv_path):
                 print(f"⚠️ Skipping row {row_count}: invalid AmountPaid")
                 continue
 
-            if amount_paid <= 0:
-                print(f"⚠️ Skipping row {row_count}: AmountPaid is zero or missing")
-                continue
-
             # Safely parse recent TicketDateTime
             event_time = int(time.time())  # fallback to now
             if "TicketDateTime" in row and row["TicketDateTime"]:
@@ -124,8 +120,8 @@ def load_rics_events(csv_path):
                     "currency": "USD"
                 }
             }
-            
-            # Add value only if valid
+
+            # Add numeric value only if valid
             if isinstance(amount_paid, (int, float)) and amount_paid > 0:
                 event["custom_data"]["value"] = round(amount_paid, 2)
             else:
@@ -150,7 +146,6 @@ def test_meta_connection():
     """Test Meta API connection and permissions"""
     print("🔍 Testing Meta API connection...")
     
-    # Test basic API access
     try:
         url = f"https://graph.facebook.com/v16.0/{META_OFFLINE_SET_ID}"
         params = {"access_token": META_OFFLINE_TOKEN}
@@ -188,7 +183,6 @@ def push_to_meta(events):
             print(f"   URL: {url}")
             print(f"   Response: {resp.text}")
             
-            # Try to parse error details
             try:
                 error_data = resp.json()
                 if "error" in error_data:
@@ -197,7 +191,6 @@ def push_to_meta(events):
                     print(f"   Error Code: {error.get('code', 'Unknown')}")
                     print(f"   Error Message: {error.get('message', 'No message')}")
                     
-                    # Common error codes and solutions
                     if error.get('code') == 100:
                         print("   💡 Solution: Check your access token permissions")
                     elif error.get('code') == 190:
@@ -223,27 +216,22 @@ if __name__ == "__main__":
         print(f"   Batch size: {BATCH_SIZE}")
         print()
         
-        # Validate environment
         validate_environment()
         
-        # Test Meta connection
         if not test_meta_connection():
             print("❌ Meta API connection failed - check credentials")
             sys.exit(1)
         
-        # Validate CSV
         if not validate_csv_format(RICS_DATA_PATH):
             print("❌ CSV validation failed")
             sys.exit(1)
         
-        # Load events
         all_events = load_rics_events(RICS_DATA_PATH)
         
         if not all_events:
             print("❌ No valid events found in CSV")
             sys.exit(1)
         
-        # Process in batches
         total_events = len(all_events)
         processed = 0
         failed_batches = 0

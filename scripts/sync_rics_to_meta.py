@@ -13,6 +13,8 @@ META_OFFLINE_TOKEN = os.environ.get("META_OFFLINE_TOKEN")
 RICS_DATA_PATH = os.environ.get("RICS_CSV_PATH", "./data/rics.csv")
 BATCH_SIZE = int(os.environ.get("BATCH_SIZE", "50"))
 
+EVENT_AGE_LIMIT_SECONDS = 7 * 86400  # 7 days
+
 def validate_environment():
     """Validate required environment variables"""
     missing_vars = []
@@ -66,6 +68,8 @@ def load_rics_events(csv_path):
     events = []
     row_count = 0
 
+    now_ts = int(time.time())
+
     with open(csv_path, newline="") as f:
         reader = csv.DictReader(f)
         for row in reader:
@@ -86,24 +90,32 @@ def load_rics_events(csv_path):
                 print(f"⚠️ Skipping row {row_count}: invalid AmountPaid")
                 continue
 
-            # Safely parse recent TicketDateTime
-            event_time = int(time.time())  # fallback to now
+            # Safely parse event time
+            event_time = now_ts  # fallback to now
+            too_old = False
             if "TicketDateTime" in row and row["TicketDateTime"]:
                 try:
                     timestamp_str = row["TicketDateTime"].strip()
                     for fmt in ["%Y-%m-%dT%H:%M:%S", "%Y-%m-%d %H:%M:%S", "%Y-%m-%d"]:
                         try:
                             parsed_time = int(time.mktime(time.strptime(timestamp_str, fmt)))
-                            if parsed_time > int(time.time()) - 7 * 86400:
+                            if parsed_time > now_ts - EVENT_AGE_LIMIT_SECONDS:
                                 event_time = parsed_time
                             else:
-                                print(f"⚠️ Skipping row {row_count}: event too old")
-                                raise ValueError
+                                print(f"⚠️ Skipping row {row_count}: event too old (older than 7 days)")
+                                too_old = True
                             break
                         except ValueError:
                             continue
+                    if too_old:
+                        continue
                 except Exception:
                     continue
+
+            # Don't allow events too far in future
+            if event_time > now_ts + 60:
+                print(f"⚠️ Skipping row {row_count}: event time is in the future")
+                continue
 
             # Create event
             event = {
@@ -176,7 +188,6 @@ def push_to_meta(events):
     params = {"access_token": META_OFFLINE_TOKEN}
     
     print(f"📤 Sending {len(events)} events to Meta...")
-    # Print first event in batch for debugging
     if events:
         print(f"🔎 Sample event payload: {json.dumps(events[0], indent=2)}")
 

@@ -117,6 +117,17 @@ def load_rics_events(csv_path):
                 print(f"⚠️ Skipping row {row_count}: event time is in the future")
                 continue
 
+            # Add numeric value only if valid
+            if not (isinstance(amount_paid, (int, float)) and amount_paid > 0):
+                print(f"⚠️ Row {row_count}: invalid amount_paid = {amount_paid} — skipping")
+                continue
+
+            # Defensive: Ensure value is always present and a float
+            value = round(float(amount_paid), 2)
+            if not value or value <= 0:
+                print(f"❌ Row {row_count}: value missing or zero, event skipped")
+                continue
+
             # Create event
             event = {
                 "event_name": "Purchase",
@@ -129,33 +140,24 @@ def load_rics_events(csv_path):
                     "ln": sha256(row.get("last_name", "")),
                 },
                 "custom_data": {
-                    "currency": "USD"
+                    "currency": "USD",
+                    "value": value  # Always a float
                 }
             }
-
-            # Add numeric value only if valid
-            if isinstance(amount_paid, (int, float)) and amount_paid > 0:
-                event["custom_data"]["value"] = round(amount_paid, 2)
-            else:
-                print(f"⚠️ Row {row_count}: invalid amount_paid = {amount_paid} — skipping")
-                continue
-
-            # Defensive: Ensure value is always present for Purchase
-            if "value" not in event["custom_data"] or not event["custom_data"]["value"]:
-                print(f"❌ Row {row_count}: value missing from custom_data, event skipped")
-                continue
             
             # Remove empty hashed user_data fields
             event["user_data"] = {k: v for k, v in event["user_data"].items() if v}
 
-            events.append(event)
-
+            # For debugging: print value and type
             if row_count <= 3:
                 print(f"📝 Sample event {row_count}:")
                 print(f"   Email: {email[:20]}{'...' if len(email) > 20 else ''}")
                 print(f"   Phone: {phone[:10]}{'...' if len(phone) > 10 else ''}")
                 print(f"   Event time: {datetime.fromtimestamp(event_time)}")
+                print(f"   Value: {event['custom_data']['value']} (type: {type(event['custom_data']['value'])})")
                 print(f"   Event payload: {json.dumps(event, indent=2)}")
+
+            events.append(event)
 
     print(f"✅ Loaded {len(events)} valid events from {row_count} CSV rows")
     return events
@@ -190,6 +192,7 @@ def push_to_meta(events):
     print(f"📤 Sending {len(events)} events to Meta...")
     if events:
         print(f"🔎 Sample event payload: {json.dumps(events[0], indent=2)}")
+        print(f"   Value: {events[0]['custom_data']['value']} (type: {type(events[0]['custom_data']['value'])})")
 
     try:
         resp = requests.post(url, json=payload, params=params, timeout=30)

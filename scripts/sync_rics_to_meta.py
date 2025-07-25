@@ -127,6 +127,11 @@ def load_rics_events(csv_path):
             else:
                 print(f"⚠️ Row {row_count}: invalid amount_paid = {amount_paid} — skipping")
                 continue
+
+            # Defensive: Ensure value is always present for Purchase
+            if "value" not in event["custom_data"] or not event["custom_data"]["value"]:
+                print(f"❌ Row {row_count}: value missing from custom_data, event skipped")
+                continue
             
             # Remove empty hashed user_data fields
             event["user_data"] = {k: v for k, v in event["user_data"].items() if v}
@@ -138,6 +143,7 @@ def load_rics_events(csv_path):
                 print(f"   Email: {email[:20]}{'...' if len(email) > 20 else ''}")
                 print(f"   Phone: {phone[:10]}{'...' if len(phone) > 10 else ''}")
                 print(f"   Event time: {datetime.fromtimestamp(event_time)}")
+                print(f"   Event payload: {json.dumps(event, indent=2)}")
 
     print(f"✅ Loaded {len(events)} valid events from {row_count} CSV rows")
     return events
@@ -170,7 +176,10 @@ def push_to_meta(events):
     params = {"access_token": META_OFFLINE_TOKEN}
     
     print(f"📤 Sending {len(events)} events to Meta...")
-    
+    # Print first event in batch for debugging
+    if events:
+        print(f"🔎 Sample event payload: {json.dumps(events[0], indent=2)}")
+
     try:
         resp = requests.post(url, json=payload, params=params, timeout=30)
         

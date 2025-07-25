@@ -75,7 +75,6 @@ def load_rics_events(csv_path):
         for row in reader:
             row_count += 1
 
-            # Validate required data
             email = row.get("email", "").strip()
             phone = row.get("phone", "").strip()
 
@@ -83,15 +82,13 @@ def load_rics_events(csv_path):
                 print(f"⚠️ Skipping row {row_count}: no email or phone")
                 continue
 
-            # Safely parse AmountPaid
             try:
                 amount_paid = float(row.get("AmountPaid", 0))
             except (ValueError, TypeError):
                 print(f"⚠️ Skipping row {row_count}: invalid AmountPaid")
                 continue
 
-            # Safely parse event time
-            event_time = now_ts  # fallback to now
+            event_time = now_ts
             too_old = False
             if "TicketDateTime" in row and row["TicketDateTime"]:
                 try:
@@ -112,27 +109,24 @@ def load_rics_events(csv_path):
                 except Exception:
                     continue
 
-            # Don't allow events too far in future
             if event_time > now_ts + 60:
                 print(f"⚠️ Skipping row {row_count}: event time is in the future")
                 continue
 
-            # Add numeric value only if valid
             if not (isinstance(amount_paid, (int, float)) and amount_paid > 0):
                 print(f"⚠️ Row {row_count}: invalid amount_paid = {amount_paid} — skipping")
                 continue
 
-            # Defensive: Ensure value is always present and a float
             value = round(float(amount_paid), 2)
             if not value or value <= 0:
                 print(f"❌ Row {row_count}: value missing or zero, event skipped")
                 continue
 
-            # Create event
             event = {
                 "event_name": "Purchase",
                 "event_time": event_time,
                 "event_id": str(row.get("rics_id", f"rics_{row_count}")),
+                "action_source": "physical_store",  # ✅ REQUIRED FIELD
                 "user_data": {
                     "em": sha256(email),
                     "ph": sha256(phone),
@@ -141,14 +135,12 @@ def load_rics_events(csv_path):
                 },
                 "custom_data": {
                     "currency": "USD",
-                    "value": value  # Always a float
+                    "value": value
                 }
             }
-            
-            # Remove empty hashed user_data fields
+
             event["user_data"] = {k: v for k, v in event["user_data"].items() if v}
 
-            # For debugging: print value and type
             if row_count <= 3:
                 print(f"📝 Sample event {row_count}:")
                 print(f"   Email: {email[:20]}{'...' if len(email) > 20 else ''}")

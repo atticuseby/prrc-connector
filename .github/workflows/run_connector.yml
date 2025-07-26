@@ -33,16 +33,6 @@ jobs:
       - name: 🚀 Run real-time RICS to Optimizely sync
         run: python scripts/sync_rics_live.py
 
-      - name: 🕵️‍♂️ Symlink latest RICS export to predictable filename
-        run: |
-          LATEST=$(ls -t optimizely_connector/output/rics_customer_purchase_history_*.csv | grep -v 'latest' | head -n1)
-          if [ -n "$LATEST" ]; then
-            ln -sf "$LATEST" optimizely_connector/output/rics_customer_purchase_history_latest.csv
-            echo "Symlinked $LATEST to optimizely_connector/output/rics_customer_purchase_history_latest.csv"
-          else
-            echo "No new timestamped file found to symlink."
-          fi
-
       - name: 🧹 Clean and filter RICS export (last 24h)
         run: python scripts/clean_and_filter_rics_export.py optimizely_connector/output/rics_customer_purchase_history_latest.csv optimizely_connector/output/rics_cleaned_last24h.csv
 

@@ -41,7 +41,7 @@ jobs:
 
       - name: 📤 Sync to Meta (Offline Events)
         env:
-          META_OFFLINE_SET_ID: ${{ secrets.META_OFFLINE_SET_ID }}
-          META_OFFLINE_TOKEN: ${{ secrets.META_OFFLINE_TOKEN }}
+          META_ACCESS_TOKEN: ${{ secrets.META_ACCESS_TOKEN }}
+          META_OFFLINE_EVENT_SET_ID: ${{ secrets.META_OFFLINE_EVENT_SET_ID }}
           RICS_CSV_PATH: optimizely_connector/output/rics_cleaned_last24h.csv
         run: python scripts/sync_rics_to_meta.py

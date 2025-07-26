@@ -39,7 +39,7 @@ jobs:
       - name: 🧑‍🤝‍🧑 Deduplicate customers for Optimizely
         run: python scripts/deduplicate_rics_customers.py optimizely_connector/output/rics_cleaned_last24h.csv optimizely_connector/output/rics_customers_deduped.csv
 
-      - name: 🚀 Sync to Meta (offline events)
+      - name: 📤 Sync to Meta (Offline Events)
         env:
           META_OFFLINE_SET_ID: ${{ secrets.META_OFFLINE_SET_ID }}
           META_OFFLINE_TOKEN: ${{ secrets.META_OFFLINE_TOKEN }}

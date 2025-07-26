@@ -8,8 +8,9 @@ import json
 from datetime import datetime
 
 # Config from env
-META_OFFLINE_SET_ID = os.environ.get("META_OFFLINE_SET_ID")
-META_OFFLINE_TOKEN = os.environ.get("META_OFFLINE_TOKEN")
+META_ACCESS_TOKEN = os.environ.get("META_ACCESS_TOKEN")
+META_AD_ACCOUNT_ID = os.environ.get("META_AD_ACCOUNT_ID")  # Optional for future use
+META_OFFLINE_EVENT_SET_ID = os.environ.get("META_OFFLINE_EVENT_SET_ID")
 RICS_DATA_PATH = os.environ.get("RICS_CSV_PATH", "./data/rics.csv")
 BATCH_SIZE = int(os.environ.get("BATCH_SIZE", "50"))
 
@@ -18,10 +19,10 @@ EVENT_AGE_LIMIT_SECONDS = 7 * 86400  # 7 days
 def validate_environment():
     """Validate required environment variables"""
     missing_vars = []
-    if not META_OFFLINE_SET_ID:
-        missing_vars.append("META_OFFLINE_SET_ID")
-    if not META_OFFLINE_TOKEN:
-        missing_vars.append("META_OFFLINE_TOKEN")
+    if not META_ACCESS_TOKEN:
+        missing_vars.append("META_ACCESS_TOKEN")
+    if not META_OFFLINE_EVENT_SET_ID:
+        missing_vars.append("META_OFFLINE_EVENT_SET_ID")
     
     if missing_vars:
         print(f"❌ Missing required environment variables: {', '.join(missing_vars)}")
@@ -29,8 +30,8 @@ def validate_environment():
         sys.exit(1)
     
     print(f"✅ Environment validation passed")
-    print(f"   Offline Set ID: {META_OFFLINE_SET_ID}")
-    print(f"   Token present: {'✅' if META_OFFLINE_TOKEN else '❌'}")
+    print(f"   Offline Set ID: {META_OFFLINE_EVENT_SET_ID}")
+    print(f"   Token present: {'✅' if META_ACCESS_TOKEN else '❌'}")
 
 def sha256(s):
     """Create SHA256 hash of string, handling empty values"""
@@ -50,7 +51,6 @@ def validate_csv_format(csv_path):
             headers = reader.fieldnames
             print(f"📋 CSV headers found: {headers}")
             
-            # Check for required fields
             required_fields = ["email", "phone", "first_name", "last_name"]
             missing_fields = [field for field in required_fields if headers and field not in headers]
             
@@ -126,7 +126,7 @@ def load_rics_events(csv_path):
                 "event_name": "Purchase",
                 "event_time": event_time,
                 "event_id": str(row.get("rics_id", f"rics_{row_count}")),
-                "action_source": "physical_store",  # ✅ REQUIRED FIELD
+                "action_source": "physical_store",
                 "user_data": {
                     "em": sha256(email),
                     "ph": sha256(phone),
@@ -159,8 +159,8 @@ def test_meta_connection():
     print("🔍 Testing Meta API connection...")
     
     try:
-        url = f"https://graph.facebook.com/v16.0/{META_OFFLINE_SET_ID}"
-        params = {"access_token": META_OFFLINE_TOKEN}
+        url = f"https://graph.facebook.com/v16.0/{META_OFFLINE_EVENT_SET_ID}"
+        params = {"access_token": META_ACCESS_TOKEN}
         resp = requests.get(url, params=params, timeout=10)
         
         if resp.status_code == 200:
@@ -177,9 +177,9 @@ def test_meta_connection():
 
 def push_to_meta(events):
     """Push events to Meta with detailed error handling"""
-    url = f"https://graph.facebook.com/v16.0/{META_OFFLINE_SET_ID}/events"
+    url = f"https://graph.facebook.com/v16.0/{META_OFFLINE_EVENT_SET_ID}/events"
     payload = {"data": events}
-    params = {"access_token": META_OFFLINE_TOKEN}
+    params = {"access_token": META_ACCESS_TOKEN}
     
     print(f"📤 Sending {len(events)} events to Meta...")
     if events:

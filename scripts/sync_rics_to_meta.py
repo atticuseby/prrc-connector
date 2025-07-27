@@ -11,7 +11,7 @@ print("🔄 Starting RICS to Meta sync...")
 
 CSV_PATH = "optimizely_connector/output/rics_customer_purchase_history_latest.csv"
 ACCESS_TOKEN = os.getenv("META_ACCESS_TOKEN")
-PIXEL_ID = os.getenv("META_PIXEL_ID")
+META_OFFLINE_EVENT_SET_ID = os.getenv("META_OFFLINE_EVENT_SET_ID")
 API_VERSION = "v19.0"
 EVENT_NAME = "Purchase"
 EVENT_SOURCE_URL = "https://prrunandwalk.com"

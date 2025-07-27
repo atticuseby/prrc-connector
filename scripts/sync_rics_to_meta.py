@@ -1,209 +1,45 @@
-import os
-import csv
-import hashlib
-import time
-import requests
-import sys
-import json
-from datetime import datetime
-from google.oauth2 import service_account
-from googleapiclient.discovery import build
-from googleapiclient.http import MediaIoBaseDownload
-import io
+name: Run PRRC RICS Sync
 
-# === Config ===
-SCOPES = ['https://www.googleapis.com/auth/drive.readonly']
-SERVICE_ACCOUNT_FILE = 'optimizely_connector/service_account.json'
-DRIVE_FOLDER_ID = os.environ.get("GDRIVE_FOLDER_ID_RICS")
-META_ACCESS_TOKEN = os.environ.get("META_ACCESS_TOKEN")
-META_OFFLINE_EVENT_SET_ID = os.environ.get("META_OFFLINE_EVENT_SET_ID")
-BATCH_SIZE = int(os.environ.get("BATCH_SIZE", "50"))
-EVENT_AGE_LIMIT_SECONDS = 7 * 86400  # 7 days
-TEMP_CSV_PATH = "/tmp/rics_cleaned_last24h.csv"
+on:
+  schedule:
+    - cron: '0 8 * * *'  # Runs daily at 8AM UTC = 3AM EST
+  workflow_dispatch:
 
-# === Auth ===
-def get_drive_service():
-    creds = service_account.Credentials.from_service_account_file(
-        SERVICE_ACCOUNT_FILE, scopes=SCOPES
-    )
-    return build("drive", "v3", credentials=creds)
+jobs:
+  run-rics-sync:
+    runs-on: ubuntu-latest
 
-# === Find most recent CSV in Drive folder ===
-def download_latest_csv():
-    service = get_drive_service()
-    results = service.files().list(
-        q=f"'{DRIVE_FOLDER_ID}' in parents and mimeType='text/csv'",
-        orderBy="modifiedTime desc",
-        pageSize=1,
-        fields="files(id, name, modifiedTime)"
-    ).execute()
-    items = results.get("files", [])
-    if not items:
-        print("❌ No CSV files found in Google Drive folder.")
-        sys.exit(1)
-    file = items[0]
-    print(f"📥 Downloading: {file['name']} (Last Modified: {file['modifiedTime']})")
+    env:
+      RICS_API_TOKEN: ${{ secrets.RICS_API_TOKEN }}
+      OPTIMIZELY_API_TOKEN: ${{ secrets.OPTIMIZELY_API_TOKEN }}
+      TEST_EMAIL: ${{ secrets.TEST_EMAIL }}
+      GDRIVE_FOLDER_ID_RICS: ${{ secrets.GDRIVE_FOLDER_ID_RICS }}
+      META_ACCESS_TOKEN: ${{ secrets.META_ACCESS_TOKEN }}
+      META_OFFLINE_EVENT_SET_ID: ${{ secrets.META_OFFLINE_EVENT_SET_ID }}
 
-    request = service.files().get_media(fileId=file["id"])
-    fh = io.FileIO(TEMP_CSV_PATH, "wb")
-    downloader = MediaIoBaseDownload(fh, request)
-    done = False
-    while not done:
-        status, done = downloader.next_chunk()
-        print(f"   Download progress: {int(status.progress() * 100)}%")
-    return TEMP_CSV_PATH
+    steps:
+      - name: ⬇️ Checkout repo
+        uses: actions/checkout@v4
 
-# === Utility ===
-def sha256(s):
-    if not s or not s.strip():
-        return ""
-    return hashlib.sha256(s.strip().lower().encode("utf-8")).hexdigest()
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
 
-# === Load & Filter CSV ===
-def load_rics_events(csv_path):
-    events = []
-    row_count = 0
-    now_ts = int(time.time())
+      - name: 📦 Install dependencies
+        run: pip install -r requirements.txt
 
-    with open(csv_path, newline="") as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            row_count += 1
-            reasons = []
+      - name: 🔐 Save Google Drive credentials
+        run: echo '${{ secrets.GDRIVE_CREDENTIALS }}' > optimizely_connector/service_account.json
 
-            email = row.get("email", "").strip()
-            phone = row.get("phone", "").strip()
-            first = row.get("first_name", "").strip()
-            last = row.get("last_name", "").strip()
-            amount_paid_raw = row.get("AmountPaid", "").strip()
-            ticket_time_raw = row.get("TicketDateTime", "").strip()
+      - name: 🚀 Run real-time RICS to Optimizely sync
+        run: python scripts/sync_rics_live.py
 
-            if not email and not phone:
-                reasons.append("missing email & phone")
+      - name: 🧹 Clean and filter RICS export (last 24h)
+        run: python scripts/clean_and_filter_rics_export.py optimizely_connector/output/rics_customer_purchase_history_latest.csv optimizely_connector/output/rics_cleaned_last24h.csv
 
-            if row.get("TicketVoided") == 'TRUE':
-                reasons.append("TicketVoided = TRUE")
-            if row.get("TicketSuspended") == 'TRUE':
-                reasons.append("TicketSuspended = TRUE")
+      - name: 🧑‍🤝‍🧑 Deduplicate customers for Optimizely
+        run: python scripts/deduplicate_rics_customers.py optimizely_connector/output/rics_cleaned_last24h.csv optimizely_connector/output/rics_customers_deduped.csv
 
-            # Parse ticket time
-            event_time = now_ts
-            too_old = False
-            if ticket_time_raw:
-                parsed = None
-                for fmt in ("%Y-%m-%dT%H:%M:%S", "%Y-%m-%d %H:%M:%S", "%Y-%m-%d"):
-                    try:
-                        parsed = time.strptime(ticket_time_raw, fmt)
-                        break
-                    except:
-                        continue
-                if parsed:
-                    event_time = int(time.mktime(parsed))
-                    if event_time < now_ts - EVENT_AGE_LIMIT_SECONDS:
-                        reasons.append("event too old (>7 days)")
-                    elif event_time > now_ts + 60:
-                        reasons.append("event in future")
-                else:
-                    reasons.append("invalid TicketDateTime format")
-            else:
-                reasons.append("missing TicketDateTime")
-
-            try:
-                amount_paid = float(amount_paid_raw)
-                if amount_paid <= 0:
-                    reasons.append("AmountPaid = 0")
-            except:
-                reasons.append("AmountPaid not a number")
-
-            if reasons:
-                print(f"⛔ Skipping row {row_count}: {' | '.join(reasons)}")
-                continue
-
-            event = {
-                "event_name": "Purchase",
-                "event_time": event_time,
-                "event_id": str(row.get("rics_id", f"rics_{row_count}")),
-                "action_source": "physical_store",
-                "user_data": {
-                    "em": sha256(email),
-                    "ph": sha256(phone),
-                    "fn": sha256(first),
-                    "ln": sha256(last),
-                },
-                "custom_data": {
-                    "currency": "USD",
-                    "value": round(float(amount_paid), 2)
-                }
-            }
-
-            event["user_data"] = {k: v for k, v in event["user_data"].items() if v}
-
-            if row_count <= 3:
-                print(f"📝 Sample event {row_count}: {json.dumps(event, indent=2)}")
-
-            events.append(event)
-
-    print(f"\n✅ Loaded {len(events)} valid events from {row_count} CSV rows")
-    return events
-
-# === Push to Meta ===
-def push_to_meta(events):
-    url = f"https://graph.facebook.com/v16.0/{META_OFFLINE_EVENT_SET_ID}/events"
-    payload = {"data": events}
-    params = {"access_token": META_ACCESS_TOKEN}
-
-    print(f"📤 Sending {len(events)} events to Meta...")
-    try:
-        resp = requests.post(url, json=payload, params=params, timeout=30)
-        if resp.status_code == 200:
-            print(f"✅ Meta received {resp.json().get('events_received', 0)} events")
-            return True
-        else:
-            print(f"❌ Meta error: {resp.status_code} - {resp.text}")
-            return False
-    except Exception as e:
-        print(f"❌ Network error: {e}")
-        return False
-
-# === Run ===
-if __name__ == "__main__":
-    print("🔄 Starting RICS to Meta sync via Google Drive")
-    print(f"   Folder ID: {DRIVE_FOLDER_ID}")
-    print(f"   Batch size: {BATCH_SIZE}")
-    print()
-
-    if not META_ACCESS_TOKEN or not META_OFFLINE_EVENT_SET_ID or not DRIVE_FOLDER_ID:
-        print("❌ Missing one or more required environment variables.")
-        sys.exit(1)
-
-    try:
-        csv_path = download_latest_csv()
-        events = load_rics_events(csv_path)
-
-        if not events:
-            print("❌ No valid events to sync. Aborting.")
-            sys.exit(1)
-
-        total = len(events)
-        failed = 0
-        sent = 0
-
-        for i in range(0, total, BATCH_SIZE):
-            batch = events[i:i+BATCH_SIZE]
-            print(f"\n📦 Sending batch {i//BATCH_SIZE + 1}")
-            if push_to_meta(batch):
-                sent += len(batch)
-            else:
-                failed += 1
-
-        print("\n📊 Sync Complete:")
-        print(f"   Sent: {sent} / {total}")
-        print(f"   Failed Batches: {failed}")
-        if failed == 0:
-            print("🎉 All batches successful!")
-
-    except Exception as e:
-        print(f"❌ Fatal error: {e}")
-        import traceback
-        traceback.print_exc()
-        sys.exit(1)
+      - name: 📤 Sync to Meta (Offline Events)
+        run: python scripts/sync_rics_to_meta.py

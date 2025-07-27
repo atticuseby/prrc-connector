@@ -1,50 +1,70 @@
 import csv
 import sys
 import os
-import hashlib
+from datetime import datetime, timedelta
 
 INPUT_PATH = sys.argv[1] if len(sys.argv) > 1 else 'optimizely_connector/output/rics_customer_purchase_history_latest.csv'
-OUTPUT_PATH = sys.argv[2] if len(sys.argv) > 2 else 'meta_connector/processed/meta_upload.csv'
+OUTPUT_PATH = sys.argv[2] if len(sys.argv) > 2 else 'optimizely_connector/output/rics_cleaned_last24h.csv'
 
-def hash_value(val):
-    if val:
-        return hashlib.sha256(val.strip().lower().encode()).hexdigest()
-    return ''
+seen = set()
+now = datetime.now()
+seven_days_ago = now - timedelta(days=7)
 
-seen_ids = set()
+def parse_datetime(raw):
+    for fmt in ("%Y-%m-%dT%H:%M:%S", "%Y-%m-%d %H:%M:%S", "%Y-%m-%d"):
+        try:
+            return datetime.strptime(raw.strip(), fmt)
+        except:
+            continue
+    return None
 
-with open(INPUT_PATH, 'r', newline='', encoding='utf-8') as infile, \
+with open(INPUT_PATH, newline='', encoding='utf-8') as infile, \
      open(OUTPUT_PATH, 'w', newline='', encoding='utf-8') as outfile:
 
     reader = csv.DictReader(infile)
-    fieldnames = ['email', 'phone', 'fn', 'ln', 'zip', 'ct', 'st', 'external_id']
+    fieldnames = reader.fieldnames
     writer = csv.DictWriter(outfile, fieldnames=fieldnames)
     writer.writeheader()
 
+    kept = 0
+    skipped = 0
+
     for row in reader:
-        # Skip voided or suspended tickets
-        if row.get('TicketVoided') == 'TRUE' or row.get('TicketSuspended') == 'TRUE':
+        # Skip if no email or phone
+        if not row.get("email") and not row.get("phone"):
+            skipped += 1
             continue
 
-        # Filter by non-zero spend or orders
-        if float(row.get('orders', 0)) == 0 and float(row.get('total_spent', 0)) == 0:
+        # Skip if voided or suspended
+        if row.get("TicketVoided") == 'TRUE' or row.get("TicketSuspended") == 'TRUE':
+            skipped += 1
             continue
 
-        # Deduplicate on email or rics_id
-        uid = row.get('email', '').lower() or row.get('rics_id', '')
-        if uid in seen_ids:
+        # Validate TicketDateTime
+        ticket_time_raw = row.get("TicketDateTime", "")
+        ticket_time = parse_datetime(ticket_time_raw)
+        if not ticket_time or ticket_time < seven_days_ago or ticket_time > now + timedelta(minutes=1):
+            skipped += 1
             continue
-        seen_ids.add(uid)
 
-        writer.writerow({
-            'email': hash_value(row.get('email')),
-            'phone': hash_value(row.get('phone')),
-            'fn': hash_value(row.get('first_name')),
-            'ln': hash_value(row.get('last_name')),
-            'zip': hash_value(row.get('zip')),
-            'ct': hash_value(row.get('city')),
-            'st': hash_value(row.get('state')),
-            'external_id': hash_value(row.get('rics_id'))
-        })
+        # Validate AmountPaid
+        try:
+            amount = float(row.get("AmountPaid", 0))
+            if amount <= 0:
+                skipped += 1
+                continue
+        except:
+            skipped += 1
+            continue
 
-print(f"Meta upload CSV written to {OUTPUT_PATH}")
+        # Dedup by rics_id or email
+        key = row.get("rics_id") or row.get("email")
+        if key in seen:
+            skipped += 1
+            continue
+        seen.add(key)
+
+        writer.writerow(row)
+        kept += 1
+
+print(f"✅ Done. {kept} valid rows written to {OUTPUT_PATH}. {skipped} skipped.")

@@ -11,7 +11,7 @@ print("🔄 Starting RICS to Meta sync...")
 
 CSV_PATH = "optimizely_connector/output/rics_customer_purchase_history_latest.csv"
 ACCESS_TOKEN = os.getenv("META_ACCESS_TOKEN")
-META_OFFLINE_EVENT_SET_ID = os.getenv("META_OFFLINE_EVENT_SET_ID")
+OFFLINE_EVENT_SET_ID = os.getenv("META_OFFLINE_EVENT_SET_ID")
 API_VERSION = "v19.0"
 EVENT_NAME = "Purchase"
 EVENT_SOURCE_URL = "https://prrunandwalk.com"
@@ -24,27 +24,25 @@ if not os.path.exists(CSV_PATH):
     sys.exit(1)
 
 events = []
+row_num = 0  # Define here to avoid NameError
 
 with open(CSV_PATH, newline="", encoding="utf-8") as csvfile:
     reader = csv.DictReader(csvfile)
     for row_num, row in enumerate(reader, start=1):
+        reason_logged = False
+
         email = row.get("email", "").strip().lower()
         phone = row.get("phone", "").strip()
         amount_paid = float(row.get("AmountPaid", "0") or "0")
 
-        # Skip if no email or phone
         if not email and not phone:
             print(f"⛔ SKIP row {row_num}: missing email & phone", end=" | ")
             reason_logged = True
-        else:
-            reason_logged = False
 
-        # Skip if no revenue
         if amount_paid == 0:
             print(f"⛔ SKIP row {row_num}: AmountPaid = 0", end=" | ")
             reason_logged = True
 
-        # Parse and validate timestamp
         ticket_datetime_raw = row.get("TicketDateTime", "").strip()
         try:
             ticket_datetime = parse_date(ticket_datetime_raw)
@@ -88,8 +86,7 @@ if DRY_RUN or not events:
     print("🛑 DRY RUN or no valid events. Aborting before API call.")
     sys.exit(0)
 
-# Push to Meta
-url = f"https://graph.facebook.com/v19.0/{OFFLINE_EVENT_SET_ID}/events"
+url = f"https://graph.facebook.com/{API_VERSION}/{OFFLINE_EVENT_SET_ID}/events"
 payload = {
     "data": events,
     "access_token": ACCESS_TOKEN,
@@ -97,6 +94,7 @@ payload = {
 }
 
 response = requests.post(url, json=payload)
+
 if response.ok:
     print(f"✅ Upload complete. Response: {response.json()}")
 else:

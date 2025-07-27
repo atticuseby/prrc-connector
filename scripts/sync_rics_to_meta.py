@@ -6,51 +6,60 @@ import requests
 import sys
 import json
 from datetime import datetime
+from google.oauth2 import service_account
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaIoBaseDownload
+import io
 
-# Config from env
+# === Config ===
+SCOPES = ['https://www.googleapis.com/auth/drive.readonly']
+SERVICE_ACCOUNT_FILE = 'optimizely_connector/service_account.json'
+DRIVE_FOLDER_ID = os.environ.get("GDRIVE_FOLDER_ID_RICS")
 META_ACCESS_TOKEN = os.environ.get("META_ACCESS_TOKEN")
 META_OFFLINE_EVENT_SET_ID = os.environ.get("META_OFFLINE_EVENT_SET_ID")
-RICS_DATA_PATH = os.environ.get("RICS_CSV_PATH", "./data/rics.csv")
 BATCH_SIZE = int(os.environ.get("BATCH_SIZE", "50"))
-
-# CHANGE THIS if you want to extend how far back events are allowed (for testing)
 EVENT_AGE_LIMIT_SECONDS = 7 * 86400  # 7 days
+TEMP_CSV_PATH = "/tmp/rics_cleaned_last24h.csv"
 
-def validate_environment():
-    missing_vars = []
-    if not META_ACCESS_TOKEN:
-        missing_vars.append("META_ACCESS_TOKEN")
-    if not META_OFFLINE_EVENT_SET_ID:
-        missing_vars.append("META_OFFLINE_EVENT_SET_ID")
-    
-    if missing_vars:
-        print(f"❌ Missing required environment variables: {', '.join(missing_vars)}")
+# === Auth ===
+def get_drive_service():
+    creds = service_account.Credentials.from_service_account_file(
+        SERVICE_ACCOUNT_FILE, scopes=SCOPES
+    )
+    return build("drive", "v3", credentials=creds)
+
+# === Find most recent CSV in Drive folder ===
+def download_latest_csv():
+    service = get_drive_service()
+    results = service.files().list(
+        q=f"'{DRIVE_FOLDER_ID}' in parents and mimeType='text/csv'",
+        orderBy="modifiedTime desc",
+        pageSize=1,
+        fields="files(id, name, modifiedTime)"
+    ).execute()
+    items = results.get("files", [])
+    if not items:
+        print("❌ No CSV files found in Google Drive folder.")
         sys.exit(1)
-    
-    print(f"✅ Environment validation passed")
-    print(f"   Offline Set ID: {META_OFFLINE_EVENT_SET_ID}")
-    print(f"   Token present: ✅")
+    file = items[0]
+    print(f"📥 Downloading: {file['name']} (Last Modified: {file['modifiedTime']})")
 
+    request = service.files().get_media(fileId=file["id"])
+    fh = io.FileIO(TEMP_CSV_PATH, "wb")
+    downloader = MediaIoBaseDownload(fh, request)
+    done = False
+    while not done:
+        status, done = downloader.next_chunk()
+        print(f"   Download progress: {int(status.progress() * 100)}%")
+    return TEMP_CSV_PATH
+
+# === Utility ===
 def sha256(s):
     if not s or not s.strip():
         return ""
     return hashlib.sha256(s.strip().lower().encode("utf-8")).hexdigest()
 
-def validate_csv_format(csv_path):
-    if not os.path.exists(csv_path):
-        print(f"❌ CSV file not found: {csv_path}")
-        return False
-    
-    try:
-        with open(csv_path, newline="") as f:
-            reader = csv.DictReader(f)
-            headers = reader.fieldnames
-            print(f"📋 CSV headers found: {headers}")
-            return True
-    except Exception as e:
-        print(f"❌ Error reading CSV: {e}")
-        return False
-
+# === Load & Filter CSV ===
 def load_rics_events(csv_path):
     events = []
     row_count = 0
@@ -127,7 +136,6 @@ def load_rics_events(csv_path):
                 }
             }
 
-            # Remove empty fields
             event["user_data"] = {k: v for k, v in event["user_data"].items() if v}
 
             if row_count <= 3:
@@ -138,23 +146,7 @@ def load_rics_events(csv_path):
     print(f"\n✅ Loaded {len(events)} valid events from {row_count} CSV rows")
     return events
 
-def test_meta_connection():
-    print("🔍 Testing Meta API connection...")
-    try:
-        url = f"https://graph.facebook.com/v16.0/{META_OFFLINE_EVENT_SET_ID}"
-        params = {"access_token": META_ACCESS_TOKEN}
-        resp = requests.get(url, params=params, timeout=10)
-        if resp.status_code == 200:
-            data = resp.json()
-            print(f"✅ Offline Event Set found: {data.get('name', 'Unknown')}")
-            return True
-        else:
-            print(f"❌ Meta API error: {resp.status_code} - {resp.text}")
-            return False
-    except Exception as e:
-        print(f"❌ Exception: {e}")
-        return False
-
+# === Push to Meta ===
 def push_to_meta(events):
     url = f"https://graph.facebook.com/v16.0/{META_OFFLINE_EVENT_SET_ID}/events"
     payload = {"data": events}
@@ -173,42 +165,45 @@ def push_to_meta(events):
         print(f"❌ Network error: {e}")
         return False
 
+# === Run ===
 if __name__ == "__main__":
-    print("🔄 Starting RICS to Meta sync...")
-    print(f"   CSV path: {RICS_DATA_PATH}")
+    print("🔄 Starting RICS to Meta sync via Google Drive")
+    print(f"   Folder ID: {DRIVE_FOLDER_ID}")
     print(f"   Batch size: {BATCH_SIZE}")
     print()
 
-    validate_environment()
-
-    if not test_meta_connection():
+    if not META_ACCESS_TOKEN or not META_OFFLINE_EVENT_SET_ID or not DRIVE_FOLDER_ID:
+        print("❌ Missing one or more required environment variables.")
         sys.exit(1)
 
-    if not validate_csv_format(RICS_DATA_PATH):
-        sys.exit(1)
+    try:
+        csv_path = download_latest_csv()
+        events = load_rics_events(csv_path)
 
-    events = load_rics_events(RICS_DATA_PATH)
+        if not events:
+            print("❌ No valid events to sync. Aborting.")
+            sys.exit(1)
 
-    if not events:
-        print("❌ No valid events found in CSV")
-        sys.exit(1)
+        total = len(events)
+        failed = 0
+        sent = 0
 
-    total = len(events)
-    failed = 0
-    sent = 0
+        for i in range(0, total, BATCH_SIZE):
+            batch = events[i:i+BATCH_SIZE]
+            print(f"\n📦 Sending batch {i//BATCH_SIZE + 1}")
+            if push_to_meta(batch):
+                sent += len(batch)
+            else:
+                failed += 1
 
-    for i in range(0, total, BATCH_SIZE):
-        batch = events[i:i+BATCH_SIZE]
-        print(f"\n📦 Sending batch {i//BATCH_SIZE + 1}")
-        if push_to_meta(batch):
-            sent += len(batch)
-        else:
-            failed += 1
+        print("\n📊 Sync Complete:")
+        print(f"   Sent: {sent} / {total}")
+        print(f"   Failed Batches: {failed}")
+        if failed == 0:
+            print("🎉 All batches successful!")
 
-    print("\n📊 Sync Complete:")
-    print(f"   Sent: {sent} / {total}")
-    print(f"   Failed Batches: {failed}")
-    if failed == 0:
-        print("🎉 All batches successful!")
-    else:
+    except Exception as e:
+        print(f"❌ Fatal error: {e}")
+        import traceback
+        traceback.print_exc()
         sys.exit(1)

@@ -1,112 +1,95 @@
 import csv
 import os
-import sys
-from datetime import datetime
-from dateutil.parser import parse as parse_date
-import hashlib
+import time
 import json
+import hashlib
 import requests
+from datetime import datetime, timezone
 
-print("🔄 Starting RICS to Meta sync...")
-
-# === CONFIG ===
-CSV_PATH = "optimizely_connector/output/rics_customer_purchase_history_latest.csv"
+# Constants
+DATASET_ID = os.getenv("META_DATASET_ID", "855183627077424")
 ACCESS_TOKEN = os.getenv("META_ACCESS_TOKEN")
-OFFLINE_EVENT_SET_ID = os.getenv("META_OFFLINE_EVENT_SET_ID")
-API_VERSION = "v19.0"
-EVENT_NAME = "Purchase"
-EVENT_SOURCE_URL = "https://prrunandwalk.com"
-UPLOAD_TAG = "RICS-Offline-Sync"
-TEST_EVENT_CODE = os.getenv("META_TEST_CODE")  # Optional
-DRY_RUN = os.getenv("DRY_RUN", "false").lower() == "true"
-MAX_EVENT_AGE_SECONDS = 604800  # 7 days
+API_URL = f"https://graph.facebook.com/v19.0/{DATASET_ID}/events"
+HEADERS = {"Content-Type": "application/json"}
 
-# === CHECKS ===
-if not os.path.exists(CSV_PATH):
-    print(f"❌ ERROR: CSV not found at {CSV_PATH}")
-    sys.exit(1)
+INPUT_CSV_PATH = "optimizely_connector/output/rics_customer_purchase_history_latest.csv"
 
-# === READ CSV AND BUILD EVENTS ===
-events = []
+# Helper Functions
+def hash_data(value):
+    return hashlib.sha256(value.strip().lower().encode("utf-8")).hexdigest() if value else None
 
-with open(CSV_PATH, newline="", encoding="utf-8") as csvfile:
-    reader = csv.DictReader(csvfile)
-    for row_num, row in enumerate(reader, start=1):
-        email = row.get("email", "").strip().lower()
-        phone = row.get("phone", "").strip()
-        amount_paid = float(row.get("AmountPaid", "0") or "0")
+def get_unix_timestamp(dt_string):
+    try:
+        dt = datetime.strptime(dt_string, "%Y-%m-%d %H:%M:%S")
+        return int(dt.replace(tzinfo=timezone.utc).timestamp())
+    except Exception as e:
+        print(f"❌ Error parsing datetime '{dt_string}': {e}")
+        return int(time.time())
 
-        # Skip if no identifiers
-        if not email and not phone:
-            print(f"⛔ SKIP row {row_num}: missing email & phone", end=" | ")
-            print()
-            continue
+def build_event(customer):
+    user_data = {
+        "em": hash_data(customer.get("email")),
+        "ph": hash_data(customer.get("phone")),
+        "fn": hash_data(customer.get("first_name")),
+        "ln": hash_data(customer.get("last_name")),
+        "ct": hash_data(customer.get("city")),
+        "st": hash_data(customer.get("state")),
+        "zp": hash_data(str(customer.get("zip"))),
+    }
 
-        # Skip if $0
-        if amount_paid == 0:
-            print(f"⛔ SKIP row {row_num}: AmountPaid = 0", end=" | ")
-            print()
-            continue
+    user_data = {k: v for k, v in user_data.items() if v}
 
-        # Parse and validate timestamp
-        ticket_datetime_raw = row.get("TicketDateTime", "").strip()
-        try:
-            ticket_datetime = parse_date(ticket_datetime_raw)
-            timestamp = int(ticket_datetime.timestamp())
-
-            if (datetime.utcnow().timestamp() - timestamp) > MAX_EVENT_AGE_SECONDS:
-                print(f"⛔ SKIP row {row_num}: TicketDateTime too old (> 7 days)", end=" | ")
-                print()
-                continue
-
-        except Exception:
-            print(f"⛔ SKIP row {row_num}: invalid TicketDateTime format", end=" | ")
-            print()
-            continue
-
-        # Hash identifiers
-        user_data = {}
-        if email:
-            user_data["em"] = [hashlib.sha256(email.encode()).hexdigest()]
-        if phone:
-            cleaned_phone = ''.join(filter(str.isdigit, phone))
-            if len(cleaned_phone) >= 10:
-                user_data["ph"] = [hashlib.sha256(cleaned_phone.encode()).hexdigest()]
-
-        # Build event
-        event = {
-            "event_name": EVENT_NAME,
-            "event_time": timestamp,
-            "event_source_url": EVENT_SOURCE_URL,
-            "user_data": user_data,
-            "custom_data": {
-                "value": round(amount_paid, 2),
-                "currency": "USD",
-            }
+    return {
+        "match_keys": user_data,
+        "event_name": "Purchase",
+        "event_time": get_unix_timestamp(customer.get("SaleDateTime")),
+        "action_source": "physical_store",
+        "custom_data": {
+            "value": float(customer.get("AmountPaid") or 0),
+            "currency": "USD"
         }
+    }
 
-        if TEST_EVENT_CODE:
-            event["test_event_code"] = TEST_EVENT_CODE
+def send_batch(events):
+    payload = {
+        "data": events,
+        "access_token": ACCESS_TOKEN
+    }
+    response = requests.post(API_URL, headers=HEADERS, json=payload)
+    if response.ok:
+        print(f"✅ Sent batch of {len(events)} events successfully")
+    else:
+        print(f"❌ Failed to send batch: {response.status_code}")
+        print(response.text)
 
-        events.append(event)
+def main():
+    print("🔄 Starting RICS to Meta sync...")
 
-print(f"\n✅ Loaded {len(events)} valid events from {row_num} CSV rows")
+    if not ACCESS_TOKEN or DATASET_ID == "None":
+        print("❌ Missing META_ACCESS_TOKEN or META_DATASET_ID")
+        return
 
-if DRY_RUN or not events:
-    print("🛑 DRY RUN or no valid events. Aborting before API call.")
-    sys.exit(0)
+    events = []
+    with open(INPUT_CSV_PATH, mode="r", encoding="utf-8-sig") as file:
+        reader = csv.DictReader(file)
+        row_num = 0
+        for row in reader:
+            row_num += 1
+            if not row.get("email") and not row.get("phone"):
+                continue  # Skip contacts with no matchable ID
 
-# === POST TO META ===
-url = f"https://graph.facebook.com/{API_VERSION}/{OFFLINE_EVENT_SET_ID}/events"
-payload = {
-    "data": events,
-    "access_token": ACCESS_TOKEN,
-    "upload_tag": UPLOAD_TAG,
-}
+            event = build_event(row)
+            events.append(event)
 
-response = requests.post(url, json=payload)
-if response.ok:
-    print(f"✅ Upload complete. Response: {response.json()}")
-else:
-    print(f"❌ Upload failed. Status: {response.status_code} | Response: {response.text}")
-    sys.exit(1)
+            if len(events) >= 100:  # Send in batches of 100
+                send_batch(events)
+                events = []
+
+        # Send final batch
+        if events:
+            send_batch(events)
+
+    print(f"\n✅ Finished sending events from {row_num} CSV rows")
+
+if __name__ == "__main__":
+    main()

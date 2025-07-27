@@ -89,7 +89,7 @@ if DRY_RUN or not events:
     sys.exit(0)
 
 # Push to Meta
-url = f"https://graph.facebook.com/v19.0/<OFFLINE_EVENT_SET_ID>/events"
+url = f"https://graph.facebook.com/v19.0/{OFFLINE_EVENT_SET_ID}/events"
 payload = {
     "data": events,
     "access_token": ACCESS_TOKEN,

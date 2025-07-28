@@ -5,7 +5,7 @@ import json
 
 # === REQUIRED SETTINGS ===
 ACCESS_TOKEN = 'EAAVHTfyS4JMBPMKeZCZBhxjoidZBZAw813eZCmTO1zLZARnL9tKJbWSaSK4zlgeFmgyEFzRlxoI9t4KuLK8K8ZAJTZBOKqfrXvd7QuthZBk8cJhfg0SnUKWWwfR7ObZC2AZBxf8jUJaUzsZB3ZBJrP1LgR8N5ZCFUgWZAl8XL1gk5xanqZAQ330ZBlfcm31jZARTnp632wbTZArQwZDZD'  # ← Replace this with your Meta token
-EVENT_SET_ID = '855183627077424'        # ← Confirm this is your Offline Event Set ID
+EVENT_SET_ID = '1485775159091347'        # ← Confirm this is your Offline Event Set ID
 TEST_EVENT_CODE = 'TEST3026' # ← Paste the code from Meta Test Events tab
 
 # === SAMPLE MATCH KEYS (hashed as required by Meta) ===

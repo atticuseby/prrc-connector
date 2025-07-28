@@ -26,5 +26,4 @@ jobs:
           python scripts/sync_rics_test_event.py
         env:
           META_ACCESS_TOKEN: ${{ secrets.META_ACCESS_TOKEN }}
-          META_PIXEL_ID: ${{ secrets.META_PIXEL_ID }}
-          DATASET_ID: ${{ secrets.DATASET_ID }}
+          META_OFFLINE_EVENT_SET_ID: ${{ secrets.META_OFFLINE_EVENT_SET_ID }}

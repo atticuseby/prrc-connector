@@ -1,4 +1,4 @@
-# Optimizely Data Connector
+# Offline Data Connector
 
 This project automates the process of pulling customer data from two external sources — **RICS** and **RunSignUp** — and syncing it with **Optimizely (Zaius)** for segmentation and email automation. It also uploads exported data to **Google Drive** for backup and visibility.
 

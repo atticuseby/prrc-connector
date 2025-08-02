@@ -36,10 +36,14 @@ def save_cookies():
         driver.find_element(By.NAME, "email").send_keys(EMAIL)
         driver.find_element(By.NAME, "password").send_keys(PASSWORD)
 
-        # Click Login
-        driver.find_element(By.XPATH, "//button[contains(text(), 'Log In')]").click()
+        # Try both button and input[type=submit]
+        try:
+            submit = driver.find_element(By.XPATH, "//button[@type='submit']")
+        except:
+            submit = driver.find_element(By.XPATH, "//input[@type='submit']")
+        submit.click()
 
-        # Wait for login to complete
+        # Wait for successful login — assume main content loaded
         WebDriverWait(driver, 15).until(EC.presence_of_element_located((By.ID, "mainContent")))
         print("✅ Login successful")
 

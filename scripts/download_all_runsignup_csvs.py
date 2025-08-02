@@ -1,7 +1,5 @@
 import os
 import sys
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
 import time
 import json
 from datetime import datetime
@@ -33,7 +31,6 @@ PARTNERS = [
 
 DOWNLOAD_DIR = os.path.join(os.getcwd(), "optimizely_connector", "output")
 COOKIE_PATH = os.path.join(DOWNLOAD_DIR, "runsignup_cookies.json")
-
 os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 
 def setup_driver():
@@ -57,12 +54,19 @@ def setup_driver():
 
 def load_cookies(driver):
     if not os.path.exists(COOKIE_PATH):
-        raise FileNotFoundError("❌ Cookie file not found. Run save_cookies.py first.")
-    driver.get("https://runsignup.com")
-    with open(COOKIE_PATH, "r") as f:
-        cookies = json.load(f)
+        print("⚠️ Cookie file not found. Attempting to regenerate cookies...")
+        os.system("python scripts/save_cookies.py")
+
+    try:
+        driver.get("https://runsignup.com")
+        with open(COOKIE_PATH, "r") as f:
+            cookies = json.load(f)
         for cookie in cookies:
             driver.add_cookie(cookie)
+        print("✅ Cookies loaded.")
+    except Exception as e:
+        print(f"❌ Failed to load cookies: {e}")
+        raise
 
 def wait_for_and_download(driver, partner_url, partner_id):
     print(f"🌐 Navigating to: {partner_url}")
@@ -121,7 +125,12 @@ def main():
     driver = setup_driver()
 
     try:
-        load_cookies(driver)
+        try:
+            load_cookies(driver)
+        except:
+            print("🔁 Retrying cookie regeneration...")
+            os.system("python scripts/save_cookies.py")
+            load_cookies(driver)
 
         for partner in PARTNERS:
             print(f"\n=== Downloading for Partner ID {partner['id']} ({partner['name']}) ===")

@@ -35,5 +35,11 @@ jobs:
         run: |
           pip install selenium google-api-python-client google-auth google-auth-httplib2 google-auth-oauthlib
 
+      - name: 🔐 Save RunSignUp cookies
+        env:
+          RUNSIGNUP_EMAIL: ${{ secrets.RUNSIGNUP_EMAIL }}
+          RUNSIGNUP_PASSWORD: ${{ secrets.RUNSIGNUP_PASSWORD }}
+        run: python scripts/save_cookies.py
+
       - name: 🚀 Run download_all_runsignup_csvs.py
         run: python scripts/download_all_runsignup_csvs.py

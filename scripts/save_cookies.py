@@ -31,19 +31,18 @@ def save_cookies():
     try:
         driver.get(LOGIN_URL)
 
-        # Wait and fill in login form
         WebDriverWait(driver, 15).until(EC.presence_of_element_located((By.NAME, "email")))
         driver.find_element(By.NAME, "email").send_keys(EMAIL)
         driver.find_element(By.NAME, "password").send_keys(PASSWORD)
 
-        # Try both button and input[type=submit]
-        try:
-            submit = driver.find_element(By.XPATH, "//button[@type='submit']")
-        except:
-            submit = driver.find_element(By.XPATH, "//input[@type='submit']")
-        submit.click()
+        # Wait for the login button and click it via JS to avoid interception
+        WebDriverWait(driver, 15).until(EC.presence_of_element_located((By.XPATH, "//button[@type='submit']")))
+        submit_button = driver.find_element(By.XPATH, "//button[@type='submit']")
+        driver.execute_script("arguments[0].scrollIntoView(true);", submit_button)
+        time.sleep(0.5)
+        driver.execute_script("arguments[0].click();", submit_button)
 
-        # Wait for successful login — assume main content loaded
+        # Wait for successful login
         WebDriverWait(driver, 15).until(EC.presence_of_element_located((By.ID, "mainContent")))
         print("✅ Login successful")
 
@@ -52,7 +51,11 @@ def save_cookies():
         with open(COOKIE_PATH, "w") as f:
             json.dump(cookies, f)
         print(f"🍪 Cookies saved to: {COOKIE_PATH}")
+
     except Exception as e:
+        debug_path = os.path.join(DOWNLOAD_DIR, "login_debug.png")
+        driver.save_screenshot(debug_path)
+        print(f"📸 Screenshot saved to {debug_path}")
         print(f"❌ Failed to save cookies: {e}")
         raise
     finally:

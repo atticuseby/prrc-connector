@@ -37,3 +37,10 @@ jobs:
 
       - name: 🚀 Run download_all_runsignup_csvs.py
         run: python scripts/download_all_runsignup_csvs.py
+
+      - name: 📸 Upload debug screenshots (if any)
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: debug-screenshots
+          path: optimizely_connector/output/

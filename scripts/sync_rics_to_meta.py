@@ -2,9 +2,9 @@ import csv
 import os
 import time
 import json
-import re
 import hashlib
 import requests
+import re
 from datetime import datetime, timezone
 
 # Constants
@@ -20,9 +20,11 @@ def hash_data(value):
     return hashlib.sha256(value.strip().lower().encode("utf-8")).hexdigest() if value else None
 
 def normalize_phone(phone):
+    """Strip non-digit characters and validate phone length."""
     if not phone:
         return None
-    return re.sub(r"\D", "", phone)
+    digits = re.sub(r"\D", "", phone)
+    return digits if len(digits) == 10 else None
 
 def get_unix_timestamp(dt_string):
     try:
@@ -33,21 +35,21 @@ def get_unix_timestamp(dt_string):
         return int(time.time())
 
 def build_event(customer):
-    # Normalize and hash match keys
+    # Normalize phone first
+    phone = normalize_phone(customer.get("phone"))
+
+    # Only hash if valid
     user_data = {
+        "ph": hash_data(phone),
         "em": hash_data(customer.get("email")),
-        "ph": hash_data(normalize_phone(customer.get("phone"))),
         "fn": hash_data(customer.get("first_name")),
         "ln": hash_data(customer.get("last_name")),
         "ct": hash_data(customer.get("city")),
         "st": hash_data(customer.get("state")),
         "zp": hash_data(str(customer.get("zip"))),
-        "ge": hash_data(customer.get("gender")),
-        "db": hash_data(customer.get("dob")),  # Format MM/DD/YYYY if available
-        "country": hash_data("us")  # Static
     }
 
-    # Remove any empty values
+    # Strip out empty/null fields
     user_data = {k: v for k, v in user_data.items() if v}
 
     return {
@@ -57,8 +59,7 @@ def build_event(customer):
         "action_source": "physical_store",
         "custom_data": {
             "value": float(customer.get("AmountPaid") or 0),
-            "currency": "USD",
-            "event_source_url": "https://prrunandwalk.com"
+            "currency": "USD"
         }
     }
 
@@ -87,7 +88,11 @@ def main():
         row_num = 0
         for row in reader:
             row_num += 1
-            if not row.get("email") and not row.get("phone"):
+
+            phone = normalize_phone(row.get("phone"))
+            email = row.get("email")
+
+            if not phone and not email:
                 continue  # Skip contacts with no matchable ID
 
             event = build_event(row)

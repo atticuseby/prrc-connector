@@ -37,26 +37,28 @@ def get_unix_timestamp(dt_string):
 def build_event(customer):
     # Normalize phone first
     phone = normalize_phone(customer.get("phone"))
+    email = customer.get("email")
+    external_id = customer.get("rics_id")  # <- Your external_id column
 
-    # Only hash if valid
     user_data = {
         "ph": hash_data(phone),
-        "em": hash_data(customer.get("email")),
+        "em": hash_data(email),
         "fn": hash_data(customer.get("first_name")),
         "ln": hash_data(customer.get("last_name")),
         "ct": hash_data(customer.get("city")),
         "st": hash_data(customer.get("state")),
         "zp": hash_data(str(customer.get("zip"))),
+        "external_id": hash_data(external_id)
     }
 
     # Strip out empty/null fields
     user_data = {k: v for k, v in user_data.items() if v}
 
     return {
-        "match_keys": user_data,
         "event_name": "Purchase",
         "event_time": get_unix_timestamp(customer.get("SaleDateTime")),
-        "action_source": "physical_store",
+        "action_source": "offline",
+        "user_data": user_data,
         "custom_data": {
             "value": float(customer.get("AmountPaid") or 0),
             "currency": "USD"

@@ -2,7 +2,7 @@ name: Run PRRC RICS Sync
 
 on:
   schedule:
-    - cron: '0 8 * * *'  # Runs daily at 8AM UTC = 3AM EST
+    - cron: '0 * * * *'   # run hourly, on the hour (mirror UQ)
   workflow_dispatch:
 
 jobs:
@@ -14,8 +14,13 @@ jobs:
       OPTIMIZELY_API_TOKEN: ${{ secrets.OPTIMIZELY_API_TOKEN }}
       TEST_EMAIL: ${{ secrets.TEST_EMAIL }}
       GDRIVE_FOLDER_ID_RICS: ${{ secrets.GDRIVE_FOLDER_ID_RICS }}
+
+      # *** IMPORTANT: set both of these in repo secrets ***
       META_ACCESS_TOKEN: ${{ secrets.META_ACCESS_TOKEN }}
-      META_OFFLINE_EVENT_SET_ID: ${{ secrets.META_OFFLINE_EVENT_SET_ID }}
+      META_DATASET_ID: ${{ secrets.META_DATASET_ID }}
+
+      # Optional: set RICS_INPUT_CSV if you want a different path
+      # RICS_INPUT_CSV: optimizely_connector/output/rics_cleaned_last24h.csv
 
     steps:
       - name: ⬇️ Checkout repo
@@ -32,9 +37,11 @@ jobs:
       - name: 🔐 Save Google Drive credentials
         run: echo '${{ secrets.GDRIVE_CREDENTIALS }}' > optimizely_connector/service_account.json
 
+      # Pull fresh RICS + upload to Drive (your existing flow)
       - name: 🚀 Run real-time RICS to Optimizely sync
         run: python scripts/sync_rics_live.py
 
+      # Keep Last-24h file for hourly uploads (volume control)
       - name: 🧹 Clean and filter RICS export (last 24h)
         run: python scripts/clean_and_filter_rics_export.py optimizely_connector/output/rics_customer_purchase_history_latest.csv optimizely_connector/output/rics_cleaned_last24h.csv
 
@@ -42,4 +49,6 @@ jobs:
         run: python scripts/deduplicate_rics_customers.py optimizely_connector/output/rics_cleaned_last24h.csv optimizely_connector/output/rics_customers_deduped.csv
 
       - name: 📤 Sync to Meta (Offline Events)
+        env:
+          RICS_INPUT_CSV: optimizely_connector/output/rics_cleaned_last24h.csv
         run: python scripts/sync_rics_to_meta.py

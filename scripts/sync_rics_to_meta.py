@@ -1,197 +1,204 @@
+import sys, os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import csv
-import os
 import time
-import hashlib
 import requests
-import re
-from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import datetime, timedelta
+from scripts.config import RICS_API_TOKEN, TEST_EMAIL
+from scripts.helpers import log_message
+import concurrent.futures
+import argparse
 
-# =========================
-# Config
-# =========================
-DATASET_ID = os.getenv("META_DATASET_ID")  # <- set this secret in Actions
-ACCESS_TOKEN = os.getenv("META_ACCESS_TOKEN")
-API_URL = f"https://graph.facebook.com/v19.0/{DATASET_ID}/events"
-HEADERS = {"Content-Type": "application/json"}
+# --- CONFIGURATION ---
+TEST_MODE = False  # default off for production
+MAX_SKIP = 10000   # pagination limit
+MAX_CUSTOMERS = None
+MAX_PURCHASE_PAGES = None
+MAX_WORKERS = 3
+DEBUG_MODE = False
 
-INPUT_CSV_PATH = os.getenv(
-    "RICS_INPUT_CSV",
-    "optimizely_connector/output/rics_customer_purchase_history_latest.csv"
-)
+MAX_RETRIES = 3
+MAX_RESPONSE_TIME_SECONDS = 60
+ABSOLUTE_TIMEOUT_SECONDS = 120
 
-BATCH_SIZE = 100
-CURRENCY = "USD"
-COUNTRY_DEFAULT = "US"
+# Only include purchases within the last 7 days
+CUTOFF_DATE = datetime.utcnow() - timedelta(days=7)
 
-# =========================
-# Helpers
-# =========================
-def sha256_norm(value: str):
-    if not value:
+purchase_history_fields = [
+    "rics_id", "email", "first_name", "last_name", "orders", "total_spent",
+    "city", "state", "zip", "phone",
+    "TicketDateTime", "TicketNumber", "Change", "TicketVoided", "ReceiptPrinted",
+    "TicketSuspended", "ReceiptEmailed", "SaleDateTime", "TicketModifiedOn",
+    "ModifiedBy", "CreatedOn",
+    "TicketLineNumber", "Quantity", "AmountPaid", "Sku", "Summary",
+    "Description", "SupplierCode", "SupplierName", "Color", "Column", "Row", "OnHand"
+]
+
+def parse_dt(dt_str):
+    if not dt_str:
         return None
-    v = value.strip().lower()
-    if not v:
-        return None
-    return hashlib.sha256(v.encode("utf-8")).hexdigest()
-
-def to_e164(phone: str):
-    if not phone:
-        return None
-    digits = re.sub(r"\D", "", phone)
-    if len(digits) == 10:  # US default
-        digits = "1" + digits
-    if len(digits) < 11 or len(digits) > 15:
-        return None
-    return "+" + digits
-
-def sha256_phone(phone: str):
-    e164 = to_e164(phone)
-    return hashlib.sha256(e164.encode("utf-8")).hexdigest() if e164 else None
-
-def to_epoch(dt_string: str) -> int:
-    if not dt_string:
-        return int(time.time())
-    fmts = ("%Y-%m-%d %H:%M:%S", "%m/%d/%Y %H:%M:%S", "%m/%d/%Y %H:%M")
-    for fmt in fmts:
+    for fmt in ("%Y-%m-%d %H:%M:%S", "%m/%d/%Y %H:%M:%S", "%m/%d/%Y %H:%M"):
         try:
-            dt = datetime.strptime(dt_string.strip(), fmt)
-            return int(dt.replace(tzinfo=timezone.utc).timestamp())
+            return datetime.strptime(dt_str, fmt)
         except Exception:
             continue
-    return int(time.time())
+    return None
 
-def booly(v) -> bool:
-    return str(v).strip().lower() in {"y", "yes", "true", "1"}
+def fetch_purchase_history_for_customer(cust_id, customer_info, max_purchase_pages=None, debug_mode=False):
+    ph_skip, ph_take, page_count, api_calls = 0, 100, 0, 0
+    all_rows = []
 
-def safe_float(v) -> float:
-    try:
-        return float(v)
-    except Exception:
-        return 0.0
+    while True:
+        ph_headers_variants = [{"Token": RICS_API_TOKEN}, {"token": RICS_API_TOKEN}]
+        sale_headers = []
 
-def safe_int(v) -> int:
-    try:
-        return int(float(v))
-    except Exception:
-        return 0
-
-# =========================
-# Build events grouped by TicketNumber
-# =========================
-def build_events_from_csv(csv_path: str):
-    tickets = defaultdict(list)
-
-    with open(csv_path, mode="r", encoding="utf-8-sig", newline="") as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            if booly(row.get("TicketVoidedPrinted")) or booly(row.get("TicketVoided")):
+        for ph_headers in ph_headers_variants:
+            try:
+                start_time = time.time()
+                log_message(f"[START] Fetching purchases for {cust_id}, skip {ph_skip}, page {page_count+1}")
+                resp = requests.post(
+                    "https://enterprise.ricssoftware.com/api/Customer/GetCustomerPurchaseHistory",
+                    headers=ph_headers,
+                    json={"CustomerId": cust_id, "Take": ph_take, "Skip": ph_skip},
+                    timeout=ABSOLUTE_TIMEOUT_SECONDS
+                )
+                api_calls += 1
+                resp.raise_for_status()
+                ph_data = resp.json()
+                if not ph_data.get("IsSuccessful"):
+                    continue
+                sale_headers = ph_data.get("SaleHeaders", [])
+                break
+            except Exception as e:
+                log_message(f"❌ Error fetching purchases for {cust_id}: {e}")
                 continue
-            if booly(row.get("TicketSuspended")):
+
+        if not sale_headers:
+            break
+
+        for sale in sale_headers:
+            sale_dt = parse_dt(sale.get("SaleDateTime"))
+            if not sale_dt or sale_dt < CUTOFF_DATE:
+                continue  # skip stale sales
+
+            sale_info = {k: sale.get(k) for k in [
+                "TicketDateTime","TicketNumber","Change","TicketVoided",
+                "ReceiptPrinted","TicketSuspended","ReceiptEmailed",
+                "SaleDateTime","TicketModifiedOn","ModifiedBy","CreatedOn"
+            ]}
+            for item in sale.get("CustomerPurchases", []):
+                item_info = {k: item.get(k) for k in [
+                    "TicketLineNumber","Quantity","AmountPaid","Sku","Summary",
+                    "Description","SupplierCode","SupplierName","Color","Column",
+                    "Row","OnHand"
+                ]}
+                row = {**customer_info, **sale_info, **item_info}
+                all_rows.append(row)
+
+        result_stats = ph_data.get("ResultStatistics", {})
+        end_record = result_stats.get("EndRecord", 0)
+        total_records = result_stats.get("TotalRecords", 0)
+        page_count += 1
+        if (max_purchase_pages and page_count >= max_purchase_pages) or end_record >= total_records:
+            break
+        ph_skip += ph_take
+        if debug_mode:
+            break
+
+    log_message(f"📦 Customer {cust_id}: {len(all_rows)} rows, {page_count} pages, {api_calls} calls")
+    return all_rows
+
+def fetch_rics_data_with_purchase_history(max_customers=None, max_purchase_pages=None, debug_mode=False):
+    timestamp = datetime.now().strftime("%m_%d_%Y_%H%M")
+    filename = f"rics_customer_purchase_history_{timestamp}.csv"
+    output_dir = os.path.join("optimizely_connector", "output")
+    output_path = os.path.join(output_dir, filename)
+    os.makedirs(output_dir, exist_ok=True)
+
+    all_rows, skip, customer_infos = [], 0, []
+    total_api_calls, total_customers = 0, 0
+
+    while skip < MAX_SKIP:
+        headers_variants = [{"Token": RICS_API_TOKEN}, {"token": RICS_API_TOKEN}]
+        customers = []
+        for headers in headers_variants:
+            try:
+                resp = requests.post(
+                    "https://enterprise.ricssoftware.com/api/Customer/GetCustomer",
+                    headers=headers,
+                    json={"StoreCode": 12132, "Skip": skip, "Take": 100},
+                    timeout=ABSOLUTE_TIMEOUT_SECONDS
+                )
+                total_api_calls += 1
+                resp.raise_for_status()
+                customers = resp.json().get("Customers", [])
+                break
+            except Exception as e:
+                log_message(f"❌ Error fetching customers: {e}")
                 continue
+        if not customers:
+            break
 
-            ticket_no = (row.get("TicketNumber") or "").strip()
-            if not ticket_no:
-                continue
-            tickets[ticket_no].append(row)
-
-    events = []
-    for ticket_no, lines in tickets.items():
-        first = lines[0]
-        event_time = to_epoch(first.get("SaleDateTime") or first.get("TicketDateTime"))
-
-        total_value = 0.0
-        contents = []
-        for ln in lines:
-            qty = safe_float(ln.get("Quantity"))
-            amt = safe_float(ln.get("AmountPaid"))
-            if amt > 0:
-                total_value += amt
-            unit_price = amt / qty if qty > 0 else amt
-            contents.append({
-                "id": (ln.get("Sku") or "UNKNOWN").strip(),
-                "quantity": safe_int(qty) if qty > 0 else 1,
-                "item_price": round(unit_price, 2)
-            })
-
-        if total_value <= 0:
-            continue
-
-        # user_data (hashed identifiers) for Offline Event Sets
-        user_data = {
-            "em": sha256_norm(first.get("email")),
-            "ph": sha256_phone(first.get("phone")),
-            "fn": sha256_norm(first.get("first_name")),
-            "ln": sha256_norm(first.get("last_name")),
-            "ct": sha256_norm(first.get("city")),
-            "st": sha256_norm(first.get("state")),
-            "zip": sha256_norm(str(first.get("zip") or "")),
-            "country": sha256_norm(COUNTRY_DEFAULT),
-            "external_id": sha256_norm(first.get("rics_id")),
-        }
-        # drop empties
-        user_data = {k: v for k, v in user_data.items() if v}
-
-        event = {
-            "event_name": "Purchase",
-            "event_time": event_time,
-            "event_id": f"purchase-{ticket_no}",  # dedup across retries
-            "action_source": "offline",
-            "user_data": user_data,
-            "custom_data": {
-                "order_id": str(ticket_no),
-                "value": round(total_value, 2),
-                "currency": CURRENCY,
-                "contents": contents
+        for customer in customers:
+            mailing = customer.get("MailingAddress", {})
+            info = {
+                "rics_id": customer.get("CustomerId"),
+                "email": (customer.get("Email") or "").strip(),
+                "first_name": (customer.get("FirstName") or "").strip(),
+                "last_name": (customer.get("LastName") or "").strip(),
+                "orders": customer.get("OrderCount", 0),
+                "total_spent": customer.get("TotalSpent", 0),
+                "city": mailing.get("City", "").strip(),
+                "state": mailing.get("State", "").strip(),
+                "zip": mailing.get("PostalCode", "").strip(),
+                "phone": (customer.get("PhoneNumber") or "").strip()
             }
-        }
-        events.append(event)
+            cust_id = customer.get("CustomerId")
+            if cust_id:
+                customer_infos.append((cust_id, info))
+                total_customers += 1
+                if max_customers and total_customers >= max_customers:
+                    break
+        if max_customers and total_customers >= max_customers:
+            break
+        skip += 100
 
-    return events
+    log_message(f"🧮 Total customers queued: {len(customer_infos)}")
+    with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+        futures = {executor.submit(fetch_purchase_history_for_customer, cid, info, max_purchase_pages, debug_mode): (cid, info) for cid, info in customer_infos}
+        for future in concurrent.futures.as_completed(futures):
+            try:
+                rows = future.result()
+                all_rows.extend(rows)
+                if debug_mode:
+                    break
+            except Exception as exc:
+                log_message(f"❌ Error in thread: {exc}")
 
-# =========================
-# Sender
-# =========================
-def send_batch(events):
-    payload = {"data": events, "access_token": ACCESS_TOKEN}
-    resp = requests.post(API_URL, headers=HEADERS, json=payload, timeout=60)
-    if resp.ok:
-        print(f"✅ Sent batch of {len(events)} events")
-    else:
-        print(f"❌ Failed batch ({resp.status_code}) → {resp.text}")
-        # surface non-200 as failure for CI visibility
-        resp.raise_for_status()
+    with open(output_path, "w", newline="") as file:
+        writer = csv.DictWriter(file, fieldnames=purchase_history_fields)
+        writer.writeheader()
+        writer.writerows(all_rows)
 
-def send_in_batches(all_events, size=BATCH_SIZE):
-    batch = []
-    for ev in all_events:
-        batch.append(ev)
-        if len(batch) >= size:
-            send_batch(batch)
-            batch = []
-    if batch:
-        send_batch(batch)
-
-# =========================
-# Main
-# =========================
-def main():
-    print("🔄 Starting RICS → Meta Offline Conversions sync...")
-    if not ACCESS_TOKEN or not DATASET_ID:
-        print("❌ Missing META_ACCESS_TOKEN or META_DATASET_ID")
-        raise SystemExit(1)
-    if not os.path.exists(INPUT_CSV_PATH):
-        print(f"❌ CSV not found at {INPUT_CSV_PATH}")
-        raise SystemExit(1)
-
-    events = build_events_from_csv(INPUT_CSV_PATH)
-    if not events:
-        print("ℹ️ No eligible events to send.")
-        return
-
-    print(f"📦 Prepared {len(events)} offline Purchase events")
-    send_in_batches(events, BATCH_SIZE)
-    print("✅ Finished sending events.")
+    log_message(f"📝 Wrote {len(all_rows)} rows to {output_path}")
+    return output_path
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description="Fetch RICS data with purchase history.")
+    parser.add_argument('--test', action='store_true', help='Enable test mode (limits customers and pages)')
+    parser.add_argument('--max-customers', type=int, help='Override max customers')
+    parser.add_argument('--max-purchase-pages', type=int, help='Override max purchase pages')
+    parser.add_argument('--debug', action='store_true', help='Debug mode')
+    args = parser.parse_args()
+
+    if args.test:
+        TEST_MODE = True
+        MAX_SKIP, MAX_CUSTOMERS, MAX_PURCHASE_PAGES, MAX_WORKERS = 3, 3, 1, 10
+    if args.max_customers:
+        MAX_CUSTOMERS = args.max_customers
+    if args.max_purchase_pages:
+        MAX_PURCHASE_PAGES = args.max_purchase_pages
+    if args.debug:
+        DEBUG_MODE = True
+
+    fetch_rics_data_with_purchase_history(MAX_CUSTOMERS, MAX_PURCHASE_PAGES, DEBUG_MODE)

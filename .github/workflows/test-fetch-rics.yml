@@ -36,11 +36,21 @@ jobs:
           echo "=== Starting fetch_rics_data.py (${{ github.event.inputs.mode }}) ===" | tee artifacts/fetch_rics_log.txt
 
           if [ "${{ github.event.inputs.mode }}" = "test" ]; then
-            python rics_connector/fetch_rics_data.py --max-customers 5 --max-purchase-pages 1 --debug \
-              >> artifacts/fetch_rics_log.txt 2>&1 || echo "Script exited with error code $?" | tee -a artifacts/fetch_rics_log.txt
+            # Hard cap: 5 customers, 1 purchase page, debug ON
+            python rics_connector/fetch_rics_data.py \
+              --max-customers 5 \
+              --max-purchase-pages 1 \
+              --debug \
+              >> artifacts/fetch_rics_log.txt 2>&1 \
+              || echo "Script exited with error code $?" | tee -a artifacts/fetch_rics_log.txt
           else
-            python rics_connector/fetch_rics_data.py --debug \
-              >> artifacts/fetch_rics_log.txt 2>&1 || echo "Script exited with error code $?" | tee -a artifacts/fetch_rics_log.txt
+            # Live run still capped for stability
+            python rics_connector/fetch_rics_data.py \
+              --max-customers 5 \
+              --max-purchase-pages 1 \
+              --debug \
+              >> artifacts/fetch_rics_log.txt 2>&1 \
+              || echo "Script exited with error code $?" | tee -a artifacts/fetch_rics_log.txt
           fi
 
           echo "=== Finished fetch_rics_data.py ===" | tee -a artifacts/fetch_rics_log.txt
@@ -51,5 +61,5 @@ jobs:
           name: rics-${{ github.event.inputs.mode }}-output
           path: |
             artifacts/*
-            data/**/*.csv
+            optimizely_connector/output/*.csv
             logs/**/*.log

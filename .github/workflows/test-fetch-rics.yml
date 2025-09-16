@@ -29,6 +29,8 @@ jobs:
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
       - name: Run fetch_rics_data
+        env:
+          RICS_API_TOKEN: ${{ secrets.RICS_API_TOKEN }}
         run: |
           mkdir -p artifacts
           echo "=== Starting fetch_rics_data.py (${{ github.event.inputs.mode }}) ===" | tee artifacts/fetch_rics_log.txt

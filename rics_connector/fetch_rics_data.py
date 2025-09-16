@@ -134,11 +134,13 @@ def fetch_rics_data_with_purchase_history(max_customers=None, max_purchase_pages
     all_rows, skip, customer_infos = [], 0, []
     total_api_calls, total_customers = 0, 0
 
-STORE_CODES = [1, 2, 3, 4, 6, 7, 8, 9, 10, 11, 12, 21, 22, 98, 99]  # Active store codes
+# Parent must go first, followed by all active child store codes
+STORE_CODES = [12132, 1, 2, 3, 4, 6, 7, 8, 9, 10, 11, 12, 21, 22, 98, 99]
 
 for store_code in STORE_CODES:
     skip = 0
-    log_message(f"🏪 Fetching customers for Store {store_code}")
+    store_customers = 0
+    log_message(f"🏪 Starting fetch for Store {store_code}")
 
     while skip < MAX_SKIP:
         headers_variants = [{"Token": RICS_API_TOKEN}, {"token": RICS_API_TOKEN}]
@@ -163,6 +165,34 @@ for store_code in STORE_CODES:
         if not customers:
             break
 
+        for customer in customers:
+            mailing = customer.get("MailingAddress", {})
+            info = {
+                "rics_id": customer.get("CustomerId"),
+                "email": (customer.get("Email") or "").strip(),
+                "first_name": (customer.get("FirstName") or "").strip(),
+                "last_name": (customer.get("LastName") or "").strip(),
+                "orders": customer.get("OrderCount", 0),
+                "total_spent": customer.get("TotalSpent", 0),
+                "city": mailing.get("City", "").strip(),
+                "state": mailing.get("State", "").strip(),
+                "zip": mailing.get("PostalCode", "").strip(),
+                "phone": (customer.get("PhoneNumber") or "").strip()
+            }
+            cust_id = customer.get("CustomerId")
+            if cust_id:
+                customer_infos.append((cust_id, info))
+                store_customers += 1
+                total_customers += 1
+                if max_customers and total_customers >= max_customers:
+                    break
+
+        if max_customers and total_customers >= max_customers:
+            break
+        skip += 100
+
+    log_message(f"✅ Finished Store {store_code} → {store_customers} customers queued")
+    
         for customer in customers:
             mailing = customer.get("MailingAddress", {})
             info = {

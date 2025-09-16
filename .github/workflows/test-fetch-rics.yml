@@ -1,0 +1,24 @@
+name: Test RICS Fetch
+
+on:
+  workflow_dispatch: # lets you run manually from the Actions tab
+
+jobs:
+  run-fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Run fetch_rics_data test
+        run: |
+          python rics_connector/fetch_rics_data.py --max-customers 5 --max-purchase-pages 1 --debug

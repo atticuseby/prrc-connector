@@ -23,7 +23,7 @@ jobs:
         run: |
           mkdir -p artifacts
           echo "=== Starting fetch_rics_data.py ===" | tee artifacts/fetch_rics_log.txt
-          python fetch_rics_data.py --max-customers 5 --max-purchase-pages 1 --debug \
+          python rics_connector/fetch_rics_data.py --max-customers 5 --max-purchase-pages 1 --debug \
             >> artifacts/fetch_rics_log.txt 2>&1 || echo "Script exited with error code $?" | tee -a artifacts/fetch_rics_log.txt
           echo "=== Finished fetch_rics_data.py ===" | tee -a artifacts/fetch_rics_log.txt
 

@@ -142,7 +142,7 @@ def fetch_rics_data_with_purchase_history(max_customers=None, max_purchase_pages
                 resp = requests.post(
                     "https://enterprise.ricssoftware.com/api/Customer/GetCustomer",
                     headers=headers,
-                    json={"StoreCode": 12132, "Skip": skip, "Take": 100},
+                    json={"StoreCode": 1, "Skip": skip, "Take": 100},
                     timeout=ABSOLUTE_TIMEOUT_SECONDS
                 )
                 total_api_calls += 1

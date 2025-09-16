@@ -99,6 +99,9 @@ def fetch_purchase_history_for_customer(cust_id, customer_info, max_purchase_pag
             break
 
         for sale in sale_headers:
+            # Log the keys to see what RICS is actually returning
+            log_message(f"🔑 Sale keys: {list(sale.keys())}")
+
             sale_dt = parse_dt(sale.get("SaleDateTime") or sale.get("TicketDateTime"))
             if not sale_dt:
                 log_message(f"⚠️ Skipping sale (no date): {sale}")
@@ -114,6 +117,9 @@ def fetch_purchase_history_for_customer(cust_id, customer_info, max_purchase_pag
             ]}
 
             for item in sale.get("CustomerPurchases", []):
+                # Log the item keys too
+                log_message(f"🔑 Item keys: {list(item.keys())}")
+
                 item_info = {k: item.get(k) for k in [
                     "TicketLineNumber","Quantity","AmountPaid","Sku","Summary",
                     "Description","SupplierCode","SupplierName","Color","Column",

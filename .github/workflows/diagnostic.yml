@@ -1,0 +1,41 @@
+name: RICS Diagnostic Fetch
+
+on:
+  workflow_dispatch:
+    inputs:
+      customer_id:
+        description: "RICS CustomerId (GUID) to fetch"
+        required: true
+        type: string
+
+jobs:
+  run-diagnostic:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      - name: Run diagnostic fetch
+        env:
+          RICS_API_TOKEN: ${{ secrets.RICS_API_TOKEN }}
+        run: |
+          mkdir -p artifacts
+          echo "=== Starting diagnostic fetch for ${{ github.event.inputs.customer_id }} ===" | tee artifacts/diagnostic_log.txt
+          python rics_connector/fetch_rics_data.py --customer-id "${{ github.event.inputs.customer_id }}" \
+            >> artifacts/diagnostic_log.txt 2>&1 || echo "Script exited with error code $?" | tee -a artifacts/diagnostic_log.txt
+          echo "=== Finished diagnostic fetch ===" | tee -a artifacts/diagnostic_log.txt
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: diagnostic-output
+          path: artifacts/*

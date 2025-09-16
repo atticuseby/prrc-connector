@@ -38,7 +38,13 @@ purchase_history_fields = [
 def parse_dt(dt_str):
     if not dt_str:
         return None
-    for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S", "%m/%d/%Y %H:%M:%S", "%m/%d/%Y %H:%M"):
+    for fmt in (
+        "%Y-%m-%d %H:%M:%S",
+        "%Y-%m-%dT%H:%M:%S",
+        "%m/%d/%Y %H:%M:%S",
+        "%m/%d/%Y %H:%M",
+        "%m/%d/%Y %I:%M:%S %p",  # NEW → matches 9/9/2025 12:00:00 AM
+    ):
         try:
             return datetime.strptime(dt_str, fmt)
         except Exception:

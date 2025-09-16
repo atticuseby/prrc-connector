@@ -1,7 +1,16 @@
-name: Test RICS Fetch
+name: Run RICS Fetch
 
 on:
-  workflow_dispatch: # run manually from Actions tab
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Run mode (test or live)"
+        required: true
+        default: "test"
+        type: choice
+        options:
+          - test
+          - live
 
 jobs:
   run-fetch:
@@ -19,18 +28,25 @@ jobs:
         run: |
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
-      - name: Run fetch_rics_data test
+      - name: Run fetch_rics_data
         run: |
           mkdir -p artifacts
-          echo "=== Starting fetch_rics_data.py ===" | tee artifacts/fetch_rics_log.txt
-          python rics_connector/fetch_rics_data.py --max-customers 5 --max-purchase-pages 1 --debug \
-            >> artifacts/fetch_rics_log.txt 2>&1 || echo "Script exited with error code $?" | tee -a artifacts/fetch_rics_log.txt
+          echo "=== Starting fetch_rics_data.py (${{ github.event.inputs.mode }}) ===" | tee artifacts/fetch_rics_log.txt
+
+          if [ "${{ github.event.inputs.mode }}" = "test" ]; then
+            python rics_connector/fetch_rics_data.py --max-customers 5 --max-purchase-pages 1 --debug \
+              >> artifacts/fetch_rics_log.txt 2>&1 || echo "Script exited with error code $?" | tee -a artifacts/fetch_rics_log.txt
+          else
+            python rics_connector/fetch_rics_data.py --debug \
+              >> artifacts/fetch_rics_log.txt 2>&1 || echo "Script exited with error code $?" | tee -a artifacts/fetch_rics_log.txt
+          fi
+
           echo "=== Finished fetch_rics_data.py ===" | tee -a artifacts/fetch_rics_log.txt
 
       - name: Upload artifacts (logs + CSVs)
         uses: actions/upload-artifact@v4
         with:
-          name: rics-test-output
+          name: rics-${{ github.event.inputs.mode }}-output
           path: |
             artifacts/*
             data/**/*.csv

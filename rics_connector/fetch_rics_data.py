@@ -106,9 +106,9 @@ def fetch_purchase_history_for_customer(cust_id, customer_info, max_purchase_pag
             if not sale_dt:
                 log_message(f"⚠️ Skipping sale (no date): {sale}")
                 continue
-            if sale_dt < CUTOFF_DATE:
-                log_message(f"⏩ Skipped old sale ({sale_dt}) for {cust_id}")
-                continue
+            #if sale_dt < CUTOFF_DATE:
+                #log_message(f"⏩ Skipped old sale ({sale_dt}) for {cust_id}")
+                #continue
 
             sale_info = {k: sale.get(k) for k in [
                 "TicketDateTime","TicketNumber","Change","TicketVoided",

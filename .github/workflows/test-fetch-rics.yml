@@ -22,7 +22,7 @@ jobs:
       - name: Run fetch_rics_data test
         run: |
           mkdir -p artifacts
-          python scripts/fetch_rics_data.py --max-customers 5 --max-purchase-pages 1 --debug | tee artifacts/fetch_rics_log.txt
+          python fetch_rics_data.py --max-customers 5 --max-purchase-pages 1 --debug | tee artifacts/fetch_rics_log.txt
 
       - name: Upload artifacts (logs + CSVs)
         uses: actions/upload-artifact@v4

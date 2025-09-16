@@ -27,6 +27,9 @@ jobs:
         with:
           python-version: '3.10'
 
+      - name: 🧪 Debug RICS API Pull
+        run: python debug_rics_pull.py
+
       - name: 📦 Install dependencies
         run: pip install -r requirements.txt
 

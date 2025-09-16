@@ -69,7 +69,6 @@ def fetch_purchase_history_for_customer(cust_id, customer_info, max_purchase_pag
                         "CustomerId": cust_id,
                         "Take": ph_take,
                         "Skip": ph_skip,
-                        # 🚨 If RICS supports these fields, it will respect them
                         "StartDate": start_date,
                         "EndDate": end_date
                     },
@@ -131,120 +130,77 @@ def fetch_rics_data_with_purchase_history(max_customers=None, max_purchase_pages
     output_path = os.path.join(output_dir, filename)
     os.makedirs(output_dir, exist_ok=True)
 
-    all_rows, skip, customer_infos = [], 0, []
+    all_rows, customer_infos = [], []
     total_api_calls, total_customers = 0, 0
 
-# Parent must go first, followed by all active child store codes
-STORE_CODES = [12132, 1, 2, 3, 4, 6, 7, 8, 9, 10, 11, 12, 21, 22, 98, 99]
+    # Parent must go first, followed by all active child store codes
+    STORE_CODES = [12132, 1, 2, 3, 4, 6, 7, 8, 9, 10, 11, 12, 21, 22, 98, 99]
 
-for store_code in STORE_CODES:
-    skip = 0
-    store_customers = 0
-    log_message(f"🏪 Starting fetch for Store {store_code}")
+    for store_code in STORE_CODES:
+        skip = 0
+        store_customers = 0
+        log_message(f"🏪 Starting fetch for Store {store_code}")
 
-    while skip < MAX_SKIP:
-        headers_variants = [{"Token": RICS_API_TOKEN}, {"token": RICS_API_TOKEN}]
-        customers = []
+        while skip < MAX_SKIP:
+            headers_variants = [{"Token": RICS_API_TOKEN}, {"token": RICS_API_TOKEN}]
+            customers = []
 
-        for headers in headers_variants:
-            try:
-                resp = requests.post(
-                    "https://enterprise.ricssoftware.com/api/Customer/GetCustomer",
-                    headers=headers,
-                    json={"StoreCode": store_code, "Skip": skip, "Take": 100},
-                    timeout=ABSOLUTE_TIMEOUT_SECONDS
-                )
-                total_api_calls += 1
-                resp.raise_for_status()
-                customers = resp.json().get("Customers", [])
+            for headers in headers_variants:
+                try:
+                    resp = requests.post(
+                        "https://enterprise.ricssoftware.com/api/Customer/GetCustomer",
+                        headers=headers,
+                        json={"StoreCode": store_code, "Skip": skip, "Take": 100},
+                        timeout=ABSOLUTE_TIMEOUT_SECONDS
+                    )
+                    total_api_calls += 1
+                    resp.raise_for_status()
+                    customers = resp.json().get("Customers", [])
+                    break
+                except Exception as e:
+                    log_message(f"❌ Error fetching customers from store {store_code}: {e}")
+                    continue
+
+            if not customers:
                 break
-            except Exception as e:
-                log_message(f"❌ Error fetching customers from store {store_code}: {e}")
-                continue
 
-        if not customers:
-            break
+            for customer in customers:
+                mailing = customer.get("MailingAddress", {})
+                info = {
+                    "rics_id": customer.get("CustomerId"),
+                    "email": (customer.get("Email") or "").strip(),
+                    "first_name": (customer.get("FirstName") or "").strip(),
+                    "last_name": (customer.get("LastName") or "").strip(),
+                    "orders": customer.get("OrderCount", 0),
+                    "total_spent": customer.get("TotalSpent", 0),
+                    "city": mailing.get("City", "").strip(),
+                    "state": mailing.get("State", "").strip(),
+                    "zip": mailing.get("PostalCode", "").strip(),
+                    "phone": (customer.get("PhoneNumber") or "").strip()
+                }
+                cust_id = customer.get("CustomerId")
+                if cust_id:
+                    customer_infos.append((cust_id, info))
+                    store_customers += 1
+                    total_customers += 1
+                    if max_customers and total_customers >= max_customers:
+                        break
 
-        for customer in customers:
-            mailing = customer.get("MailingAddress", {})
-            info = {
-                "rics_id": customer.get("CustomerId"),
-                "email": (customer.get("Email") or "").strip(),
-                "first_name": (customer.get("FirstName") or "").strip(),
-                "last_name": (customer.get("LastName") or "").strip(),
-                "orders": customer.get("OrderCount", 0),
-                "total_spent": customer.get("TotalSpent", 0),
-                "city": mailing.get("City", "").strip(),
-                "state": mailing.get("State", "").strip(),
-                "zip": mailing.get("PostalCode", "").strip(),
-                "phone": (customer.get("PhoneNumber") or "").strip()
-            }
-            cust_id = customer.get("CustomerId")
-            if cust_id:
-                customer_infos.append((cust_id, info))
-                store_customers += 1
-                total_customers += 1
-                if max_customers and total_customers >= max_customers:
-                    break
+            if max_customers and total_customers >= max_customers:
+                break
+            skip += 100
 
-        if max_customers and total_customers >= max_customers:
-            break
-        skip += 100
-
-    log_message(f"✅ Finished Store {store_code} → {store_customers} customers queued")
-    
-        for customer in customers:
-            mailing = customer.get("MailingAddress", {})
-            info = {
-                "rics_id": customer.get("CustomerId"),
-                "email": (customer.get("Email") or "").strip(),
-                "first_name": (customer.get("FirstName") or "").strip(),
-                "last_name": (customer.get("LastName") or "").strip(),
-                "orders": customer.get("OrderCount", 0),
-                "total_spent": customer.get("TotalSpent", 0),
-                "city": mailing.get("City", "").strip(),
-                "state": mailing.get("State", "").strip(),
-                "zip": mailing.get("PostalCode", "").strip(),
-                "phone": (customer.get("PhoneNumber") or "").strip()
-            }
-            cust_id = customer.get("CustomerId")
-            if cust_id:
-                customer_infos.append((cust_id, info))
-                total_customers += 1
-                if max_customers and total_customers >= max_customers:
-                    break
-
-        if max_customers and total_customers >= max_customers:
-            break
-        skip += 100
-
-        for customer in customers:
-            mailing = customer.get("MailingAddress", {})
-            info = {
-                "rics_id": customer.get("CustomerId"),
-                "email": (customer.get("Email") or "").strip(),
-                "first_name": (customer.get("FirstName") or "").strip(),
-                "last_name": (customer.get("LastName") or "").strip(),
-                "orders": customer.get("OrderCount", 0),
-                "total_spent": customer.get("TotalSpent", 0),
-                "city": mailing.get("City", "").strip(),
-                "state": mailing.get("State", "").strip(),
-                "zip": mailing.get("PostalCode", "").strip(),
-                "phone": (customer.get("PhoneNumber") or "").strip()
-            }
-            cust_id = customer.get("CustomerId")
-            if cust_id:
-                customer_infos.append((cust_id, info))
-                total_customers += 1
-                if max_customers and total_customers >= max_customers:
-                    break
-        if max_customers and total_customers >= max_customers:
-            break
-        skip += 100
+        log_message(f"✅ Finished Store {store_code} → {store_customers} customers queued")
 
     log_message(f"🧮 Total customers queued: {len(customer_infos)}")
+
     with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-        futures = {executor.submit(fetch_purchase_history_for_customer, cid, info, max_purchase_pages, debug_mode): (cid, info) for cid, info in customer_infos}
+        futures = {
+            executor.submit(
+                fetch_purchase_history_for_customer, cid, info, max_purchase_pages, debug_mode
+            ): (cid, info)
+            for cid, info in customer_infos
+        }
         for future in concurrent.futures.as_completed(futures):
             try:
                 rows = future.result()

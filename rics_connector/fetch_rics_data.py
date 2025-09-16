@@ -11,18 +11,16 @@ import argparse
 import json
 
 # --- CONFIGURATION ---
-TEST_MODE = False  # default off for production
-MAX_SKIP = 10000   # pagination limit
+TEST_MODE = False
+MAX_SKIP = 10000
 MAX_CUSTOMERS = None
 MAX_PURCHASE_PAGES = None
-MAX_WORKERS = 3
+MAX_WORKERS = 1   # safer for RICS rate limits
 DEBUG_MODE = False
 
 MAX_RETRIES = 3
-MAX_RESPONSE_TIME_SECONDS = 60
 ABSOLUTE_TIMEOUT_SECONDS = 120
 
-# Only include purchases within the last 7 days
 CUTOFF_DATE = datetime.utcnow() - timedelta(days=7)
 
 purchase_history_fields = [
@@ -43,7 +41,7 @@ def parse_dt(dt_str):
         "%Y-%m-%dT%H:%M:%S",
         "%m/%d/%Y %H:%M:%S",
         "%m/%d/%Y %H:%M",
-        "%m/%d/%Y %I:%M:%S %p",  # handles 9/9/2025 12:00:00 AM
+        "%m/%d/%Y %I:%M:%S %p",
     ):
         try:
             return datetime.strptime(dt_str, fmt)
@@ -52,48 +50,58 @@ def parse_dt(dt_str):
     return None
 
 def fetch_purchase_history_for_customer(cust_id, customer_info, max_purchase_pages=None, debug_mode=False):
-    ph_skip, ph_take, page_count, api_calls = 0, 100, 0, 0
+    ph_skip, ph_take, page_count = 0, 100, 0
     all_rows = []
 
     start_date = (datetime.utcnow() - timedelta(days=7)).strftime("%Y-%m-%dT%H:%M:%SZ")
     end_date = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
 
+    payload_variants = [
+        {"CustomerId": cust_id, "Take": ph_take, "Skip": ph_skip,
+         "StartDate": start_date, "EndDate": end_date},
+        {"CustomerId": cust_id, "Take": ph_take, "Skip": ph_skip,
+         "StartTicketDate": start_date, "EndTicketDate": end_date}
+    ]
+
     while True:
-        ph_headers_variants = [{"Token": RICS_API_TOKEN}, {"token": RICS_API_TOKEN}]
-        sale_headers, ph_data = [], {}
+        sale_headers = []
+        ph_data = {}
 
-        for ph_headers in ph_headers_variants:
-            try:
-                log_message(f"[START] Purchases for cust {cust_id}, skip {ph_skip}, page {page_count+1}")
+        for payload in payload_variants:
+            for attempt in range(MAX_RETRIES):
+                try:
+                    log_message(f"[START] Purchases for cust {cust_id}, skip {ph_skip}, page {page_count+1}")
+                    log_message(f"📤 Payload: {json.dumps(payload)}")
 
-                resp = requests.post(
-                    "https://enterprise.ricssoftware.com/api/Customer/GetCustomerPurchaseHistory",
-                    headers=ph_headers,
-                    json={
-                        "CustomerId": cust_id,
-                        "Take": ph_take,
-                        "Skip": ph_skip,
-                        "StartDate": start_date,
-                        "EndDate": end_date
-                    },
-                    timeout=ABSOLUTE_TIMEOUT_SECONDS
-                )
-                api_calls += 1
-                resp.raise_for_status()
-                ph_data = resp.json()
+                    resp = requests.post(
+                        "https://enterprise.ricssoftware.com/api/Customer/GetCustomerPurchaseHistory",
+                        headers={"Token": RICS_API_TOKEN},
+                        json=payload,
+                        timeout=ABSOLUTE_TIMEOUT_SECONDS
+                    )
+                    resp.raise_for_status()
 
-                if debug_mode:
-                    log_message(f"🔍 DEBUG purchase resp: {resp.text[:500]}")
+                    if debug_mode and page_count == 0 and ph_skip == 0:
+                        log_message(f"📥 Raw response: {resp.text}")
 
-                if not ph_data.get("IsSuccessful"):
-                    log_message(f"⚠️ Purchase API not successful for {cust_id}: {ph_data}")
-                    continue
+                    ph_data = resp.json()
+                    if not ph_data.get("IsSuccessful"):
+                        log_message(f"⚠️ Not successful for {cust_id}: {ph_data}")
+                        continue
 
-                sale_headers = ph_data.get("SaleHeaders", [])
+                    sale_headers = ph_data.get("SaleHeaders", [])
+                    break
+                except requests.exceptions.HTTPError as e:
+                    if resp.status_code == 429 and attempt < MAX_RETRIES - 1:
+                        wait = [1, 5, 15][attempt]
+                        log_message(f"⚠️ 429 rate limit. Retrying in {wait}s...")
+                        time.sleep(wait)
+                        continue
+                    log_message(f"❌ HTTP error for {cust_id}: {e}")
+                except Exception as e:
+                    log_message(f"❌ Error fetching purchases for {cust_id}: {e}")
+            if sale_headers:
                 break
-            except Exception as e:
-                log_message(f"❌ Error fetching purchases for {cust_id}: {e}")
-                continue
 
         if not sale_headers:
             break
@@ -105,11 +113,9 @@ def fetch_purchase_history_for_customer(cust_id, customer_info, max_purchase_pag
             if not sale_dt:
                 log_message(f"⚠️ Skipping sale (no date): {sale}")
                 continue
-
-            # TEMPORARY: cutoff disabled to confirm rows flow
-            # if sale_dt < CUTOFF_DATE:
-            #     log_message(f"⏩ Skipped old sale ({sale_dt}) for {cust_id}")
-            #     continue
+            if sale_dt < CUTOFF_DATE:
+                log_message(f"⏩ Skipped old sale ({sale_dt}) for {cust_id}")
+                continue
 
             sale_info = {k: sale.get(k) for k in [
                 "TicketDateTime","TicketNumber","Change","TicketVoided",
@@ -119,7 +125,6 @@ def fetch_purchase_history_for_customer(cust_id, customer_info, max_purchase_pag
 
             for item in sale.get("CustomerPurchases", []):
                 log_message(f"🔑 Item keys: {list(item.keys())}")
-
                 item_info = {k: item.get(k) for k in [
                     "TicketLineNumber","Quantity","AmountPaid","Sku","Summary",
                     "Description","SupplierCode","SupplierName","Color","Column",
@@ -137,7 +142,7 @@ def fetch_purchase_history_for_customer(cust_id, customer_info, max_purchase_pag
             break
         ph_skip += ph_take
 
-    log_message(f"📦 Cust {cust_id}: {len(all_rows)} rows (7d), {page_count} pages, {api_calls} calls")
+    log_message(f"📦 Cust {cust_id}: {len(all_rows)} rows (7d), {page_count} pages")
     return all_rows
 
 def fetch_rics_data_with_purchase_history(max_customers=None, max_purchase_pages=None, debug_mode=False):
@@ -148,7 +153,7 @@ def fetch_rics_data_with_purchase_history(max_customers=None, max_purchase_pages
     os.makedirs(output_dir, exist_ok=True)
 
     all_rows, customer_infos = [], []
-    total_api_calls, total_customers = 0, 0
+    total_customers = 0
 
     STORE_CODES = [12132, 1, 2, 3, 4, 6, 7, 8, 9, 10, 11, 12, 21, 22, 98, 99]
 
@@ -157,26 +162,20 @@ def fetch_rics_data_with_purchase_history(max_customers=None, max_purchase_pages
         log_message(f"🏪 Store {store_code} starting")
 
         while skip < MAX_SKIP:
-            headers_variants = [{"Token": RICS_API_TOKEN}, {"token": RICS_API_TOKEN}]
-            customers, resp = [], None
-
-            for headers in headers_variants:
-                try:
-                    resp = requests.post(
-                        "https://enterprise.ricssoftware.com/api/Customer/GetCustomer",
-                        headers=headers,
-                        json={"StoreCode": store_code, "Skip": skip, "Take": 100},
-                        timeout=ABSOLUTE_TIMEOUT_SECONDS
-                    )
-                    total_api_calls += 1
-                    resp.raise_for_status()
-                    if debug_mode:
-                        log_message(f"🔍 DEBUG customer resp (store {store_code}, skip {skip}): {resp.text[:500]}")
-                    customers = resp.json().get("Customers", [])
-                    break
-                except Exception as e:
-                    log_message(f"❌ Error fetching customers from store {store_code}: {e}")
-                    continue
+            try:
+                resp = requests.post(
+                    "https://enterprise.ricssoftware.com/api/Customer/GetCustomer",
+                    headers={"Token": RICS_API_TOKEN},
+                    json={"StoreCode": store_code, "Skip": skip, "Take": 100},
+                    timeout=ABSOLUTE_TIMEOUT_SECONDS
+                )
+                resp.raise_for_status()
+                if debug_mode and skip == 0:
+                    log_message(f"🔍 DEBUG customer resp (store {store_code}): {resp.text[:500]}")
+                customers = resp.json().get("Customers", [])
+            except Exception as e:
+                log_message(f"❌ Error fetching customers from store {store_code}: {e}")
+                break
 
             if not customers:
                 log_message(f"⚠️ No customers returned for store {store_code}, skip {skip}")
@@ -245,7 +244,7 @@ if __name__ == "__main__":
 
     if args.test:
         TEST_MODE = True
-        MAX_SKIP, MAX_CUSTOMERS, MAX_PURCHASE_PAGES, MAX_WORKERS = 3, 3, 1, 10
+        MAX_SKIP, MAX_CUSTOMERS, MAX_PURCHASE_PAGES, MAX_WORKERS = 3, 3, 1, 1
     if args.max_customers:
         MAX_CUSTOMERS = args.max_customers
     if args.max_purchase_pages:

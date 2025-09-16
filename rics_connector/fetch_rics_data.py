@@ -43,7 +43,7 @@ def parse_dt(dt_str):
         "%Y-%m-%dT%H:%M:%S",
         "%m/%d/%Y %H:%M:%S",
         "%m/%d/%Y %H:%M",
-        "%m/%d/%Y %I:%M:%S %p",  # NEW: handles 9/9/2025 12:00:00 AM
+        "%m/%d/%Y %I:%M:%S %p",  # handles 9/9/2025 12:00:00 AM
     ):
         try:
             return datetime.strptime(dt_str, fmt)
@@ -106,7 +106,7 @@ def fetch_purchase_history_for_customer(cust_id, customer_info, max_purchase_pag
                 log_message(f"⚠️ Skipping sale (no date): {sale}")
                 continue
 
-            # 🚨 TEMPORARY: disabling cutoff to prove rows flow
+            # TEMPORARY: cutoff disabled to confirm rows flow
             # if sale_dt < CUTOFF_DATE:
             #     log_message(f"⏩ Skipped old sale ({sale_dt}) for {cust_id}")
             #     continue
@@ -126,7 +126,7 @@ def fetch_purchase_history_for_customer(cust_id, customer_info, max_purchase_pag
                     "Row","OnHand"
                 ]}
                 row = {**customer_info, **sale_info, **item_info}
-                log_message(f"📝 ROW PREVIEW: {row}")  # NEW: log row content
+                log_message(f"📝 ROW PREVIEW: {row}")
                 all_rows.append(row)
 
         result_stats = ph_data.get("ResultStatistics", {})
@@ -136,8 +136,6 @@ def fetch_purchase_history_for_customer(cust_id, customer_info, max_purchase_pag
         if (max_purchase_pages and page_count >= max_purchase_pages) or end_record >= total_records:
             break
         ph_skip += ph_take
-        if debug_mode:
-            break
 
     log_message(f"📦 Cust {cust_id}: {len(all_rows)} rows (7d), {page_count} pages, {api_calls} calls")
     return all_rows
@@ -225,11 +223,10 @@ def fetch_rics_data_with_purchase_history(max_customers=None, max_purchase_pages
             try:
                 rows = future.result()
                 all_rows.extend(rows)
-                if debug_mode:
-                    break
             except Exception as exc:
                 log_message(f"❌ Error in thread: {exc}")
 
+    log_message(f"📊 About to write {len(all_rows)} rows to {output_path}")
     with open(output_path, "w", newline="") as file:
         writer = csv.DictWriter(file, fieldnames=purchase_history_fields)
         writer.writeheader()

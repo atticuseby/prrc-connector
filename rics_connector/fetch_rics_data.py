@@ -99,16 +99,17 @@ def fetch_purchase_history_for_customer(cust_id, customer_info, max_purchase_pag
             break
 
         for sale in sale_headers:
-            # Log the keys to see what RICS is actually returning
             log_message(f"🔑 Sale keys: {list(sale.keys())}")
 
             sale_dt = parse_dt(sale.get("SaleDateTime") or sale.get("TicketDateTime"))
             if not sale_dt:
                 log_message(f"⚠️ Skipping sale (no date): {sale}")
                 continue
-            #if sale_dt < CUTOFF_DATE:
-                #log_message(f"⏩ Skipped old sale ({sale_dt}) for {cust_id}")
-                #continue
+
+            # 🚨 TEMPORARY: disabling cutoff to prove rows flow
+            # if sale_dt < CUTOFF_DATE:
+            #     log_message(f"⏩ Skipped old sale ({sale_dt}) for {cust_id}")
+            #     continue
 
             sale_info = {k: sale.get(k) for k in [
                 "TicketDateTime","TicketNumber","Change","TicketVoided",
@@ -117,7 +118,6 @@ def fetch_purchase_history_for_customer(cust_id, customer_info, max_purchase_pag
             ]}
 
             for item in sale.get("CustomerPurchases", []):
-                # Log the item keys too
                 log_message(f"🔑 Item keys: {list(item.keys())}")
 
                 item_info = {k: item.get(k) for k in [
@@ -126,6 +126,7 @@ def fetch_purchase_history_for_customer(cust_id, customer_info, max_purchase_pag
                     "Row","OnHand"
                 ]}
                 row = {**customer_info, **sale_info, **item_info}
+                log_message(f"📝 ROW PREVIEW: {row}")  # NEW: log row content
                 all_rows.append(row)
 
         result_stats = ph_data.get("ResultStatistics", {})

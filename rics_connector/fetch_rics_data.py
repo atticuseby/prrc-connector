@@ -43,7 +43,7 @@ def parse_dt(dt_str):
         "%Y-%m-%dT%H:%M:%S",
         "%m/%d/%Y %H:%M:%S",
         "%m/%d/%Y %H:%M",
-        "%m/%d/%Y %I:%M:%S %p",  # NEW → matches 9/9/2025 12:00:00 AM
+        "%m/%d/%Y %I:%M:%S %p",  # NEW: handles 9/9/2025 12:00:00 AM
     ):
         try:
             return datetime.strptime(dt_str, fmt)
@@ -64,7 +64,6 @@ def fetch_purchase_history_for_customer(cust_id, customer_info, max_purchase_pag
 
         for ph_headers in ph_headers_variants:
             try:
-                start_time = time.time()
                 log_message(f"[START] Purchases for cust {cust_id}, skip {ph_skip}, page {page_count+1}")
 
                 resp = requests.post(
@@ -84,7 +83,6 @@ def fetch_purchase_history_for_customer(cust_id, customer_info, max_purchase_pag
                 ph_data = resp.json()
 
                 if debug_mode:
-                    # dump first ~500 chars of raw JSON for inspection
                     log_message(f"🔍 DEBUG purchase resp: {resp.text[:500]}")
 
                 if not ph_data.get("IsSuccessful"):

@@ -37,7 +37,7 @@ purchase_history_fields = [
 def parse_dt(dt_str):
     if not dt_str:
         return None
-    for fmt in ("%Y-%m-%d %H:%M:%S", "%m/%d/%Y %H:%M:%S", "%m/%d/%Y %H:%M"):
+    for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S", "%m/%d/%Y %H:%M:%S", "%m/%d/%Y %H:%M"):
         try:
             return datetime.strptime(dt_str, fmt)
         except Exception:
@@ -48,20 +48,34 @@ def fetch_purchase_history_for_customer(cust_id, customer_info, max_purchase_pag
     ph_skip, ph_take, page_count, api_calls = 0, 100, 0, 0
     all_rows = []
 
+    # Build a potential date filter payload for the API
+    start_date = (datetime.utcnow() - timedelta(days=7)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    end_date = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+
     while True:
         ph_headers_variants = [{"Token": RICS_API_TOKEN}, {"token": RICS_API_TOKEN}]
         sale_headers = []
+        ph_data = {}
 
         for ph_headers in ph_headers_variants:
             try:
                 start_time = time.time()
                 log_message(f"[START] Fetching purchases for {cust_id}, skip {ph_skip}, page {page_count+1}")
+
                 resp = requests.post(
                     "https://enterprise.ricssoftware.com/api/Customer/GetCustomerPurchaseHistory",
                     headers=ph_headers,
-                    json={"CustomerId": cust_id, "Take": ph_take, "Skip": ph_skip},
+                    json={
+                        "CustomerId": cust_id,
+                        "Take": ph_take,
+                        "Skip": ph_skip,
+                        # 🚨 If RICS supports these fields, it will respect them
+                        "StartDate": start_date,
+                        "EndDate": end_date
+                    },
                     timeout=ABSOLUTE_TIMEOUT_SECONDS
                 )
+
                 api_calls += 1
                 resp.raise_for_status()
                 ph_data = resp.json()
@@ -77,15 +91,17 @@ def fetch_purchase_history_for_customer(cust_id, customer_info, max_purchase_pag
             break
 
         for sale in sale_headers:
-            sale_dt = parse_dt(sale.get("SaleDateTime"))
+            # Local safeguard — only last 7 days
+            sale_dt = parse_dt(sale.get("SaleDateTime") or sale.get("TicketDateTime"))
             if not sale_dt or sale_dt < CUTOFF_DATE:
-                continue  # skip stale sales
+                continue
 
             sale_info = {k: sale.get(k) for k in [
                 "TicketDateTime","TicketNumber","Change","TicketVoided",
                 "ReceiptPrinted","TicketSuspended","ReceiptEmailed",
                 "SaleDateTime","TicketModifiedOn","ModifiedBy","CreatedOn"
             ]}
+
             for item in sale.get("CustomerPurchases", []):
                 item_info = {k: item.get(k) for k in [
                     "TicketLineNumber","Quantity","AmountPaid","Sku","Summary",
@@ -105,7 +121,7 @@ def fetch_purchase_history_for_customer(cust_id, customer_info, max_purchase_pag
         if debug_mode:
             break
 
-    log_message(f"📦 Customer {cust_id}: {len(all_rows)} rows, {page_count} pages, {api_calls} calls")
+    log_message(f"📦 Customer {cust_id}: {len(all_rows)} rows (last 7 days), {page_count} pages, {api_calls} calls")
     return all_rows
 
 def fetch_rics_data_with_purchase_history(max_customers=None, max_purchase_pages=None, debug_mode=False):

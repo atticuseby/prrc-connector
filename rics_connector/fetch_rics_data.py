@@ -4,9 +4,7 @@ import csv
 import time
 import requests
 from datetime import datetime, timedelta
-from scripts.config import RICS_API_TOKEN
-from scripts.helpers import log_message, load_from_drive, upload_to_drive
-
+from scripts.helpers import log_message
 import concurrent.futures
 import argparse
 
@@ -25,7 +23,7 @@ purchase_history_fields = [
     "Sku", "Description", "Quantity", "AmountPaid", "Discount", "Department", "SupplierName"
 ]
 
-DEDUP_LOG_PATH = "logs/sent_ticket_ids.csv"  # persisted on Google Drive
+DEDUP_LOG_PATH = os.path.join("logs", "sent_ticket_ids.csv")
 
 
 def parse_dt(dt_str):
@@ -41,35 +39,29 @@ def parse_dt(dt_str):
 
 
 def load_sent_ticket_ids():
-    """Load sent ticket IDs from Google Drive log."""
+    """Load sent ticket IDs from local file if present."""
     try:
-        local_path = "sent_ticket_ids.csv"
-        load_from_drive(DEDUP_LOG_PATH, local_path)  # pulls from Drive
-        with open(local_path, "r") as f:
+        with open(DEDUP_LOG_PATH, "r") as f:
             return set(line.strip() for line in f if line.strip())
-    except Exception:
+    except FileNotFoundError:
         return set()
 
 
 def save_sent_ticket_ids(ticket_ids):
-    """Save updated sent ticket IDs back to Google Drive."""
-    local_path = "sent_ticket_ids.csv"
-    with open(local_path, "w") as f:
+    """Save updated sent ticket IDs locally (workflow uploads logs to Drive)."""
+    os.makedirs(os.path.dirname(DEDUP_LOG_PATH), exist_ok=True)
+    with open(DEDUP_LOG_PATH, "w") as f:
         for tid in sorted(ticket_ids):
             f.write(f"{tid}\n")
-    upload_to_drive(local_path, DEDUP_LOG_PATH)
 
 
 def fetch_pos_transactions_for_store(store_code=None,
                                      max_purchase_pages=None,
                                      debug_mode=False,
                                      already_sent=None):
-    """
-    Fetch purchase history from POS/GetPOSTransaction for a given store.
-    Deduplicates against already_sent set.
-    """
+    """Fetch purchase history from POS/GetPOSTransaction for a given store."""
     all_rows = []
-    seen_keys = set()  # within this run
+    seen_keys = set()
     page_count, api_calls, skip, take = 0, 0, 0, 100
 
     start_date = (datetime.utcnow() - timedelta(days=7)).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -88,7 +80,7 @@ def fetch_pos_transactions_for_store(store_code=None,
             log_message(f"📤 Fetching POS transactions for Store {store_code}, page {page_count+1}")
             resp = requests.post(
                 "https://enterprise.ricssoftware.com/api/POS/GetPOSTransaction",
-                headers={"Token": RICS_API_TOKEN},
+                headers={"Token": os.getenv("RICS_API_TOKEN")},
                 json=payload,
                 timeout=ABSOLUTE_TIMEOUT_SECONDS
             )
@@ -119,11 +111,8 @@ def fetch_pos_transactions_for_store(store_code=None,
 
                 for item in sale.get("SaleLines", []):
                     key = f"{sale_info['TicketNumber']}_{item.get('Sku')}"
-
-                    # Skip if already sent in previous runs
                     if already_sent and sale_info['TicketNumber'] in already_sent:
                         continue
-                    # Skip if seen already in this run
                     if key in seen_keys:
                         continue
 
@@ -156,19 +145,17 @@ def fetch_pos_transactions_for_store(store_code=None,
     return all_rows
 
 
-def fetch_rics_data_with_purchase_history(max_purchase_pages=None, debug_mode=False):
+def fetch_rics_data_with_purchase_history(max_purchase_pages=None, debug_mode=False, return_summary=False):
     timestamp = datetime.now().strftime("%m_%d_%Y_%H%M")
     filename = f"rics_customer_purchase_history_{timestamp}.csv"
     output_dir = os.path.join("optimizely_connector", "output")
     output_path = os.path.join(output_dir, filename)
     os.makedirs(output_dir, exist_ok=True)
 
-    # Load already-sent tickets from Drive
     already_sent = load_sent_ticket_ids()
     log_message(f"📂 Loaded {len(already_sent)} previously sent TicketNumbers")
 
     all_rows = []
-
     STORE_CODES = [1, 2, 3, 4, 6, 7, 8, 9, 10, 11, 12, 21, 22, 98, 99]
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
@@ -189,7 +176,6 @@ def fetch_rics_data_with_purchase_history(max_purchase_pages=None, debug_mode=Fa
             except Exception as exc:
                 log_message(f"❌ Error in thread for store {futures[future]}: {exc}")
 
-    # Write CSV
     with open(output_path, "w", newline="") as file:
         writer = csv.DictWriter(file, fieldnames=purchase_history_fields)
         writer.writeheader()
@@ -197,21 +183,23 @@ def fetch_rics_data_with_purchase_history(max_purchase_pages=None, debug_mode=Fa
 
     log_message(f"📝 Wrote {len(all_rows)} rows to {output_path}")
 
-    # Update dedup log with new TicketNumbers
     new_ticket_ids = {row["TicketNumber"] for row in all_rows}
-    skipped_count = 0
-    if already_sent:
-        skipped_count = len([tid for tid in already_sent if tid not in new_ticket_ids])
+    skipped_count = len([tid for tid in already_sent if tid not in new_ticket_ids])
 
     if new_ticket_ids:
         updated_sent = already_sent.union(new_ticket_ids)
         save_sent_ticket_ids(updated_sent)
+        summary = f"{len(new_ticket_ids)} new tickets, {skipped_count} skipped (already sent)"
         log_message(f"✅ Dedup log updated: {len(updated_sent)} total TicketNumbers tracked")
-        log_message(f"📊 Summary: {len(new_ticket_ids)} new tickets, {skipped_count} skipped (already sent)")
+        log_message(f"📊 Summary: {summary}")
     else:
+        summary = "0 new tickets (all skipped)"
         log_message("⚠️ No new TicketNumbers found in this run.")
 
+    if return_summary:
+        return output_path, summary
     return output_path
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Fetch RICS POS data with purchase history.")

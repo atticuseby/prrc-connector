@@ -6,8 +6,8 @@ import logging
 import requests
 from datetime import datetime, timedelta
 
-# ✅ Fixed import path — matches your existing scripts folder
-from scripts.upload_to_gdrive import upload_to_drive
+# ✅ Fixed import path — same folder
+from upload_to_gdrive import upload_to_drive
 
 # === Setup logging ===
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")

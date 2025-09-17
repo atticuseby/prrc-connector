@@ -1,100 +1,137 @@
 import os
 import sys
-import traceback
-import shutil
-import pandas as pd
-from datetime import datetime
-from google.oauth2 import service_account
-from googleapiclient.discovery import build
-from googleapiclient.http import MediaFileUpload
+import csv
+import json
+import time
+import logging
+import requests
+from datetime import datetime, timedelta
 
-# Add repo root to path for imports
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from rics_connector.fetch_rics_data import fetch_rics_data_with_purchase_history
+# === Setup logging ===
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
-# === CONFIG ===
+# === Environment variables ===
 RICS_API_TOKEN = os.getenv("RICS_API_TOKEN")
 GDRIVE_FOLDER_ID_RICS = os.getenv("GDRIVE_FOLDER_ID_RICS")
-CREDS_PATH = "optimizely_connector/service_account.json"
-LOG_DIR = "logs"
 
-os.makedirs(LOG_DIR, exist_ok=True)
+if not RICS_API_TOKEN:
+    logging.error("Missing RICS_API_TOKEN in environment")
+    sys.exit(1)
 
-log_file_path = os.path.join(LOG_DIR, f"sync_log_{datetime.now().strftime('%m_%d_%Y_%H%M')}.log")
+# === File paths ===
+timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+base_filename = f"rics_customer_purchase_history_{timestamp}.csv"
+latest_filename = "rics_customer_purchase_history_latest.csv"
+deduped_filename = "rics_customer_purchase_history_deduped.csv"
 
-def log(msg):
-    timestamp = datetime.now().strftime("[%Y-%m-%d %H:%M:%S]")
-    line = f"{timestamp} {msg}"
-    print(line, flush=True)
-    with open(log_file_path, "a") as f:
-        f.write(line + "\n")
+# === API Config ===
+RICS_API_BASE = "https://api.ricssoftware.com/pos/GetPOSTransaction"
+STORE_CODES = os.getenv("RICS_STORE_CODES", "").split(",")  # comma-separated store codes
+LOOKBACK_DAYS = 7
 
-def get_drive_service():
-    creds = service_account.Credentials.from_service_account_file(
-        CREDS_PATH, scopes=["https://www.googleapis.com/auth/drive.file"]
-    )
-    return build("drive", "v3", credentials=creds)
+# === Helper: write CSV ===
+def write_csv(filename, rows, headers):
+    with open(filename, "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=headers)
+        writer.writeheader()
+        for row in rows:
+            writer.writerow(row)
+    logging.info(f"Wrote {len(rows)} rows → {filename}")
 
-def upload_to_drive(filepath, folder_id):
-    service = get_drive_service()
-    file_metadata = {"name": os.path.basename(filepath), "parents": [folder_id]}
-    media = MediaFileUpload(filepath)
-    uploaded = service.files().create(body=file_metadata, media_body=media, fields="id").execute()
-    log(f"✅ Uploaded {os.path.basename(filepath)} to Drive as ID: {uploaded['id']}")
+# === Fetch with pagination ===
+def fetch_transactions(store_code, start_date, end_date):
+    page = 1
+    per_page = 100
+    all_rows = []
 
-def deduplicate_csv(input_csv, output_csv):
-    """Load CSV, drop duplicate customers by rics_id+email, save cleaned copy."""
-    df = pd.read_csv(input_csv)
-    before = len(df)
-    df = df.drop_duplicates(subset=["rics_id", "email"], keep="last")
-    after = len(df)
-    df.to_csv(output_csv, index=False)
-    log(f"🧹 Deduplicated customers: {before} → {after} rows (saved {output_csv})")
-    return output_csv
+    while True:
+        params = {
+            "storeCode": store_code,
+            "startDate": start_date,
+            "endDate": end_date,
+            "page": page,
+            "pageSize": per_page,
+            "includeVoided": "false"
+        }
 
-def main():
-    log("🔥 ENTERED MAIN FUNCTION (purchase history export)")
-    log(f"RICS_API_TOKEN present? {'✅' if RICS_API_TOKEN else '❌'}")
-    try:
-        # Fetch RICS data with purchase history
-        result = fetch_rics_data_with_purchase_history(return_summary=True)
-        if isinstance(result, tuple):
-            output_csv, summary = result
+        logging.info(f"Fetching store {store_code}, page {page}, params={params}")
+
+        try:
+            resp = requests.get(
+                RICS_API_BASE,
+                headers={"Authorization": f"Bearer {RICS_API_TOKEN}"},
+                params=params,
+                timeout=30
+            )
+            resp.raise_for_status()
+        except Exception as e:
+            logging.error(f"RICS API error: {e}")
+            break
+
+        data = resp.json()
+        transactions = data.get("transactions", [])
+
+        if not transactions:
+            logging.info("No more transactions found")
+            break
+
+        all_rows.extend(transactions)
+
+        if len(transactions) < per_page:
+            break  # last page
         else:
-            output_csv, summary = result, "No summary returned"
+            page += 1
+            time.sleep(0.25)  # be nice to the API
 
-        log(f"📊 Exported RICS customer purchase history to: {output_csv}")
-        log(f"📊 Dedup summary → {summary}")
+    logging.info(f"Store {store_code}: fetched {len(all_rows)} transactions total")
+    return all_rows
 
-        # Ensure output dir exists
-        output_dir = os.path.join("optimizely_connector", "output")
-        os.makedirs(output_dir, exist_ok=True)
+# === Deduplicate (by transactionId) ===
+def dedupe_rows(rows):
+    seen = set()
+    deduped = []
+    for row in rows:
+        tid = row.get("transactionId")
+        if tid not in seen:
+            deduped.append(row)
+            seen.add(tid)
+    return deduped
 
-        # Latest raw
-        latest_raw = os.path.join(output_dir, "rics_customer_purchase_history_latest.csv")
-        shutil.copyfile(output_csv, latest_raw)
-        log(f"📁 Copied raw export to: {latest_raw}")
+# === Main ===
+def main():
+    start_date = (datetime.utcnow() - timedelta(days=LOOKBACK_DAYS)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    end_date = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
 
-        # Deduplicated file
-        deduped_path = os.path.join(output_dir, "rics_customer_purchase_history_deduped.csv")
-        deduplicate_csv(latest_raw, deduped_path)
+    logging.info(f"=== Starting sync_rics_live.py ===")
+    logging.info(f"Date window: {start_date} → {end_date}")
+    logging.info(f"Store codes: {STORE_CODES}")
 
-        # Upload all to Drive
-        upload_to_drive(output_csv, GDRIVE_FOLDER_ID_RICS)       # timestamped raw
-        upload_to_drive(latest_raw, GDRIVE_FOLDER_ID_RICS)       # alias raw
-        upload_to_drive(deduped_path, GDRIVE_FOLDER_ID_RICS)     # deduped
+    all_transactions = []
 
-    except Exception as e:
-        log(f"❌ Error during RICS data export: {e}")
-        log(traceback.format_exc())
+    for store in STORE_CODES:
+        store = store.strip()
+        if not store:
+            continue
+        rows = fetch_transactions(store, start_date, end_date)
+        all_transactions.extend(rows)
 
-    # Always upload the log
-    try:
-        upload_to_drive(log_file_path, GDRIVE_FOLDER_ID_RICS)
-    except Exception as e:
-        print(f"❌ Failed to upload log file: {e}")
+    if not all_transactions:
+        logging.warning("No transactions found. Writing EMPTY.csv for clarity.")
+        headers = ["transactionId", "customerId", "storeCode", "amount", "date"]
+        write_csv(base_filename.replace(".csv", "_EMPTY.csv"), [], headers)
+        sys.exit(0)
 
-    log("✅ All done!")
+    deduped = dedupe_rows(all_transactions)
+
+    headers = list(deduped[0].keys())
+
+    # Write all versions
+    write_csv(base_filename, all_transactions, headers)
+    write_csv(latest_filename, all_transactions, headers)
+    write_csv(deduped_filename, deduped, headers)
+
+    logging.info(f"Final counts → raw: {len(all_transactions)}, deduped: {len(deduped)}")
+    logging.info("=== Finished sync_rics_live.py ===")
 
 if __name__ == "__main__":
     main()

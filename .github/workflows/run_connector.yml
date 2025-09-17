@@ -12,7 +12,7 @@ jobs:
     env:
       RICS_API_TOKEN: ${{ secrets.RICS_API_TOKEN }}
       RICS_STORE_CODES: ${{ secrets.RICS_STORE_CODES }}
-      GDRIVE_CREDENTIALS: ${{ secrets.GDRIVE_CREDENTIALS }}
+      GDRIVE_CREDENTIALS: ${{ secrets.GDRIVE_CREDENTIALS }}   # ✅ use only this
       GDRIVE_FOLDER_ID_RICS: ${{ secrets.GDRIVE_FOLDER_ID_RICS }}
       OPTIMIZELY_API_TOKEN: ${{ secrets.OPTIMIZELY_API_TOKEN }}
       META_ACCESS_TOKEN: ${{ secrets.META_ACCESS_TOKEN }}
@@ -34,9 +34,16 @@ jobs:
       - name: 🧪 Sanity check secrets
         run: |
           python - <<'PY'
-          import os
-          print("GDRIVE_CREDENTIALS length:", len(os.getenv("GDRIVE_CREDENTIALS") or ""))
-          print("GDRIVE_FOLDER_ID_RICS:", os.getenv("GDRIVE_FOLDER_ID_RICS"))
+          import os, json
+          creds = os.getenv("GDRIVE_CREDENTIALS")
+          folder = os.getenv("GDRIVE_FOLDER_ID_RICS")
+          print("✅ GDRIVE_CREDENTIALS present:", bool(creds))
+          print("✅ Folder ID:", folder)
+          try:
+              info = json.loads(creds)
+              print("✅ Service account email:", info.get("client_email"))
+          except Exception as e:
+              print("❌ Failed to parse GDRIVE_CREDENTIALS:", e)
           PY
 
       - name: 🟢 Run RICS fetch + dedupe + upload

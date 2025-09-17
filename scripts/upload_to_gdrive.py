@@ -51,6 +51,8 @@ def upload_to_drive(file_path, filename=None):
     service, folder_id = _get_drive_service_and_folder()
 
     logging.info(f"Uploading {file_path} as {filename}")
+    logging.info(f"Target folder ID: {folder_id}")
+
     query = f"name='{filename}' and '{folder_id}' in parents and trashed=false"
 
     try:
@@ -62,7 +64,7 @@ def upload_to_drive(file_path, filename=None):
             logging.info(f"Overwriting existing file {filename} (id={file_id})")
             service.files().update(fileId=file_id, media_body=media).execute()
         else:
-            logging.info(f"No existing {filename}. Creating new file.")
+            logging.info(f"No existing {filename}. Creating new file in {folder_id}")
             metadata = {"name": filename, "parents": [folder_id]}
             service.files().create(body=metadata, media_body=media, fields="id").execute()
 

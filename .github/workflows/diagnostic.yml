@@ -4,8 +4,17 @@ on:
   workflow_dispatch:
     inputs:
       customer_id:
-        description: "RICS CustomerId (GUID) to fetch"
-        required: true
+        description: "RICS CustomerId (GUID) to fetch (optional)"
+        required: false
+        type: string
+      account_id:
+        description: "RICS AccountId from Export Purchase Details (optional)"
+        required: false
+        type: string
+      store_code:
+        description: "StoreCode for resolving AccountId (default=1)"
+        required: false
+        default: "1"
         type: string
 
 jobs:
@@ -29,9 +38,14 @@ jobs:
           RICS_API_TOKEN: ${{ secrets.RICS_API_TOKEN }}
         run: |
           mkdir -p artifacts
-          echo "=== Starting diagnostic fetch for ${{ github.event.inputs.customer_id }} ===" | tee artifacts/diagnostic_log.txt
-          python rics_connector/fetch_rics_data.py --customer-id "${{ github.event.inputs.customer_id }}" \
+          echo "=== Starting diagnostic fetch ===" | tee artifacts/diagnostic_log.txt
+
+          python rics_connector/diagnostic_fetch_rics.py \
+            --customer-id "${{ github.event.inputs.customer_id }}" \
+            --account-id "${{ github.event.inputs.account_id }}" \
+            --store-code "${{ github.event.inputs.store_code }}" \
             >> artifacts/diagnostic_log.txt 2>&1 || echo "Script exited with error code $?" | tee -a artifacts/diagnostic_log.txt
+
           echo "=== Finished diagnostic fetch ===" | tee -a artifacts/diagnostic_log.txt
 
       - name: Upload artifacts

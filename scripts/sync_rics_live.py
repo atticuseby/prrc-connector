@@ -47,7 +47,12 @@ def main():
 
     try:
         # Fetch RICS data with purchase history (dedup built in)
-        output_csv, dedup_summary = fetch_rics_data_with_purchase_history(return_summary=True)
+        result = fetch_rics_data_with_purchase_history(return_summary=True)
+        if isinstance(result, tuple):
+            output_csv, dedup_summary = result
+        else:
+            output_csv, dedup_summary = result, "No summary returned"
+
         log(f"📊 Exported RICS customer purchase history to: {output_csv}")
         log(f"📊 Dedup summary → {dedup_summary}")
 
@@ -55,13 +60,9 @@ def main():
         latest_path = os.path.join("optimizely_connector", "output", "rics_customer_purchase_history_latest.csv")
         os.makedirs(os.path.dirname(latest_path), exist_ok=True)
 
-        # Copy to predictable filename for downstream scripts
+        # Always create/copy the latest file
         shutil.copyfile(output_csv, latest_path)
         log(f"📁 Copied to latest: {latest_path}")
-
-        # Upload both timestamped and latest to Drive
-        upload_to_drive(output_csv, GDRIVE_FOLDER_ID_RICS)
-        upload_to_drive(latest_path, GDRIVE_FOLDER_ID_RICS, alias_name="rics_customer_purchase_history_latest.csv")
 
     except Exception as e:
         log(f"❌ Error during RICS data export: {e}")

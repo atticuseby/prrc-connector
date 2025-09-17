@@ -20,6 +20,7 @@ LOG_DIR = "logs"
 os.makedirs(LOG_DIR, exist_ok=True)
 
 log_file_path = os.path.join(LOG_DIR, f"sync_log_{datetime.now().strftime('%m_%d_%Y_%H%M')}.log")
+
 def log(msg):
     timestamp = datetime.now().strftime("[%Y-%m-%d %H:%M:%S]")
     line = f"{timestamp} {msg}"
@@ -45,12 +46,16 @@ def main():
     log(f"RICS_API_TOKEN present? {'✅' if RICS_API_TOKEN else '❌'}")
 
     try:
-        # Fetch RICS data with purchase history (dedup built into script)
-        output_csv = fetch_rics_data_with_purchase_history()
+        # Fetch RICS data with purchase history (dedup built in)
+        output_csv, dedup_summary = fetch_rics_data_with_purchase_history(return_summary=True)
         log(f"📊 Exported RICS customer purchase history to: {output_csv}")
+        log(f"📊 Dedup summary → {dedup_summary}")
+
+        # Ensure output directory exists
+        latest_path = os.path.join("optimizely_connector", "output", "rics_customer_purchase_history_latest.csv")
+        os.makedirs(os.path.dirname(latest_path), exist_ok=True)
 
         # Copy to predictable filename for downstream scripts
-        latest_path = os.path.join("optimizely_connector", "output", "rics_customer_purchase_history_latest.csv")
         shutil.copyfile(output_csv, latest_path)
         log(f"📁 Copied to latest: {latest_path}")
 

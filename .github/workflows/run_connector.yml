@@ -31,6 +31,11 @@ jobs:
       - name: 📦 Install dependencies
         run: pip install -r requirements.txt
 
+      - name: 🧪 Run RICS Diagnostics
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          python scripts/rics_fetch_diagnostics.py --days 7 --pages 3 --debug --limit-stores 2
+
       - name: 🧪 Sanity check secrets
         run: |
           python - <<'PY'

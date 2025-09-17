@@ -199,13 +199,19 @@ def fetch_rics_data_with_purchase_history(max_purchase_pages=None, debug_mode=Fa
 
     # Update dedup log with new TicketNumbers
     new_ticket_ids = {row["TicketNumber"] for row in all_rows}
+    skipped_count = 0
+    if already_sent:
+        skipped_count = len([tid for tid in already_sent if tid not in new_ticket_ids])
+
     if new_ticket_ids:
         updated_sent = already_sent.union(new_ticket_ids)
         save_sent_ticket_ids(updated_sent)
         log_message(f"✅ Dedup log updated: {len(updated_sent)} total TicketNumbers tracked")
+        log_message(f"📊 Summary: {len(new_ticket_ids)} new tickets, {skipped_count} skipped (already sent)")
+    else:
+        log_message("⚠️ No new TicketNumbers found in this run.")
 
     return output_path
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Fetch RICS POS data with purchase history.")

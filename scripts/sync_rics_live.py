@@ -1,11 +1,11 @@
 import os
 import sys
 import traceback
+import shutil
 from datetime import datetime
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
-import shutil
 
 # Add repo root to path for imports
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -34,41 +34,44 @@ def get_drive_service():
     )
     return build("drive", "v3", credentials=creds)
 
-def upload_to_drive(filepath, folder_id, alias_name=None):
+def upload_to_drive(filepath, folder_id):
     service = get_drive_service()
-    file_metadata = {"name": alias_name or os.path.basename(filepath), "parents": [folder_id]}
+    file_metadata = {"name": os.path.basename(filepath), "parents": [folder_id]}
     media = MediaFileUpload(filepath)
     uploaded = service.files().create(body=file_metadata, media_body=media, fields="id").execute()
-    log(f"✅ Uploaded {alias_name or os.path.basename(filepath)} to Drive as ID: {uploaded['id']}")
+    log(f"✅ Uploaded {os.path.basename(filepath)} to Drive as ID: {uploaded['id']}")
 
 def main():
     log("🔥 ENTERED MAIN FUNCTION (purchase history export)")
     log(f"RICS_API_TOKEN present? {'✅' if RICS_API_TOKEN else '❌'}")
-
     try:
-        # Fetch RICS data with purchase history (dedup built in)
+        # Fetch RICS data with purchase history
         result = fetch_rics_data_with_purchase_history(return_summary=True)
         if isinstance(result, tuple):
-            output_csv, dedup_summary = result
+            output_csv, summary = result
         else:
-            output_csv, dedup_summary = result, "No summary returned"
+            output_csv, summary = result, "No summary returned"
 
         log(f"📊 Exported RICS customer purchase history to: {output_csv}")
-        log(f"📊 Dedup summary → {dedup_summary}")
+        log(f"📊 Dedup summary → {summary}")
 
-        # Ensure output directory exists
+        # Ensure output dir exists
         latest_path = os.path.join("optimizely_connector", "output", "rics_customer_purchase_history_latest.csv")
         os.makedirs(os.path.dirname(latest_path), exist_ok=True)
 
-        # Always create/copy the latest file
+        # Always copy, even if empty
         shutil.copyfile(output_csv, latest_path)
         log(f"📁 Copied to latest: {latest_path}")
+
+        # Upload both timestamped and latest files
+        upload_to_drive(output_csv, GDRIVE_FOLDER_ID_RICS)
+        upload_to_drive(latest_path, GDRIVE_FOLDER_ID_RICS)
 
     except Exception as e:
         log(f"❌ Error during RICS data export: {e}")
         log(traceback.format_exc())
 
-    # Always upload the log file
+    # Always upload the log
     try:
         upload_to_drive(log_file_path, GDRIVE_FOLDER_ID_RICS)
     except Exception as e:

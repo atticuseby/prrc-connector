@@ -2,23 +2,44 @@ name: Run PRRC Connector
 
 on:
   schedule:
-    - cron: "0 8 * * *" # 3AM EST (8AM UTC)
+    - cron: "0 8 * * *"  # 3:00 AM EST (8:00 UTC)
   workflow_dispatch:
 
 jobs:
   run-connector:
     runs-on: ubuntu-latest
+
+    # ✅ Make secrets available to every step below
+    env:
+      RICS_API_TOKEN: ${{ secrets.RICS_API_TOKEN }}
+      RICS_STORE_CODES: ${{ secrets.RICS_STORE_CODES }}
+      GDRIVE_CREDENTIALS: ${{ secrets.GDRIVE_CREDENTIALS }}
+      GDRIVE_FOLDER_ID_RICS: ${{ secrets.GDRIVE_FOLDER_ID_RICS }}
+      OPTIMIZELY_API_TOKEN: ${{ secrets.OPTIMIZELY_API_TOKEN }}
+      META_ACCESS_TOKEN: ${{ secrets.META_ACCESS_TOKEN }}
+      META_OFFLINE_EVENT_SET_ID: ${{ secrets.META_OFFLINE_EVENT_SET_ID }}
+      TEST_EMAIL: ${{ secrets.TEST_EMAIL }}
+
     steps:
       - name: 📥 Checkout repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: 🐍 Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: "3.10"
 
       - name: 📦 Install dependencies
         run: pip install -r requirements.txt
+
+      - name: 🧪 Sanity check secrets (no values printed)
+        run: |
+          python - <<'PY'
+          import os
+          print("GDRIVE_CREDENTIALS length:", len(os.getenv("GDRIVE_CREDENTIALS") or ""))
+          print("GDRIVE_FOLDER_ID_RICS present:", bool(os.getenv("GDRIVE_FOLDER_ID_RICS")))
+          print("RICS_STORE_CODES present:", bool(os.getenv("RICS_STORE_CODES")))
+          PY
 
       - name: 🟢 Run RICS fetch + dedupe + upload
         run: python scripts/sync_rics_live.py

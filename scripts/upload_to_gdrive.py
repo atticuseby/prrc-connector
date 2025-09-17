@@ -40,6 +40,7 @@ def upload_to_drive(file_path, filename=None):
     Upload file to Google Drive folder.
     - If a file with the same name exists in the folder, overwrite it.
     - Otherwise, create a new file.
+    Works with Shared Drives (supportsAllDrives=True).
     """
     if not filename:
         filename = os.path.basename(file_path)
@@ -56,17 +57,32 @@ def upload_to_drive(file_path, filename=None):
     query = f"name='{filename}' and '{folder_id}' in parents and trashed=false"
 
     try:
-        existing = service.files().list(q=query, spaces="drive", fields="files(id,name)").execute().get("files", [])
+        existing = service.files().list(
+            q=query,
+            spaces="drive",
+            fields="files(id,name)",
+            supportsAllDrives=True
+        ).execute().get("files", [])
+
         media = MediaFileUpload(file_path, resumable=True)
 
         if existing:
             file_id = existing[0]["id"]
             logging.info(f"Overwriting existing file {filename} (id={file_id})")
-            service.files().update(fileId=file_id, media_body=media).execute()
+            service.files().update(
+                fileId=file_id,
+                media_body=media,
+                supportsAllDrives=True
+            ).execute()
         else:
             logging.info(f"No existing {filename}. Creating new file in {folder_id}")
             metadata = {"name": filename, "parents": [folder_id]}
-            service.files().create(body=metadata, media_body=media, fields="id").execute()
+            service.files().create(
+                body=metadata,
+                media_body=media,
+                fields="id",
+                supportsAllDrives=True
+            ).execute()
 
         logging.info(f"✅ Uploaded {filename} to Google Drive")
     except Exception as e:

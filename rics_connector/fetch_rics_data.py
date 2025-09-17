@@ -7,7 +7,8 @@ from datetime import datetime, timedelta
 from scripts.helpers import log_message
 import concurrent.futures
 import argparse
-import json
+import ssl
+import urllib3
 
 # --- CONFIGURATION ---
 TEST_MODE = False
@@ -18,6 +19,8 @@ DEBUG_MODE = False
 ABSOLUTE_TIMEOUT_SECONDS = 120
 CUTOFF_DATE = datetime.utcnow() - timedelta(days=7)
 
+RICS_ENDPOINT = "https://enterprise.ricssoftware.com/api/POS/GetPOSTransaction"
+
 purchase_history_fields = [
     "TicketDateTime", "TicketNumber", "SaleDateTime", "StoreCode", "TerminalId", "Cashier",
     "AccountNumber", "CustomerId",
@@ -25,7 +28,6 @@ purchase_history_fields = [
 ]
 
 DEDUP_LOG_PATH = os.path.join("logs", "sent_ticket_ids.csv")
-RICS_ENDPOINT = "https://enterprise.ricssoftware.com/api/POS/GetPOSTransaction"  # ✅ correct endpoint
 
 
 def parse_dt(dt_str):
@@ -41,6 +43,7 @@ def parse_dt(dt_str):
 
 
 def load_sent_ticket_ids():
+    """Load sent ticket IDs from local file if present."""
     try:
         with open(DEDUP_LOG_PATH, "r") as f:
             return set(line.strip() for line in f if line.strip())
@@ -49,6 +52,7 @@ def load_sent_ticket_ids():
 
 
 def save_sent_ticket_ids(ticket_ids):
+    """Save updated sent ticket IDs locally (workflow uploads logs to Drive)."""
     os.makedirs(os.path.dirname(DEDUP_LOG_PATH), exist_ok=True)
     with open(DEDUP_LOG_PATH, "w") as f:
         for tid in sorted(ticket_ids):
@@ -59,6 +63,7 @@ def fetch_pos_transactions_for_store(store_code=None,
                                      max_purchase_pages=None,
                                      debug_mode=False,
                                      already_sent=None):
+    """Fetch purchase history from POS/GetPOSTransaction for a given store with full debug."""
     all_rows = []
     seen_keys = set()
     page_count, api_calls, skip, take = 0, 0, 0, 100
@@ -66,22 +71,39 @@ def fetch_pos_transactions_for_store(store_code=None,
     start_date = (datetime.utcnow() - timedelta(days=7)).strftime("%Y-%m-%dT%H:%M:%SZ")
     end_date = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
 
+    payload = {
+        "Take": take,
+        "Skip": skip,
+        "TicketDateStart": start_date,
+        "TicketDateEnd": end_date,
+        "StoreCode": store_code
+    }
+
+    # === DEBUGGING TLS / ENVIRONMENT ===
+    log_message(f"⚙️ OpenSSL version: {ssl.OPENSSL_VERSION}")
+    log_message(f"⚙️ urllib3 version: {urllib3.__version__}")
+
+    token = os.getenv("RICS_API_TOKEN")
+    if not token:
+        log_message("❌ ENV VAR RICS_API_TOKEN is missing or empty!")
+    else:
+        log_message(f"✅ ENV VAR RICS_API_TOKEN loaded, length={len(token)}")
+
+    try:
+        test_resp = requests.get("https://enterprise.ricssoftware.com", timeout=10)
+        log_message(f"🌐 Basic GET to enterprise.ricssoftware.com worked, status={test_resp.status_code}")
+    except Exception as e:
+        log_message(f"❌ Basic GET failed: {e}")
+
+    # === MAIN FETCH LOOP ===
     while True:
-        payload = {
-            "Take": take,
-            "Skip": skip,
-            "TicketDateStart": start_date,
-            "TicketDateEnd": end_date,
-            "SaleDateStart": start_date,   # ✅ add both sets
-            "SaleDateEnd": end_date,
-            "StoreCode": store_code
-        }
+        payload["Skip"] = skip
+        log_message(f"➡️ Fetching store {store_code}, page {page_count+1}, payload={payload}")
 
         try:
-            log_message(f"📤 Fetching POS transactions for Store {store_code}, page {page_count+1}")
             resp = requests.post(
                 RICS_ENDPOINT,
-                headers={"Token": os.getenv("RICS_API_TOKEN")},
+                headers={"Token": token},
                 json=payload,
                 timeout=ABSOLUTE_TIMEOUT_SECONDS
             )
@@ -89,15 +111,9 @@ def fetch_pos_transactions_for_store(store_code=None,
             resp.raise_for_status()
             data = resp.json()
 
-            # --- Debugging output ---
-            try:
-                log_message(f"🔍 Raw response excerpt (store {store_code}, page {page_count+1}): {resp.text[:500]}")
-            except Exception:
-                log_message("⚠️ Could not log raw response text.")
-
             sales = data.get("Sales", [])
             if not sales:
-                log_message(f"⚠️ No Sales returned for Store {store_code}, page {page_count+1}.")
+                log_message(f"⚠️ No Sales returned for Store {store_code}.")
                 break
 
             for sale in sales:
@@ -143,6 +159,9 @@ def fetch_pos_transactions_for_store(store_code=None,
             if debug_mode:
                 break
 
+        except requests.exceptions.SSLError as ssl_err:
+            log_message(f"❌ SSL Handshake error for store {store_code}: {ssl_err}")
+            break
         except Exception as e:
             log_message(f"❌ Error fetching POS transactions for Store {store_code}: {e}")
             break
@@ -162,19 +181,9 @@ def fetch_rics_data_with_purchase_history(max_purchase_pages=None, debug_mode=Fa
     already_sent = load_sent_ticket_ids()
     log_message(f"📂 Loaded {len(already_sent)} previously sent TicketNumbers")
 
-    store_codes_env = os.getenv("RICS_STORE_CODES", "").strip()
-    if store_codes_env:
-        STORE_CODES = [int(code.strip()) for code in store_codes_env.split(",") if code.strip().isdigit()]
-        log_message(f"✅ Loaded store codes from env var: {STORE_CODES}")
-    else:
-        STORE_CODES = [1, 2, 3, 4, 6, 7, 8, 9, 10, 11, 12, 21, 22, 98, 99]
-        log_message(f"⚠️ Using fallback store codes: {STORE_CODES}")
-
-    if not STORE_CODES:
-        log_message("❌ ERROR: No store codes provided. Aborting run.")
-        return None
-
     all_rows = []
+    STORE_CODES = ["1","2","3","4","6","7","8","9","10","11","12","21","22","98","99"]
+
     with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
         futures = {
             executor.submit(
@@ -198,23 +207,21 @@ def fetch_rics_data_with_purchase_history(max_purchase_pages=None, debug_mode=Fa
         writer.writeheader()
         writer.writerows(all_rows)
 
-    if not all_rows:
-        empty_file = output_path.replace(".csv", "_EMPTY.csv")
-        with open(empty_file, "w", newline="") as f:
-            writer = csv.DictWriter(f, fieldnames=purchase_history_fields)
-            writer.writeheader()
-        log_message(f"⚠️ No rows found. Wrote EMPTY file → {empty_file}")
-        return empty_file if not return_summary else (empty_file, "0 rows")
-
     log_message(f"📝 Wrote {len(all_rows)} rows to {output_path}")
 
     new_ticket_ids = {row["TicketNumber"] for row in all_rows}
+    skipped_count = len([tid for tid in already_sent if tid not in new_ticket_ids])
+
     if new_ticket_ids:
         updated_sent = already_sent.union(new_ticket_ids)
         save_sent_ticket_ids(updated_sent)
+        summary = f"{len(new_ticket_ids)} new tickets, {skipped_count} skipped (already sent)"
         log_message(f"✅ Dedup log updated: {len(updated_sent)} total TicketNumbers tracked")
+        log_message(f"📊 Summary: {summary}")
+    else:
+        summary = "0 new tickets (all skipped)"
+        log_message("⚠️ No new TicketNumbers found in this run.")
 
-    summary = f"{len(all_rows)} rows written"
     if return_summary:
         return output_path, summary
     return output_path

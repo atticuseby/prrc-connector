@@ -1,6 +1,5 @@
-# scripts/optimizely.py
-
 import os
+import csv
 import requests
 import time
 from datetime import datetime
@@ -65,3 +64,33 @@ def send_to_optimizely(payload):
             time.sleep(RETRY_DELAY * attempt)
 
     log_success(email, f"Failed after {MAX_RETRIES}")
+
+def main(input_file):
+    if not os.path.exists(input_file):
+        print(f"❌ Input file not found: {input_file}")
+        return
+
+    with open(input_file, "r", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            email = row.get("CustomerId") or row.get("Email")
+            if not email:
+                continue
+
+            payload = {
+                "identifiers": {"email": email},
+                "attributes": {
+                    "storeCode": row.get("StoreCode"),
+                    "transactionId": row.get("TicketNumber"),
+                    "amountPaid": row.get("AmountPaid"),
+                    "transactionDate": row.get("TicketDateTime")
+                }
+            }
+            send_to_optimizely(payload)
+
+if __name__ == "__main__":
+    import sys
+    if len(sys.argv) < 2:
+        print("Usage: python sync_to_optimizely.py <deduped_csv>")
+        sys.exit(1)
+    main(sys.argv[1])

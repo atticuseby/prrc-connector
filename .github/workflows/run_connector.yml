@@ -33,22 +33,6 @@ jobs:
       - name: 🔐 Save Google Drive credentials
         run: echo '${{ secrets.GDRIVE_CREDENTIALS }}' > optimizely_connector/service_account.json
 
-      - name: 📂 ⬇️ Download dedup log from Google Drive
-        run: |
-          mkdir -p logs
-          # Your helper `load_from_drive` expects this file to exist
-          # Safe fallback: create if missing
-          python - <<'EOF'
-          import os
-          from scripts.helpers import load_from_drive
-          try:
-              load_from_drive("logs/sent_ticket_ids.csv", "logs/sent_ticket_ids.csv")
-              print("✅ Dedup log pulled from Drive")
-          except Exception as e:
-              print(f"⚠️ No dedup log found, creating new one: {e}")
-              open("logs/sent_ticket_ids.csv", "w").close()
-          EOF
-
       - name: 🧪 Debug RICS API Pull
         run: python scripts/debug_rics_pull.py
 

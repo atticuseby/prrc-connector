@@ -30,34 +30,21 @@ jobs:
       - name: 📦 Install dependencies
         run: pip install -r requirements.txt
 
-      - name: 🔐 Save Google Drive credentials
-        run: echo '${{ secrets.GDRIVE_CREDENTIALS }}' > optimizely_connector/service_account.json
-
       - name: 🧪 Debug RICS API Pull
         run: python scripts/debug_rics_pull.py
 
-      - name: 🚀 Run RICS → Optimizely sync (with dedup)
-        run: python scripts/sync_rics_live.py
+      - name: 🔐 Save Google Drive credentials
+        run: echo '${{ secrets.GDRIVE_CREDENTIALS }}' > optimizely_connector/service_account.json
 
-      - name: 🧹 Clean and filter RICS export (last 24h)
-        run: python scripts/clean_and_filter_rics_export.py \
-               optimizely_connector/output/rics_customer_purchase_history_latest.csv \
-               optimizely_connector/output/rics_cleaned_last24h.csv
+      - name: 🚀 Run real-time RICS to Optimizely sync
+        run: python scripts/sync_rics_live.py
 
       - name: 🧑‍🤝‍🧑 Deduplicate customers for Optimizely
         run: python scripts/deduplicate_rics_customers.py \
-               optimizely_connector/output/rics_cleaned_last24h.csv \
-               optimizely_connector/output/rics_customers_deduped.csv
+          optimizely_connector/output/rics_customer_purchase_history_latest.csv \
+          optimizely_connector/output/rics_customers_deduped.csv
 
       - name: 📤 Sync to Meta (Offline Events)
         env:
-          RICS_INPUT_CSV: optimizely_connector/output/rics_cleaned_last24h.csv
+          RICS_INPUT_CSV: optimizely_connector/output/rics_customer_purchase_history_latest.csv
         run: python scripts/sync_rics_to_meta.py
-
-      - name: 📂 ⬆️ Upload updated dedup log to Google Drive
-        run: |
-          python - <<'EOF'
-          from scripts.helpers import upload_to_drive
-          upload_to_drive("logs/sent_ticket_ids.csv", "logs/sent_ticket_ids.csv")
-          print("✅ Dedup log updated in Drive")
-          EOF

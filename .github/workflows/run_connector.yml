@@ -9,7 +9,6 @@ jobs:
   run-connector:
     runs-on: ubuntu-latest
 
-    # ✅ Make secrets available to every step below
     env:
       RICS_API_TOKEN: ${{ secrets.RICS_API_TOKEN }}
       RICS_STORE_CODES: ${{ secrets.RICS_STORE_CODES }}
@@ -32,13 +31,12 @@ jobs:
       - name: 📦 Install dependencies
         run: pip install -r requirements.txt
 
-      - name: 🧪 Sanity check secrets (no values printed)
+      - name: 🧪 Sanity check secrets
         run: |
           python - <<'PY'
           import os
           print("GDRIVE_CREDENTIALS length:", len(os.getenv("GDRIVE_CREDENTIALS") or ""))
-          print("GDRIVE_FOLDER_ID_RICS present:", bool(os.getenv("GDRIVE_FOLDER_ID_RICS")))
-          print("RICS_STORE_CODES present:", bool(os.getenv("RICS_STORE_CODES")))
+          print("GDRIVE_FOLDER_ID_RICS:", os.getenv("GDRIVE_FOLDER_ID_RICS"))
           PY
 
       - name: 🟢 Run RICS fetch + dedupe + upload

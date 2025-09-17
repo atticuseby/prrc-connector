@@ -1,13 +1,13 @@
 import os
 import sys
 import csv
-import json
 import time
 import logging
 import requests
 from datetime import datetime, timedelta
 
-from utils.google_drive_uploader import upload_to_drive
+# ✅ Fixed import path — matches your existing scripts folder
+from scripts.upload_to_gdrive import upload_to_drive
 
 # === Setup logging ===
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -132,7 +132,7 @@ def main():
     write_csv(latest_filename, all_transactions, headers)
     write_csv(deduped_filename, deduped, headers)
 
-    # Upload all three, but latest + deduped overwrite in Drive
+    # Upload all three (latest + deduped overwrite in Drive)
     upload_to_drive(base_filename)
     upload_to_drive(latest_filename)
     upload_to_drive(deduped_filename)

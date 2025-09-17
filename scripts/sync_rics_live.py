@@ -33,33 +33,41 @@ def get_drive_service():
     )
     return build("drive", "v3", credentials=creds)
 
-def upload_to_drive(filepath, folder_id):
+def upload_to_drive(filepath, folder_id, alias_name=None):
     service = get_drive_service()
-    file_metadata = {"name": os.path.basename(filepath), "parents": [folder_id]}
+    file_metadata = {"name": alias_name or os.path.basename(filepath), "parents": [folder_id]}
     media = MediaFileUpload(filepath)
     uploaded = service.files().create(body=file_metadata, media_body=media, fields="id").execute()
-    log(f"✅ Uploaded {os.path.basename(filepath)} to Drive as ID: {uploaded['id']}")
+    log(f"✅ Uploaded {alias_name or os.path.basename(filepath)} to Drive as ID: {uploaded['id']}")
 
 def main():
     log("🔥 ENTERED MAIN FUNCTION (purchase history export)")
     log(f"RICS_API_TOKEN present? {'✅' if RICS_API_TOKEN else '❌'}")
+
     try:
-        # Fetch RICS data with purchase history (uses default/test mode limits unless overridden)
+        # Fetch RICS data with purchase history (dedup built into script)
         output_csv = fetch_rics_data_with_purchase_history()
         log(f"📊 Exported RICS customer purchase history to: {output_csv}")
+
         # Copy to predictable filename for downstream scripts
         latest_path = os.path.join("optimizely_connector", "output", "rics_customer_purchase_history_latest.csv")
         shutil.copyfile(output_csv, latest_path)
         log(f"📁 Copied to latest: {latest_path}")
+
+        # Upload both timestamped and latest to Drive
         upload_to_drive(output_csv, GDRIVE_FOLDER_ID_RICS)
+        upload_to_drive(latest_path, GDRIVE_FOLDER_ID_RICS, alias_name="rics_customer_purchase_history_latest.csv")
+
     except Exception as e:
         log(f"❌ Error during RICS data export: {e}")
         log(traceback.format_exc())
+
     # Always upload the log file
     try:
         upload_to_drive(log_file_path, GDRIVE_FOLDER_ID_RICS)
     except Exception as e:
         print(f"❌ Failed to upload log file: {e}")
+
     log("✅ All done!")
 
 if __name__ == "__main__":

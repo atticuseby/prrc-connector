@@ -7,8 +7,6 @@ from datetime import datetime, timedelta
 from scripts.helpers import log_message
 import concurrent.futures
 import argparse
-import ssl
-import urllib3
 
 # --- CONFIGURATION ---
 TEST_MODE = False
@@ -18,8 +16,6 @@ DEBUG_MODE = False
 
 ABSOLUTE_TIMEOUT_SECONDS = 120
 CUTOFF_DATE = datetime.utcnow() - timedelta(days=7)
-
-RICS_ENDPOINT = "https://enterprise.ricssoftware.com/api/POS/GetPOSTransaction"
 
 purchase_history_fields = [
     "TicketDateTime", "TicketNumber", "SaleDateTime", "StoreCode", "TerminalId", "Cashier",
@@ -63,7 +59,7 @@ def fetch_pos_transactions_for_store(store_code=None,
                                      max_purchase_pages=None,
                                      debug_mode=False,
                                      already_sent=None):
-    """Fetch purchase history from POS/GetPOSTransaction for a given store with full debug."""
+    """Fetch purchase history from POS/GetPOSTransaction for a given store."""
     all_rows = []
     seen_keys = set()
     page_count, api_calls, skip, take = 0, 0, 0, 100
@@ -71,39 +67,23 @@ def fetch_pos_transactions_for_store(store_code=None,
     start_date = (datetime.utcnow() - timedelta(days=7)).strftime("%Y-%m-%dT%H:%M:%SZ")
     end_date = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
 
-    payload = {
-        "Take": take,
-        "Skip": skip,
-        "TicketDateStart": start_date,
-        "TicketDateEnd": end_date,
-        "StoreCode": store_code
-    }
-
-    # === DEBUGGING TLS / ENVIRONMENT ===
-    log_message(f"⚙️ OpenSSL version: {ssl.OPENSSL_VERSION}")
-    log_message(f"⚙️ urllib3 version: {urllib3.__version__}")
-
-    token = os.getenv("RICS_API_TOKEN")
-    if not token:
-        log_message("❌ ENV VAR RICS_API_TOKEN is missing or empty!")
-    else:
-        log_message(f"✅ ENV VAR RICS_API_TOKEN loaded, length={len(token)}")
-
-    try:
-        test_resp = requests.get("https://enterprise.ricssoftware.com", timeout=10)
-        log_message(f"🌐 Basic GET to enterprise.ricssoftware.com worked, status={test_resp.status_code}")
-    except Exception as e:
-        log_message(f"❌ Basic GET failed: {e}")
-
-    # === MAIN FETCH LOOP ===
     while True:
-        payload["Skip"] = skip
-        log_message(f"➡️ Fetching store {store_code}, page {page_count+1}, payload={payload}")
+        payload = {
+            "Take": take,
+            "Skip": skip,
+            "TicketDateStart": start_date,
+            "TicketDateEnd": end_date,
+            "BatchStartDate": start_date,   # Added
+            "BatchEndDate": end_date,       # Added
+            "StoreCode": store_code
+        }
 
         try:
+            log_message(f"📤 Fetching POS transactions for Store {store_code}, "
+                        f"page {page_count+1}, payload={payload}")
             resp = requests.post(
-                RICS_ENDPOINT,
-                headers={"Token": token},
+                "https://enterprise.ricssoftware.com/api/POS/GetPOSTransaction",
+                headers={"Token": os.getenv("RICS_API_TOKEN")},
                 json=payload,
                 timeout=ABSOLUTE_TIMEOUT_SECONDS
             )
@@ -113,7 +93,7 @@ def fetch_pos_transactions_for_store(store_code=None,
 
             sales = data.get("Sales", [])
             if not sales:
-                log_message(f"⚠️ No Sales returned for Store {store_code}.")
+                log_message(f"⚠️ No more Sales returned for Store {store_code}.")
                 break
 
             for sale in sales:
@@ -159,14 +139,11 @@ def fetch_pos_transactions_for_store(store_code=None,
             if debug_mode:
                 break
 
-        except requests.exceptions.SSLError as ssl_err:
-            log_message(f"❌ SSL Handshake error for store {store_code}: {ssl_err}")
-            break
         except Exception as e:
             log_message(f"❌ Error fetching POS transactions for Store {store_code}: {e}")
             break
 
-    log_message(f"📦 Store {store_code}: Collected {len(all_rows)} rows "
+    log_message(f"📦 Store {store_code}: Collected {len(all_rows)} new rows "
                 f"({page_count} pages, {api_calls} calls)")
     return all_rows
 
@@ -182,7 +159,7 @@ def fetch_rics_data_with_purchase_history(max_purchase_pages=None, debug_mode=Fa
     log_message(f"📂 Loaded {len(already_sent)} previously sent TicketNumbers")
 
     all_rows = []
-    STORE_CODES = ["1","2","3","4","6","7","8","9","10","11","12","21","22","98","99"]
+    STORE_CODES = [1, 2, 3, 4, 6, 7, 8, 9, 10, 11, 12, 21, 22, 98, 99]
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
         futures = {

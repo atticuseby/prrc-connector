@@ -1,50 +1,30 @@
-name: Run PRRC RICS Sync
+name: Run PRRC Connector
 
 on:
   schedule:
-    - cron: '0 8 * * *'   # run once daily at 08:00 UTC = 3:00 AM EST
+    - cron: "0 8 * * *" # 3AM EST (8AM UTC)
   workflow_dispatch:
 
 jobs:
-  run-rics-sync:
+  run-connector:
     runs-on: ubuntu-latest
-
-    env:
-      RICS_API_TOKEN: ${{ secrets.RICS_API_TOKEN }}
-      OPTIMIZELY_API_TOKEN: ${{ secrets.OPTIMIZELY_API_TOKEN }}
-      TEST_EMAIL: ${{ secrets.TEST_EMAIL }}
-      GDRIVE_FOLDER_ID_RICS: ${{ secrets.GDRIVE_FOLDER_ID_RICS }}
-
-      META_ACCESS_TOKEN: ${{ secrets.META_ACCESS_TOKEN }}
-      META_DATASET_ID: ${{ secrets.META_OFFLINE_EVENT_SET_ID }}
-
     steps:
-      - name: ⬇️ Checkout repo
-        uses: actions/checkout@v4
+      - name: 📥 Checkout repo
+        uses: actions/checkout@v3
 
       - name: 🐍 Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.10'
+          python-version: "3.10"
 
       - name: 📦 Install dependencies
         run: pip install -r requirements.txt
 
-      - name: 🧪 Debug RICS API Pull
-        run: python scripts/debug_rics_pull.py
-
-      - name: 🔐 Save Google Drive credentials
-        run: echo '${{ secrets.GDRIVE_CREDENTIALS }}' > optimizely_connector/service_account.json
-
-      - name: 🚀 Run real-time RICS to Optimizely sync
+      - name: 🟢 Run RICS fetch + dedupe + upload
         run: python scripts/sync_rics_live.py
 
-      - name: 🧑‍🤝‍🧑 Deduplicate customers for Optimizely
-        run: python scripts/deduplicate_rics_customers.py \
-          optimizely_connector/output/rics_customer_purchase_history_latest.csv \
-          optimizely_connector/output/rics_customers_deduped.csv
+      - name: 📤 Sync to Optimizely
+        run: python scripts/sync_to_optimizely.py rics_customer_purchase_history_deduped.csv
 
       - name: 📤 Sync to Meta (Offline Events)
-        env:
-          RICS_INPUT_CSV: optimizely_connector/output/rics_customer_purchase_history_latest.csv
-        run: python scripts/sync_rics_to_meta.py
+        run: python scripts/sync_to_meta.py rics_customer_purchase_history_deduped.csv

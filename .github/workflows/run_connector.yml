@@ -1,61 +1,72 @@
 name: Run PRRC Connector
 
 on:
-  schedule:
-    - cron: "0 8 * * *"  # 3:00 AM EST (8:00 UTC)
-  workflow_dispatch:
+  workflow_dispatch: # run manually from Actions tab
 
 jobs:
   run-connector:
     runs-on: ubuntu-latest
-
-    env:
-      RICS_API_TOKEN: ${{ secrets.RICS_API_TOKEN }}
-      RICS_STORE_CODES: ${{ secrets.RICS_STORE_CODES }}
-      GDRIVE_CREDENTIALS: ${{ secrets.GDRIVE_CREDENTIALS }}   # ✅ use only this
-      GDRIVE_FOLDER_ID_RICS: ${{ secrets.GDRIVE_FOLDER_ID_RICS }}
-      OPTIMIZELY_API_TOKEN: ${{ secrets.OPTIMIZELY_API_TOKEN }}
-      META_ACCESS_TOKEN: ${{ secrets.META_ACCESS_TOKEN }}
-      META_OFFLINE_EVENT_SET_ID: ${{ secrets.META_OFFLINE_EVENT_SET_ID }}
-      TEST_EMAIL: ${{ secrets.TEST_EMAIL }}
-
     steps:
-      - name: 📥 Checkout repo
-        uses: actions/checkout@v4
+      - name: Checkout repo
+        uses: actions/checkout@v3
 
-      - name: 🐍 Set up Python
-        uses: actions/setup-python@v5
+      - name: Set up Python
+        uses: actions/setup-python@v4
         with:
-          python-version: "3.10"
+          python-version: '3.10'
 
-      - name: 📦 Install dependencies
+      - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: 🧪 Run RICS Diagnostics
-        if: github.event_name == 'workflow_dispatch'
+      - name: Sanity check secrets
         run: |
-          python scripts/rics_fetch_diagnostics.py --days 7 --pages 3 --debug --limit-stores 2
+          python - <<EOF
+          import os
+          print("RICS_API_TOKEN present:", bool(os.getenv("RICS_API_TOKEN")))
+          print("META_ACCESS_TOKEN present:", bool(os.getenv("META_ACCESS_TOKEN")))
+          print("META_DATASET_ID present:", bool(os.getenv("META_DATASET_ID")))
+          print("OPTIMIZELY_API_KEY present:", bool(os.getenv("OPTIMIZELY_API_KEY")))
+          print("Google Drive service account:", os.getenv("GDRIVE_SERVICE_ACCOUNT", "Not found"))
+          EOF
+        env:
+          RICS_API_TOKEN: ${{ secrets.RICS_API_TOKEN }}
+          META_ACCESS_TOKEN: ${{ secrets.META_ACCESS_TOKEN }}
+          META_DATASET_ID: ${{ secrets.META_DATASET_ID }}
+          OPTIMIZELY_API_KEY: ${{ secrets.OPTIMIZELY_API_KEY }}
+          GDRIVE_SERVICE_ACCOUNT: ${{ secrets.GDRIVE_SERVICE_ACCOUNT }}
 
-      - name: 🧪 Sanity check secrets
-        run: |
-          python - <<'PY'
-          import os, json
-          creds = os.getenv("GDRIVE_CREDENTIALS")
-          folder = os.getenv("GDRIVE_FOLDER_ID_RICS")
-          print("✅ GDRIVE_CREDENTIALS present:", bool(creds))
-          print("✅ Folder ID:", folder)
-          try:
-              info = json.loads(creds)
-              print("✅ Service account email:", info.get("client_email"))
-          except Exception as e:
-              print("❌ Failed to parse GDRIVE_CREDENTIALS:", e)
-          PY
-
-      - name: 🟢 Run RICS fetch + dedupe + upload
+      - name: Run RICS fetch + dedupe + upload
         run: python scripts/sync_rics_live.py
+        env:
+          RICS_API_TOKEN: ${{ secrets.RICS_API_TOKEN }}
+          GDRIVE_SERVICE_ACCOUNT: ${{ secrets.GDRIVE_SERVICE_ACCOUNT }}
 
-      - name: 📤 Sync to Optimizely
+      - name: Sync to Optimizely
         run: python scripts/sync_to_optimizely.py rics_customer_purchase_history_deduped.csv
+        env:
+          OPTIMIZELY_API_KEY: ${{ secrets.OPTIMIZELY_API_KEY }}
 
-      - name: 📤 Sync to Meta (Offline Events)
+      - name: Sync to Meta (Offline Events)
         run: python scripts/sync_rics_to_meta.py rics_customer_purchase_history_deduped.csv
+        env:
+          META_ACCESS_TOKEN: ${{ secrets.META_ACCESS_TOKEN }}
+          META_DATASET_ID: ${{ secrets.META_DATASET_ID }}
+
+  validate-rics-token:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Run RICS Token Validator
+        env:
+          RICS_API_TOKEN: ${{ secrets.RICS_API_TOKEN }}
+        run: python scripts/validate_rics_token.py

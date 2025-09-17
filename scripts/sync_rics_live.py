@@ -2,6 +2,7 @@ import os
 import sys
 import traceback
 import shutil
+import pandas as pd
 from datetime import datetime
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
@@ -41,6 +42,16 @@ def upload_to_drive(filepath, folder_id):
     uploaded = service.files().create(body=file_metadata, media_body=media, fields="id").execute()
     log(f"✅ Uploaded {os.path.basename(filepath)} to Drive as ID: {uploaded['id']}")
 
+def deduplicate_csv(input_csv, output_csv):
+    """Load CSV, drop duplicate customers by rics_id+email, save cleaned copy."""
+    df = pd.read_csv(input_csv)
+    before = len(df)
+    df = df.drop_duplicates(subset=["rics_id", "email"], keep="last")
+    after = len(df)
+    df.to_csv(output_csv, index=False)
+    log(f"🧹 Deduplicated customers: {before} → {after} rows (saved {output_csv})")
+    return output_csv
+
 def main():
     log("🔥 ENTERED MAIN FUNCTION (purchase history export)")
     log(f"RICS_API_TOKEN present? {'✅' if RICS_API_TOKEN else '❌'}")
@@ -56,16 +67,22 @@ def main():
         log(f"📊 Dedup summary → {summary}")
 
         # Ensure output dir exists
-        latest_path = os.path.join("optimizely_connector", "output", "rics_customer_purchase_history_latest.csv")
-        os.makedirs(os.path.dirname(latest_path), exist_ok=True)
+        output_dir = os.path.join("optimizely_connector", "output")
+        os.makedirs(output_dir, exist_ok=True)
 
-        # Always copy, even if empty
-        shutil.copyfile(output_csv, latest_path)
-        log(f"📁 Copied to latest: {latest_path}")
+        # Latest raw
+        latest_raw = os.path.join(output_dir, "rics_customer_purchase_history_latest.csv")
+        shutil.copyfile(output_csv, latest_raw)
+        log(f"📁 Copied raw export to: {latest_raw}")
 
-        # Upload both timestamped and latest files
-        upload_to_drive(output_csv, GDRIVE_FOLDER_ID_RICS)
-        upload_to_drive(latest_path, GDRIVE_FOLDER_ID_RICS)
+        # Deduplicated file
+        deduped_path = os.path.join(output_dir, "rics_customer_purchase_history_deduped.csv")
+        deduplicate_csv(latest_raw, deduped_path)
+
+        # Upload all to Drive
+        upload_to_drive(output_csv, GDRIVE_FOLDER_ID_RICS)       # timestamped raw
+        upload_to_drive(latest_raw, GDRIVE_FOLDER_ID_RICS)       # alias raw
+        upload_to_drive(deduped_path, GDRIVE_FOLDER_ID_RICS)     # deduped
 
     except Exception as e:
         log(f"❌ Error during RICS data export: {e}")

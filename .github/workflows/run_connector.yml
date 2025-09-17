@@ -53,4 +53,4 @@ jobs:
         run: python scripts/sync_to_optimizely.py rics_customer_purchase_history_deduped.csv
 
       - name: 📤 Sync to Meta (Offline Events)
-        run: python scripts/sync_to_meta.py rics_customer_purchase_history_deduped.csv
+        run: python scripts/sync_rics_to_meta.py rics_customer_purchase_history_deduped.csv

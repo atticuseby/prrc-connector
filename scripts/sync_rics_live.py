@@ -7,12 +7,14 @@ import logging
 import requests
 from datetime import datetime, timedelta
 
+from utils.google_drive_uploader import upload_to_drive
+
 # === Setup logging ===
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
 # === Environment variables ===
 RICS_API_TOKEN = os.getenv("RICS_API_TOKEN")
-GDRIVE_FOLDER_ID_RICS = os.getenv("GDRIVE_FOLDER_ID_RICS")
+LOOKBACK_DAYS = 7
 
 if not RICS_API_TOKEN:
     logging.error("Missing RICS_API_TOKEN in environment")
@@ -26,8 +28,7 @@ deduped_filename = "rics_customer_purchase_history_deduped.csv"
 
 # === API Config ===
 RICS_API_BASE = "https://api.ricssoftware.com/pos/GetPOSTransaction"
-STORE_CODES = os.getenv("RICS_STORE_CODES", "").split(",")  # comma-separated store codes
-LOOKBACK_DAYS = 7
+STORE_CODES = os.getenv("RICS_STORE_CODES", "").split(",")
 
 # === Helper: write CSV ===
 def write_csv(filename, rows, headers):
@@ -78,10 +79,10 @@ def fetch_transactions(store_code, start_date, end_date):
         all_rows.extend(transactions)
 
         if len(transactions) < per_page:
-            break  # last page
+            break
         else:
             page += 1
-            time.sleep(0.25)  # be nice to the API
+            time.sleep(0.25)
 
     logging.info(f"Store {store_code}: fetched {len(all_rows)} transactions total")
     return all_rows
@@ -118,17 +119,23 @@ def main():
     if not all_transactions:
         logging.warning("No transactions found. Writing EMPTY.csv for clarity.")
         headers = ["transactionId", "customerId", "storeCode", "amount", "date"]
-        write_csv(base_filename.replace(".csv", "_EMPTY.csv"), [], headers)
+        empty_file = base_filename.replace(".csv", "_EMPTY.csv")
+        write_csv(empty_file, [], headers)
+        upload_to_drive(empty_file, os.path.basename(empty_file))
         sys.exit(0)
 
     deduped = dedupe_rows(all_transactions)
-
     headers = list(deduped[0].keys())
 
-    # Write all versions
+    # Write files
     write_csv(base_filename, all_transactions, headers)
     write_csv(latest_filename, all_transactions, headers)
     write_csv(deduped_filename, deduped, headers)
+
+    # Upload all three, but latest + deduped overwrite in Drive
+    upload_to_drive(base_filename)
+    upload_to_drive(latest_filename)
+    upload_to_drive(deduped_filename)
 
     logging.info(f"Final counts → raw: {len(all_transactions)}, deduped: {len(deduped)}")
     logging.info("=== Finished sync_rics_live.py ===")

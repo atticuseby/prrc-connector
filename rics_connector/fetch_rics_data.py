@@ -155,9 +155,20 @@ def fetch_rics_data_with_purchase_history(max_purchase_pages=None, debug_mode=Fa
     already_sent = load_sent_ticket_ids()
     log_message(f"📂 Loaded {len(already_sent)} previously sent TicketNumbers")
 
-    all_rows = []
-    STORE_CODES = [1, 2, 3, 4, 6, 7, 8, 9, 10, 11, 12, 21, 22, 98, 99]
+    # --- Load store codes from env var or fallback ---
+    store_codes_env = os.getenv("RICS_STORE_CODES", "").strip()
+    if store_codes_env:
+        STORE_CODES = [int(code.strip()) for code in store_codes_env.split(",") if code.strip().isdigit()]
+        log_message(f"✅ Loaded store codes from env var: {STORE_CODES}")
+    else:
+        STORE_CODES = [1, 2, 3, 4, 6, 7, 8, 9, 10, 11, 12, 21, 22, 98, 99]
+        log_message(f"⚠️ Using fallback store codes: {STORE_CODES}")
 
+    if not STORE_CODES:
+        log_message("❌ ERROR: No store codes provided. Aborting run.")
+        return None
+
+    all_rows = []
     with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
         futures = {
             executor.submit(

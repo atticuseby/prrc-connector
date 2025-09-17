@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 from scripts.helpers import log_message
 import concurrent.futures
 import argparse
+import json
 
 # --- CONFIGURATION ---
 TEST_MODE = False
@@ -24,6 +25,7 @@ purchase_history_fields = [
 ]
 
 DEDUP_LOG_PATH = os.path.join("logs", "sent_ticket_ids.csv")
+RICS_ENDPOINT = "https://enterprise.ricssoftware.com/api/POS/GetPOSTransaction"  # ✅ correct endpoint
 
 
 def parse_dt(dt_str):
@@ -39,7 +41,6 @@ def parse_dt(dt_str):
 
 
 def load_sent_ticket_ids():
-    """Load sent ticket IDs from local file if present."""
     try:
         with open(DEDUP_LOG_PATH, "r") as f:
             return set(line.strip() for line in f if line.strip())
@@ -48,7 +49,6 @@ def load_sent_ticket_ids():
 
 
 def save_sent_ticket_ids(ticket_ids):
-    """Save updated sent ticket IDs locally (workflow uploads logs to Drive)."""
     os.makedirs(os.path.dirname(DEDUP_LOG_PATH), exist_ok=True)
     with open(DEDUP_LOG_PATH, "w") as f:
         for tid in sorted(ticket_ids):
@@ -59,7 +59,6 @@ def fetch_pos_transactions_for_store(store_code=None,
                                      max_purchase_pages=None,
                                      debug_mode=False,
                                      already_sent=None):
-    """Fetch purchase history from POS/GetPOSTransaction for a given store."""
     all_rows = []
     seen_keys = set()
     page_count, api_calls, skip, take = 0, 0, 0, 100
@@ -73,13 +72,15 @@ def fetch_pos_transactions_for_store(store_code=None,
             "Skip": skip,
             "TicketDateStart": start_date,
             "TicketDateEnd": end_date,
+            "SaleDateStart": start_date,   # ✅ add both sets
+            "SaleDateEnd": end_date,
             "StoreCode": store_code
         }
 
         try:
             log_message(f"📤 Fetching POS transactions for Store {store_code}, page {page_count+1}")
             resp = requests.post(
-                "https://enterprise.ricssoftware.com/api/POS/GetPOSTransaction",
+                RICS_ENDPOINT,
                 headers={"Token": os.getenv("RICS_API_TOKEN")},
                 json=payload,
                 timeout=ABSOLUTE_TIMEOUT_SECONDS
@@ -88,9 +89,15 @@ def fetch_pos_transactions_for_store(store_code=None,
             resp.raise_for_status()
             data = resp.json()
 
+            # --- Debugging output ---
+            try:
+                log_message(f"🔍 Raw response excerpt (store {store_code}, page {page_count+1}): {resp.text[:500]}")
+            except Exception:
+                log_message("⚠️ Could not log raw response text.")
+
             sales = data.get("Sales", [])
             if not sales:
-                log_message(f"⚠️ No more Sales returned for Store {store_code}.")
+                log_message(f"⚠️ No Sales returned for Store {store_code}, page {page_count+1}.")
                 break
 
             for sale in sales:
@@ -140,7 +147,7 @@ def fetch_pos_transactions_for_store(store_code=None,
             log_message(f"❌ Error fetching POS transactions for Store {store_code}: {e}")
             break
 
-    log_message(f"📦 Store {store_code}: Collected {len(all_rows)} new rows "
+    log_message(f"📦 Store {store_code}: Collected {len(all_rows)} rows "
                 f"({page_count} pages, {api_calls} calls)")
     return all_rows
 
@@ -155,7 +162,6 @@ def fetch_rics_data_with_purchase_history(max_purchase_pages=None, debug_mode=Fa
     already_sent = load_sent_ticket_ids()
     log_message(f"📂 Loaded {len(already_sent)} previously sent TicketNumbers")
 
-    # --- Load store codes from env var or fallback ---
     store_codes_env = os.getenv("RICS_STORE_CODES", "").strip()
     if store_codes_env:
         STORE_CODES = [int(code.strip()) for code in store_codes_env.split(",") if code.strip().isdigit()]
@@ -192,21 +198,23 @@ def fetch_rics_data_with_purchase_history(max_purchase_pages=None, debug_mode=Fa
         writer.writeheader()
         writer.writerows(all_rows)
 
+    if not all_rows:
+        empty_file = output_path.replace(".csv", "_EMPTY.csv")
+        with open(empty_file, "w", newline="") as f:
+            writer = csv.DictWriter(f, fieldnames=purchase_history_fields)
+            writer.writeheader()
+        log_message(f"⚠️ No rows found. Wrote EMPTY file → {empty_file}")
+        return empty_file if not return_summary else (empty_file, "0 rows")
+
     log_message(f"📝 Wrote {len(all_rows)} rows to {output_path}")
 
     new_ticket_ids = {row["TicketNumber"] for row in all_rows}
-    skipped_count = len([tid for tid in already_sent if tid not in new_ticket_ids])
-
     if new_ticket_ids:
         updated_sent = already_sent.union(new_ticket_ids)
         save_sent_ticket_ids(updated_sent)
-        summary = f"{len(new_ticket_ids)} new tickets, {skipped_count} skipped (already sent)"
         log_message(f"✅ Dedup log updated: {len(updated_sent)} total TicketNumbers tracked")
-        log_message(f"📊 Summary: {summary}")
-    else:
-        summary = "0 new tickets (all skipped)"
-        log_message("⚠️ No new TicketNumbers found in this run.")
 
+    summary = f"{len(all_rows)} rows written"
     if return_summary:
         return output_path, summary
     return output_path

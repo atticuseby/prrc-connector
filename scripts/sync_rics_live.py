@@ -4,8 +4,8 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from datetime import datetime, timedelta
 import requests
 import json
-from fetch_rics_data import fetch_rics_data_with_purchase_history
-from helpers import log_message
+from rics_connector.fetch_rics_data import fetch_rics_data_with_purchase_history
+from scripts.helpers import log_message
 
 if __name__ == "__main__":
     log_message("=== RICS TLS / API Debug ===")

@@ -80,7 +80,7 @@ def fetch_pos_transactions_for_store(store_code=None,
 
         try:
             log_message(f"📤 Fetching POS transactions for Store {store_code}, "
-                        f"page {page_count+1}, payload={payload}")
+                        f"page {page_count+1}")
             resp = requests.post(
                 "https://enterprise.ricssoftware.com/api/POS/GetPOSTransaction",
                 headers={"Token": os.getenv("RICS_API_TOKEN")},

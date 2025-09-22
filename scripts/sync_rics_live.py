@@ -46,3 +46,20 @@ if __name__ == "__main__":
     log_message("=== Running full RICS fetch ===")
     output_path = fetch_rics_data_with_purchase_history()
     log_message(f"✅ Completed full fetch, file at {output_path}")
+    
+    # Create deduplicated version for downstream processes
+    import shutil
+    deduped_path = "rics_customer_purchase_history_deduped.csv"
+    shutil.copy2(output_path, deduped_path)
+    log_message(f"✅ Created deduplicated file: {deduped_path}")
+    
+    # Upload to Google Drive
+    log_message("=== Uploading to Google Drive ===")
+    try:
+        from scripts.upload_to_gdrive import upload_to_drive
+        upload_to_drive(output_path)
+        upload_to_drive(deduped_path)
+        log_message("✅ Successfully uploaded both files to Google Drive")
+    except Exception as e:
+        log_message(f"❌ Google Drive upload failed: {e}")
+        raise

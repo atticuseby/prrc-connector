@@ -15,7 +15,7 @@ MAX_WORKERS = 3
 DEBUG_MODE = False
 
 ABSOLUTE_TIMEOUT_SECONDS = 120
-CUTOFF_DATE = datetime.utcnow() - timedelta(days=30)  # More lenient cutoff
+CUTOFF_DATE = datetime.utcnow() - timedelta(days=60)  # Even more lenient cutoff
 
 purchase_history_fields = [
     "TicketDateTime", "TicketNumber", "SaleDateTime", "StoreCode", "TerminalId", "Cashier",
@@ -64,7 +64,7 @@ def fetch_pos_transactions_for_store(store_code=None,
     seen_keys = set()
     page_count, api_calls, skip, take = 0, 0, 0, 100
 
-    start_date = (datetime.utcnow() - timedelta(days=14)).strftime  # More lenient API range("%Y-%m-%dT%H:%M:%SZ")
+    start_date = (datetime.utcnow() - timedelta(days=30)).strftime("%Y-%m-%dT%H:%M:%SZ")  # More lenient API range
     end_date = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
 
     while True:

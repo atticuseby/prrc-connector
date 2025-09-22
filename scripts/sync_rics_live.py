@@ -21,7 +21,7 @@ if __name__ == "__main__":
     log_message(f"✅ Token present, length={len(token)}")
 
     # Dates
-    start_date = (datetime.utcnow() - timedelta(days=7)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    start_date = (datetime.utcnow() - timedelta(days=30)).strftime("%Y-%m-%dT%H:%M:%SZ")
     end_date = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
 
     payload = {

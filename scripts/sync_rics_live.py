@@ -44,14 +44,45 @@ if __name__ == "__main__":
         log_message(f"❌ Validation call failed: {e}")
 
     log_message("=== Running full RICS fetch ===")
-    output_path = fetch_rics_data_with_purchase_history()
-    log_message(f"✅ Completed full fetch, file at {output_path}")
+    try:
+        output_path = fetch_rics_data_with_purchase_history()
+        log_message(f"✅ Completed full fetch, file at {output_path}")
+        
+        # Check if file has actual data (more than just headers)
+        import os
+        if os.path.exists(output_path):
+            file_size = os.path.getsize(output_path)
+            log_message(f"📊 Output file size: {file_size} bytes")
+            
+            # Count lines in the file
+            with open(output_path, 'r') as f:
+                lines = f.readlines()
+                log_message(f"📊 Number of lines in file: {len(lines)}")
+                
+                if len(lines) <= 1:
+                    log_message("⚠️ WARNING: File contains only headers or is empty!")
+                    log_message("🔍 This suggests no data was fetched from RICS API")
+                else:
+                    log_message(f"✅ File contains {len(lines)-1} data rows (plus header)")
+        else:
+            log_message("❌ ERROR: Output file was not created!")
+            raise RuntimeError("Output file not created")
+            
+    except Exception as e:
+        log_message(f"❌ Error during RICS fetch: {e}")
+        import traceback
+        log_message(f"Traceback: {traceback.format_exc()}")
+        raise
     
     # Create deduplicated version for downstream processes
     import shutil
     deduped_path = "rics_customer_purchase_history_deduped.csv"
-    shutil.copy2(output_path, deduped_path)
-    log_message(f"✅ Created deduplicated file: {deduped_path}")
+    try:
+        shutil.copy2(output_path, deduped_path)
+        log_message(f"✅ Created deduplicated file: {deduped_path}")
+    except Exception as e:
+        log_message(f"❌ Error creating deduplicated file: {e}")
+        raise
     
     # Upload to Google Drive
     log_message("=== Uploading to Google Drive ===")

@@ -81,17 +81,36 @@ def fetch_pos_transactions_for_store(store_code=None,
         try:
             log_message(f"📤 Fetching POS transactions for Store {store_code}, "
                         f"page {page_count+1}")
+            
+            # Check if token is available
+            token = os.getenv("RICS_API_TOKEN")
+            if not token:
+                log_message(f"❌ RICS_API_TOKEN not found for Store {store_code}")
+                break
+                
             resp = requests.post(
                 "https://enterprise.ricssoftware.com/api/POS/GetPOSTransaction",
-                headers={"Token": os.getenv("RICS_API_TOKEN")},
+                headers={"Token": token},
                 json=payload,
                 timeout=ABSOLUTE_TIMEOUT_SECONDS
             )
             api_calls += 1
+            
+            log_message(f"📊 Store {store_code} API response: {resp.status_code}")
+            
+            if resp.status_code == 401:
+                log_message(f"❌ 401 Unauthorized for Store {store_code} - token may be invalid or expired")
+                break
+            elif resp.status_code != 200:
+                log_message(f"❌ API error {resp.status_code} for Store {store_code}: {resp.text[:200]}")
+                break
+                
             resp.raise_for_status()
             data = resp.json()
 
             sales = data.get("Sales", [])
+            log_message(f"📊 Store {store_code} returned {len(sales)} sales")
+            
             if not sales:
                 log_message(f"⚠️ No more Sales returned for Store {store_code}.")
                 break

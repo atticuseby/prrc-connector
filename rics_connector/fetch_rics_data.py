@@ -11,7 +11,7 @@ import argparse
 # --- CONFIGURATION ---
 TEST_MODE = False
 MAX_PURCHASE_PAGES = None
-MAX_WORKERS = 3
+MAX_WORKERS = 1  # Reduced to 1 to avoid rate limiting
 DEBUG_MODE = False
 
 ABSOLUTE_TIMEOUT_SECONDS = 120
@@ -64,7 +64,7 @@ def fetch_pos_transactions_for_store(store_code=None,
     seen_keys = set()
     page_count, api_calls, skip, take = 0, 0, 0, 100
 
-    start_date = (datetime.utcnow() - timedelta(days=30)).strftime("%Y-%m-%dT%H:%M:%SZ")  # More lenient API range
+    start_date = (datetime.utcnow() - timedelta(days=90)).strftime("%Y-%m-%dT%H:%M:%SZ")  # Extended to 90 days
     end_date = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
 
     while True:
@@ -101,6 +101,11 @@ def fetch_pos_transactions_for_store(store_code=None,
             if resp.status_code == 401:
                 log_message(f"❌ 401 Unauthorized for Store {store_code} - token may be invalid or expired")
                 break
+            elif resp.status_code == 429:
+                log_message(f"⚠️ Rate limited for Store {store_code} - waiting 30 seconds before retry")
+                import time
+                time.sleep(30)  # Wait 30 seconds for rate limit to reset
+                continue  # Retry the same request
             elif resp.status_code != 200:
                 log_message(f"❌ API error {resp.status_code} for Store {store_code}: {resp.text[:200]}")
                 break
@@ -110,6 +115,10 @@ def fetch_pos_transactions_for_store(store_code=None,
 
             sales = data.get("Sales", [])
             log_message(f"📊 Store {store_code} returned {len(sales)} sales")
+            
+            # Add delay to avoid rate limiting
+            import time
+            time.sleep(2)  # 2 second delay between API calls
             
             if not sales:
                 log_message(f"⚠️ No more Sales returned for Store {store_code}.")

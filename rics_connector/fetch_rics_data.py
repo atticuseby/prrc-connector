@@ -87,6 +87,7 @@ def fetch_pos_transactions_for_store(store_code=None,
                                      debug_mode=False,
                                      already_sent=None):
     """Fetch purchase history from POS/GetPOSTransaction for a given store."""
+    start_time = datetime.utcnow()
     all_rows = []
     seen_keys = set()
     page_count, api_calls, skip, take = 0, 0, 0, 100
@@ -101,6 +102,11 @@ def fetch_pos_transactions_for_store(store_code=None,
         # Safety check: prevent infinite loops (check at start of each iteration)
         if page_count > 50:  # Max 50 pages per store
             log_message(f"⏰ Store {store_code}: Hit max pages limit ({page_count})")
+            break
+            
+        # Timeout check: prevent individual stores from running too long
+        if (datetime.utcnow() - start_time).total_seconds() > 300:  # 5 minutes per store
+            log_message(f"⏰ Store {store_code}: Hit 5-minute timeout")
             break
             
         payload = {
@@ -127,7 +133,7 @@ def fetch_pos_transactions_for_store(store_code=None,
                 "https://enterprise.ricssoftware.com/api/POS/GetPOSTransaction",
                 headers={"Token": token},
                 json=payload,
-                timeout=ABSOLUTE_TIMEOUT_SECONDS
+                timeout=30  # Reduced from 120 to 30 seconds per API call
             )
             api_calls += 1
             
@@ -290,9 +296,9 @@ def fetch_rics_data_with_purchase_history(max_purchase_pages=None, debug_mode=Fa
         }
         for future in concurrent.futures.as_completed(futures):
             try:
-                # Check if we've been running too long (30 minutes max)
-                if (datetime.utcnow() - start_time).total_seconds() > 1800:
-                    log_message(f"⏰ Hit 30-minute timeout, stopping processing")
+                # Check if we've been running too long (10 minutes max)
+                if (datetime.utcnow() - start_time).total_seconds() > 600:
+                    log_message(f"⏰ Hit 10-minute timeout, stopping processing")
                     break
                     
                 rows = future.result()

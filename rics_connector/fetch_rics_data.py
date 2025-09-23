@@ -236,27 +236,18 @@ def fetch_pos_transactions_for_store(store_code=None,
                         "CustomerPhone": customer_info.get("Phone"),
                     }
 
-                    # Check if there are SaleLines (items) for this sale
-                    sale_lines = sale_header.get("SaleLines", [])
+                    # Check if there are SaleDetails (items) for this sale
+                    sale_details = sale_header.get("SaleDetails", [])
                     
-                    # Debug: Log SaleLines info for first few sales
+                    # Debug: Log SaleDetails info for first few sales
                     if len(all_rows) < 5:
-                        log_message(f"🔍 DEBUG: Sale {sale_header.get('TicketNumber')} has {len(sale_lines)} SaleLines")
-                        log_message(f"🔍 DEBUG: SaleHeader keys: {list(sale_header.keys())}")
-                        if 'SaleDetails' in sale_header:
-                            log_message(f"🔍 DEBUG: SaleDetails: {sale_header.get('SaleDetails')}")
-                        if sale_lines:
-                            log_message(f"🔍 DEBUG: First SaleLine: {sale_lines[0]}")
-                        else:
-                            log_message(f"🔍 DEBUG: No SaleLines found - checking other fields...")
-                            # Check if sales data is in a different field
-                            for key in ['SaleDetails', 'Items', 'LineItems', 'Products']:
-                                if key in sale_header:
-                                    log_message(f"🔍 DEBUG: Found {key}: {sale_header.get(key)}")
+                        log_message(f"🔍 DEBUG: Sale {sale_header.get('TicketNumber')} has {len(sale_details)} SaleDetails")
+                        if sale_details:
+                            log_message(f"🔍 DEBUG: First SaleDetail: {sale_details[0]}")
                     
-                    if sale_lines:
+                    if sale_details:
                         # Process each item in the sale
-                        for item in sale_lines:
+                        for item in sale_details:
                             key = f"{sale_info['TicketNumber']}_{item.get('Sku')}"
                             if already_sent and sale_info['TicketNumber'] in already_sent:
                                 continue
@@ -267,12 +258,12 @@ def fetch_pos_transactions_for_store(store_code=None,
                             row = {
                                 **sale_info,
                                 "Sku": item.get("Sku"),
-                                "Description": item.get("Description"),
+                                "Description": item.get("Summary") or item.get("TransactionSaleDescription"),
                                 "Quantity": item.get("Quantity"),
                                 "AmountPaid": item.get("AmountPaid"),
-                                "Discount": item.get("DiscountAmount"),
-                                "Department": item.get("Department"),
-                                "SupplierName": item.get("SupplierName"),
+                                "Discount": item.get("PerkAmount", 0),
+                                "Department": item.get("ProductItem", {}).get("Classes", [{}])[0].get("TagTree", ""),
+                                "SupplierName": item.get("ProductItem", {}).get("Supplier"),
                             }
                             all_rows.append(row)
                     else:

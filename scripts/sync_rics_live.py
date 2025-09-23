@@ -20,8 +20,8 @@ if __name__ == "__main__":
         raise RuntimeError("❌ Missing RICS_API_TOKEN")
     log_message(f"✅ Token present, length={len(token)}")
 
-    # Dates - 7 days only
-    start_date = (datetime.utcnow() - timedelta(days=7)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    # Dates - 30 days to find recent data
+    start_date = (datetime.utcnow() - timedelta(days=30)).strftime("%Y-%m-%dT%H:%M:%SZ")
     end_date = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
 
     payload = {

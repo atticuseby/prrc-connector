@@ -216,6 +216,12 @@ def fetch_pos_transactions_for_store(store_code=None,
             page_count += 1
             if max_purchase_pages and page_count >= max_purchase_pages:
                 break
+            
+            # Safety check: prevent infinite loops
+            if page_count > 50:  # Max 50 pages per store
+                log_message(f"⏰ Store {store_code}: Hit max pages limit ({page_count})")
+                break
+                
             skip += take
             if debug_mode:
                 break
@@ -230,6 +236,7 @@ def fetch_pos_transactions_for_store(store_code=None,
 
 
 def fetch_rics_data_with_purchase_history(max_purchase_pages=None, debug_mode=False, return_summary=False):
+    start_time = datetime.utcnow()
     timestamp = datetime.now().strftime("%m_%d_%Y_%H%M")
     filename = f"rics_customer_purchase_history_{timestamp}.csv"
     output_dir = os.path.join("optimizely_connector", "output")
@@ -255,6 +262,11 @@ def fetch_rics_data_with_purchase_history(max_purchase_pages=None, debug_mode=Fa
         }
         for future in concurrent.futures.as_completed(futures):
             try:
+                # Check if we've been running too long (30 minutes max)
+                if (datetime.utcnow() - start_time).total_seconds() > 1800:
+                    log_message(f"⏰ Hit 30-minute timeout, stopping processing")
+                    break
+                    
                 rows = future.result()
                 all_rows.extend(rows)
             except Exception as exc:

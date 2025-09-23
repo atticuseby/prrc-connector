@@ -15,7 +15,7 @@ ACCESS_TOKEN = os.getenv("META_ACCESS_TOKEN")
 API_URL = f"https://graph.facebook.com/v19.0/{DATASET_ID}/events"
 HEADERS = {"Content-Type": "application/json"}
 
-INPUT_CSV_PATH = os.getenv("RICS_INPUT_CSV", "optimizely_connector/output/rics_customer_purchase_history_deduped.csv")
+INPUT_CSV_PATH = os.getenv("RICS_INPUT_CSV", "rics_customer_purchase_history_deduped.csv")
 BATCH_SIZE = 100
 CURRENCY = "USD"
 COUNTRY_DEFAULT = "US"
@@ -102,8 +102,15 @@ def build_events_from_csv(csv_path: str) -> list[dict]:
         sale_dt_str = first.get("SaleDateTime") or first.get("TicketDateTime")
         event_time = to_epoch(sale_dt_str)
         if not event_time:
+            print(f"⚠️ Skipping event - no valid timestamp: {sale_dt_str}")
             continue
         event_dt = datetime.fromtimestamp(event_time, tz=timezone.utc)
+        
+        # Debug: Log first few events and their dates
+        if len(events) < 3:
+            print(f"🔍 DEBUG: Event date: {event_dt}, Cutoff: {cutoff_time.replace(tzinfo=timezone.utc)}")
+            print(f"🔍 DEBUG: Event is {'OLD' if event_dt < cutoff_time.replace(tzinfo=timezone.utc) else 'RECENT'}")
+        
         if event_dt < cutoff_time.replace(tzinfo=timezone.utc):
             skip_reasons["old"] += 1
             continue
@@ -163,6 +170,8 @@ def build_events_from_csv(csv_path: str) -> list[dict]:
         events.append(event)
 
     print(f"ℹ️ Skip summary: {skip_reasons}")
+    print(f"🔍 DEBUG: Total events processed: {len(tickets)}")
+    print(f"🔍 DEBUG: Events after filtering: {len(events)}")
     return events
 
 # =========================

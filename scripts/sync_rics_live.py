@@ -76,7 +76,11 @@ if __name__ == "__main__":
     
     # Create deduplicated version for downstream processes
     import shutil
-    deduped_path = "rics_customer_purchase_history_deduped.csv"
+    # Extract the timestamped filename and create deduped version
+    base_name = os.path.basename(output_path)
+    deduped_filename = base_name.replace('.csv', '_deduped.csv')
+    deduped_path = os.path.join(os.path.dirname(output_path), deduped_filename)
+    
     try:
         shutil.copy2(output_path, deduped_path)
         log_message(f"✅ Created deduplicated file: {deduped_path}")

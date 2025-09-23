@@ -236,8 +236,39 @@ def fetch_pos_transactions_for_store(store_code=None,
                         "CustomerPhone": customer_info.get("Phone"),
                     }
 
-                    for item in sale_header.get("SaleLines", []):
-                        key = f"{sale_info['TicketNumber']}_{item.get('Sku')}"
+                    # Check if there are SaleLines (items) for this sale
+                    sale_lines = sale_header.get("SaleLines", [])
+                    
+                    # Debug: Log SaleLines info for first few sales
+                    if len(all_rows) < 3:
+                        log_message(f"🔍 DEBUG: Sale {sale_header.get('TicketNumber')} has {len(sale_lines)} SaleLines")
+                        if sale_lines:
+                            log_message(f"🔍 DEBUG: First SaleLine: {sale_lines[0]}")
+                    
+                    if sale_lines:
+                        # Process each item in the sale
+                        for item in sale_lines:
+                            key = f"{sale_info['TicketNumber']}_{item.get('Sku')}"
+                            if already_sent and sale_info['TicketNumber'] in already_sent:
+                                continue
+                            if key in seen_keys:
+                                continue
+
+                            seen_keys.add(key)
+                            row = {
+                                **sale_info,
+                                "Sku": item.get("Sku"),
+                                "Description": item.get("Description"),
+                                "Quantity": item.get("Quantity"),
+                                "AmountPaid": item.get("AmountPaid"),
+                                "Discount": item.get("DiscountAmount"),
+                                "Department": item.get("Department"),
+                                "SupplierName": item.get("SupplierName"),
+                            }
+                            all_rows.append(row)
+                    else:
+                        # No SaleLines - add the sale header as a single row
+                        key = f"{sale_info['TicketNumber']}_no_items"
                         if already_sent and sale_info['TicketNumber'] in already_sent:
                             continue
                         if key in seen_keys:
@@ -246,13 +277,13 @@ def fetch_pos_transactions_for_store(store_code=None,
                         seen_keys.add(key)
                         row = {
                             **sale_info,
-                            "Sku": item.get("Sku"),
-                            "Description": item.get("Description"),
-                            "Quantity": item.get("Quantity"),
-                            "AmountPaid": item.get("AmountPaid"),
-                            "Discount": item.get("DiscountAmount"),
-                            "Department": item.get("Department"),
-                            "SupplierName": item.get("SupplierName"),
+                            "Sku": "",
+                            "Description": "Sale (no items)",
+                            "Quantity": 1,
+                            "AmountPaid": sale_header.get("TotalAmount", 0),
+                            "Discount": 0,
+                            "Department": "",
+                            "SupplierName": "",
                         }
                         all_rows.append(row)
 

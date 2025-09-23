@@ -84,6 +84,13 @@ if __name__ == "__main__":
     try:
         shutil.copy2(output_path, deduped_path)
         log_message(f"✅ Created deduplicated file: {deduped_path}")
+        
+        # Also create a static symlink for downstream processes
+        static_deduped_path = "rics_customer_purchase_history_deduped.csv"
+        if os.path.exists(static_deduped_path):
+            os.remove(static_deduped_path)
+        os.symlink(deduped_path, static_deduped_path)
+        log_message(f"✅ Created static symlink: {static_deduped_path} -> {deduped_path}")
     except Exception as e:
         log_message(f"❌ Error creating deduplicated file: {e}")
         raise

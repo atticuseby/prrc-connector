@@ -15,7 +15,7 @@ ACCESS_TOKEN = os.getenv("META_ACCESS_TOKEN")
 API_URL = f"https://graph.facebook.com/v19.0/{DATASET_ID}/events"
 HEADERS = {"Content-Type": "application/json"}
 
-INPUT_CSV_PATH = os.getenv("RICS_INPUT_CSV", "rics_customer_purchase_history_deduped.csv")
+INPUT_CSV_PATH = os.getenv("RICS_INPUT_CSV", "optimizely_connector/output/rics_customer_purchase_history_deduped.csv")
 BATCH_SIZE = 100
 CURRENCY = "USD"
 COUNTRY_DEFAULT = "US"

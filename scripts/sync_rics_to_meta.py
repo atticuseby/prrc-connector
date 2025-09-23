@@ -52,7 +52,15 @@ def sha256_phone(phone: str) -> str | None:
 def to_epoch(dt_string: str) -> int | None:
     if not dt_string:
         return None
-    fmts = ("%Y-%m-%d %H:%M:%S", "%m/%d/%Y %H:%M:%S", "%m/%d/%Y %H:%M")
+    fmts = (
+        "%Y-%m-%dT%H:%M:%S",      # ISO format: 2025-09-21T01:25:39
+        "%Y-%m-%dT%H:%M:%S.%f",   # ISO with microseconds: 2025-09-21T01:25:39.123456
+        "%Y-%m-%dT%H:%M:%S.%fZ",  # ISO with microseconds and Z: 2025-09-21T01:25:39.123456Z
+        "%Y-%m-%dT%H:%M:%SZ",     # ISO with Z: 2025-09-21T01:25:39Z
+        "%Y-%m-%d %H:%M:%S",      # Space format: 2025-09-21 01:25:39
+        "%m/%d/%Y %H:%M:%S",      # US format: 09/21/2025 01:25:39
+        "%m/%d/%Y %H:%M"          # US format without seconds: 09/21/2025 01:25
+    )
     for fmt in fmts:
         try:
             dt = datetime.strptime(dt_string.strip(), fmt)

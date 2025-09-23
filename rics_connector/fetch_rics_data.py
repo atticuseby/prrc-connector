@@ -159,50 +159,59 @@ def fetch_pos_transactions_for_store(store_code=None,
                 break
 
             for sale in sales:
+                # The actual sales are in the SaleHeaders field
+                sale_headers = sale.get("SaleHeaders", [])
+                
+                if not sale_headers:
+                    continue  # Skip if no sale headers
+                
                 # Debug: Log the actual sale data structure for first few sales
                 if len(all_rows) < 3:  # Only log first 3 sales for debugging
                     log_message(f"🔍 DEBUG: Sale data keys: {list(sale.keys())}")
-                    log_message(f"🔍 DEBUG: TicketDateTime: '{sale.get('TicketDateTime')}'")
-                    log_message(f"🔍 DEBUG: SaleDateTime: '{sale.get('SaleDateTime')}'")
+                    log_message(f"🔍 DEBUG: SaleHeaders count: {len(sale_headers)}")
+                    if sale_headers:
+                        log_message(f"🔍 DEBUG: First SaleHeader keys: {list(sale_headers[0].keys())}")
                 
-                sale_dt = parse_dt(sale.get("TicketDateTime") or sale.get("SaleDateTime"))
-                
-                if len(all_rows) < 3:  # Only log first 3 sales for debugging
-                    log_message(f"🔍 Sale {sale.get('TicketNumber')}: date={sale_dt}, cutoff={CUTOFF_DATE}")
-                
-                if not sale_dt or sale_dt < CUTOFF_DATE:
-                    continue  # Skip old sales
+                # Process each sale header (individual transaction)
+                for sale_header in sale_headers:
+                    sale_dt = parse_dt(sale_header.get("TicketDateTime") or sale_header.get("SaleDateTime"))
+                    
+                    if len(all_rows) < 3:  # Only log first 3 sales for debugging
+                        log_message(f"🔍 Sale {sale_header.get('TicketNumber')}: date={sale_dt}, cutoff={CUTOFF_DATE}")
+                    
+                    if not sale_dt or sale_dt < CUTOFF_DATE:
+                        continue  # Skip old sales
 
-                sale_info = {
-                    "TicketDateTime": sale.get("TicketDateTime"),
-                    "TicketNumber": sale.get("TicketNumber"),
-                    "SaleDateTime": sale.get("SaleDateTime"),
-                    "StoreCode": sale.get("StoreCode"),
-                    "TerminalId": sale.get("TerminalId"),
-                    "Cashier": sale.get("CashierName"),
-                    "AccountNumber": sale.get("AccountNumber"),
-                    "CustomerId": sale.get("CustomerId"),
-                }
-
-                for item in sale.get("SaleLines", []):
-                    key = f"{sale_info['TicketNumber']}_{item.get('Sku')}"
-                    if already_sent and sale_info['TicketNumber'] in already_sent:
-                        continue
-                    if key in seen_keys:
-                        continue
-
-                    seen_keys.add(key)
-                    row = {
-                        **sale_info,
-                        "Sku": item.get("Sku"),
-                        "Description": item.get("Description"),
-                        "Quantity": item.get("Quantity"),
-                        "AmountPaid": item.get("AmountPaid"),
-                        "Discount": item.get("DiscountAmount"),
-                        "Department": item.get("Department"),
-                        "SupplierName": item.get("SupplierName"),
+                    sale_info = {
+                        "TicketDateTime": sale_header.get("TicketDateTime"),
+                        "TicketNumber": sale_header.get("TicketNumber"),
+                        "SaleDateTime": sale_header.get("SaleDateTime"),
+                        "StoreCode": sale.get("StoreCode"),
+                        "TerminalId": sale_header.get("TerminalId"),
+                        "Cashier": sale_header.get("CashierName"),
+                        "AccountNumber": sale_header.get("AccountNumber"),
+                        "CustomerId": sale_header.get("CustomerId"),
                     }
-                    all_rows.append(row)
+
+                    for item in sale_header.get("SaleLines", []):
+                        key = f"{sale_info['TicketNumber']}_{item.get('Sku')}"
+                        if already_sent and sale_info['TicketNumber'] in already_sent:
+                            continue
+                        if key in seen_keys:
+                            continue
+
+                        seen_keys.add(key)
+                        row = {
+                            **sale_info,
+                            "Sku": item.get("Sku"),
+                            "Description": item.get("Description"),
+                            "Quantity": item.get("Quantity"),
+                            "AmountPaid": item.get("AmountPaid"),
+                            "Discount": item.get("DiscountAmount"),
+                            "Department": item.get("Department"),
+                            "SupplierName": item.get("SupplierName"),
+                        }
+                        all_rows.append(row)
 
             page_count += 1
             if max_purchase_pages and page_count >= max_purchase_pages:

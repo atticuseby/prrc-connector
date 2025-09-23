@@ -276,6 +276,13 @@ def fetch_pos_transactions_for_store(store_code=None,
 
     log_message(f"📦 Store {store_code}: Collected {len(all_rows)} new rows "
                 f"({page_count} pages, {api_calls} calls)")
+    
+    # Debug: Log sample data from this store
+    if all_rows:
+        log_message(f"🔍 DEBUG: Store {store_code} sample row: {all_rows[0]}")
+    else:
+        log_message(f"⚠️ WARNING: Store {store_code} returned no rows!")
+    
     return all_rows
 
 
@@ -316,12 +323,32 @@ def fetch_rics_data_with_purchase_history(max_purchase_pages=None, debug_mode=Fa
             except Exception as exc:
                 log_message(f"❌ Error in thread for store {futures[future]}: {exc}")
 
+    # Debug: Log sample data before writing CSV
+    if all_rows:
+        log_message(f"🔍 DEBUG: Sample row data: {all_rows[0]}")
+        log_message(f"🔍 DEBUG: Total rows to write: {len(all_rows)}")
+    else:
+        log_message(f"⚠️ WARNING: No rows to write to CSV!")
+
     with open(output_path, "w", newline="") as file:
         writer = csv.DictWriter(file, fieldnames=purchase_history_fields)
         writer.writeheader()
         writer.writerows(all_rows)
 
     log_message(f"📝 Wrote {len(all_rows)} rows to {output_path}")
+    
+    # Debug: Check if file was actually created and has content
+    if os.path.exists(output_path):
+        file_size = os.path.getsize(output_path)
+        log_message(f"🔍 DEBUG: CSV file size: {file_size} bytes")
+        if file_size > 0:
+            with open(output_path, 'r') as f:
+                lines = f.readlines()
+                log_message(f"🔍 DEBUG: CSV has {len(lines)} lines")
+                if len(lines) > 1:  # More than just header
+                    log_message(f"🔍 DEBUG: First data line: {lines[1].strip()}")
+    else:
+        log_message(f"❌ ERROR: CSV file was not created!")
 
     new_ticket_ids = {row["TicketNumber"] for row in all_rows}
     skipped_count = len([tid for tid in already_sent if tid not in new_ticket_ids])

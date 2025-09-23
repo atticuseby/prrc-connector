@@ -32,19 +32,36 @@ def parse_dt(dt_str):
     if not dt_str:
         return None
     
-    # Debug: Log the actual date string we're trying to parse
-    log_message(f"🔍 DEBUG: Parsing date string: '{dt_str}'")
+    # Try common date formats
+    formats = [
+        "%Y-%m-%d %H:%M:%S",
+        "%Y-%m-%dT%H:%M:%S", 
+        "%Y-%m-%dT%H:%M:%S.%fZ",
+        "%Y-%m-%dT%H:%M:%S.%f",
+        "%Y-%m-%dT%H:%M:%S.%fZ",
+        "%Y-%m-%dT%H:%M:%S.%f",
+        "%m/%d/%Y %H:%M:%S", 
+        "%m/%d/%Y %H:%M",
+        "%Y-%m-%dT%H:%M:%S.%f",
+        "%Y-%m-%dT%H:%M:%S.%fZ",
+        "%Y-%m-%dT%H:%M:%S.%f",
+        "%Y-%m-%dT%H:%M:%S.%fZ"
+    ]
     
-    for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%dT%H:%M:%S.%fZ",
-                "%Y-%m-%dT%H:%M:%S.%f", "%m/%d/%Y %H:%M:%S", "%m/%d/%Y %H:%M"):
+    for fmt in formats:
         try:
-            result = datetime.strptime(dt_str, fmt)
-            log_message(f"🔍 DEBUG: Successfully parsed '{dt_str}' as {result}")
-            return result
-        except Exception as e:
-            log_message(f"🔍 DEBUG: Failed to parse '{dt_str}' with format '{fmt}': {e}")
+            return datetime.strptime(dt_str, fmt)
+        except Exception:
             continue
-    log_message(f"🔍 DEBUG: Could not parse date string: '{dt_str}'")
+    
+    # If all formats fail, log the first few attempts for debugging
+    if not hasattr(parse_dt, '_debug_count'):
+        parse_dt._debug_count = 0
+    
+    if parse_dt._debug_count < 3:
+        log_message(f"🔍 DEBUG: Could not parse date string: '{dt_str}' (first {parse_dt._debug_count + 1} attempts)")
+        parse_dt._debug_count += 1
+    
     return None
 
 
@@ -142,10 +159,15 @@ def fetch_pos_transactions_for_store(store_code=None,
                 break
 
             for sale in sales:
+                # Debug: Log the actual sale data structure for first few sales
+                if len(all_rows) < 3:  # Only log first 3 sales for debugging
+                    log_message(f"🔍 DEBUG: Sale data keys: {list(sale.keys())}")
+                    log_message(f"🔍 DEBUG: TicketDateTime: '{sale.get('TicketDateTime')}'")
+                    log_message(f"🔍 DEBUG: SaleDateTime: '{sale.get('SaleDateTime')}'")
+                
                 sale_dt = parse_dt(sale.get("TicketDateTime") or sale.get("SaleDateTime"))
                 
-                # Debug: Log first few sales to see what dates we're getting
-                if len(all_rows) < 5:  # Only log first 5 sales for debugging
+                if len(all_rows) < 3:  # Only log first 3 sales for debugging
                     log_message(f"🔍 Sale {sale.get('TicketNumber')}: date={sale_dt}, cutoff={CUTOFF_DATE}")
                 
                 if not sale_dt or sale_dt < CUTOFF_DATE:

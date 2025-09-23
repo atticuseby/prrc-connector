@@ -145,17 +145,20 @@ def build_events_from_csv(csv_path: str) -> list[dict]:
             skip_reasons["flags"] += 1
             continue
 
-        # Match keys
+        # Match keys - using actual CSV field names
+        customer_name = first.get("CustomerName", "").strip()
+        name_parts = customer_name.split(" ", 1) if customer_name else ["", ""]
+        
         mk = {
-            "em": sha256_norm(first.get("email")),
-            "ph": sha256_phone(first.get("phone")),
-            "fn": sha256_norm(first.get("first_name")),
-            "ln": sha256_norm(first.get("last_name")),
-            "ct": sha256_norm(first.get("city")),
-            "st": sha256_norm(first.get("state")),
-            "zip": sha256_norm(str(first.get("zip") or "")),
+            "em": sha256_norm(first.get("CustomerEmail")),
+            "ph": sha256_phone(first.get("CustomerPhone")),
+            "fn": sha256_norm(name_parts[0]),  # First name
+            "ln": sha256_norm(name_parts[1]),  # Last name
+            "ct": sha256_norm(first.get("City")),
+            "st": sha256_norm(first.get("State")),
+            "zip": sha256_norm(str(first.get("ZipCode") or "")),
             "country": sha256_norm(COUNTRY_DEFAULT),
-            "external_id": sha256_norm(first.get("rics_id")),
+            "external_id": sha256_norm(first.get("CustomerId")),
         }
         match_keys = {k: v for k, v in mk.items() if v}
         if not match_keys:

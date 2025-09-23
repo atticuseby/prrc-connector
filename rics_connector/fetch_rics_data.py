@@ -157,6 +157,28 @@ def fetch_pos_transactions_for_store(store_code=None,
             if not sales:
                 log_message(f"⚠️ No more Sales returned for Store {store_code}.")
                 break
+            
+            # Check if we're getting duplicate data (same sales count on multiple pages)
+            if page_count > 2 and len(sales) > 0:
+                # If we've seen the same sales count 3 times in a row, likely duplicate data
+                if not hasattr(fetch_pos_transactions_for_store, '_last_sales_count'):
+                    fetch_pos_transactions_for_store._last_sales_count = {}
+                if not hasattr(fetch_pos_transactions_for_store, '_sales_count_repeats'):
+                    fetch_pos_transactions_for_store._sales_count_repeats = {}
+                
+                store_key = f"store_{store_code}"
+                current_count = len(sales)
+                
+                if store_key in fetch_pos_transactions_for_store._last_sales_count:
+                    if fetch_pos_transactions_for_store._last_sales_count[store_key] == current_count:
+                        fetch_pos_transactions_for_store._sales_count_repeats[store_key] = fetch_pos_transactions_for_store._sales_count_repeats.get(store_key, 0) + 1
+                        if fetch_pos_transactions_for_store._sales_count_repeats[store_key] >= 3:
+                            log_message(f"⚠️ Store {store_code}: Detected duplicate data ({current_count} sales repeated 3+ times), stopping pagination")
+                            break
+                    else:
+                        fetch_pos_transactions_for_store._sales_count_repeats[store_key] = 0
+                
+                fetch_pos_transactions_for_store._last_sales_count[store_key] = current_count
 
             for sale in sales:
                 # The actual sales are in the SaleHeaders field

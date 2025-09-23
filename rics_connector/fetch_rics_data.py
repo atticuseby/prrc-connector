@@ -15,7 +15,9 @@ MAX_WORKERS = 1  # Reduced to 1 to avoid rate limiting
 DEBUG_MODE = False
 
 ABSOLUTE_TIMEOUT_SECONDS = 120
-CUTOFF_DATE = datetime.utcnow() - timedelta(days=30)  # Temporarily extended to 30 days for debugging
+CUTOFF_DATE = datetime.utcnow() - timedelta(days=7)  # 7 days from NOW
+log_message(f"🔍 DEBUG: Current UTC time: {datetime.utcnow()}")
+log_message(f"🔍 DEBUG: Cutoff date: {CUTOFF_DATE}")
 
 purchase_history_fields = [
     "TicketDateTime", "TicketNumber", "SaleDateTime", "StoreCode", "TerminalId", "Cashier",
@@ -66,6 +68,8 @@ def fetch_pos_transactions_for_store(store_code=None,
 
     start_date = (datetime.utcnow() - timedelta(days=7)).strftime("%Y-%m-%dT%H:%M:%SZ")  # 7 days only
     end_date = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+    
+    log_message(f"🔍 DEBUG: API date range - Start: {start_date}, End: {end_date}")
 
     while True:
         payload = {

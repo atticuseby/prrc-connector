@@ -166,7 +166,7 @@ def build_events_from_csv(csv_path: str) -> list[dict]:
             "event_name": "Purchase",
             "event_time": event_time,
             "event_id": f"purchase-{ticket_no}",
-            "event_source": "offline",
+            "event_source_url": "https://prrc-connector.com",
             "match_keys": match_keys,
             "custom_data": {
                 "order_id": str(ticket_no),

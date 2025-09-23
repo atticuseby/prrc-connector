@@ -15,7 +15,7 @@ MAX_WORKERS = 1  # Reduced to 1 to avoid rate limiting
 DEBUG_MODE = False
 
 ABSOLUTE_TIMEOUT_SECONDS = 120
-CUTOFF_DATE = datetime.utcnow() - timedelta(days=60)  # Even more lenient cutoff
+CUTOFF_DATE = datetime.utcnow() - timedelta(days=7)  # 7 days cutoff
 
 purchase_history_fields = [
     "TicketDateTime", "TicketNumber", "SaleDateTime", "StoreCode", "TerminalId", "Cashier",
@@ -64,7 +64,7 @@ def fetch_pos_transactions_for_store(store_code=None,
     seen_keys = set()
     page_count, api_calls, skip, take = 0, 0, 0, 100
 
-    start_date = (datetime.utcnow() - timedelta(days=365)).strftime("%Y-%m-%dT%H:%M:%SZ")  # Extended to 1 year to find ANY data
+    start_date = (datetime.utcnow() - timedelta(days=7)).strftime("%Y-%m-%dT%H:%M:%SZ")  # 7 days only
     end_date = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
 
     while True:
@@ -116,14 +116,9 @@ def fetch_pos_transactions_for_store(store_code=None,
             sales = data.get("Sales", [])
             log_message(f"📊 Store {store_code} returned {len(sales)} sales")
             
-            # Debug: Log the full API response structure for first few calls
-            if page_count < 2:  # Only for first 2 pages to avoid spam
-                log_message(f"🔍 Debug - Full API response keys: {list(data.keys())}")
-                if sales:
-                    log_message(f"🔍 Debug - First sale keys: {list(sales[0].keys())}")
-                    log_message(f"🔍 Debug - First sale sample: {sales[0]}")
-                else:
-                    log_message(f"🔍 Debug - No sales in response, but API returned 200")
+            # Minimal debugging - only log if no sales found
+            if not sales and page_count < 3:
+                log_message(f"🔍 Debug - Store {store_code} page {page_count+1}: No sales in response")
             
             # Add delay to avoid rate limiting
             import time
@@ -135,15 +130,8 @@ def fetch_pos_transactions_for_store(store_code=None,
 
             for sale in sales:
                 sale_dt = parse_dt(sale.get("TicketDateTime") or sale.get("SaleDateTime"))
-                # Temporarily disable date filtering to see if that's the issue
-                # if not sale_dt or sale_dt < CUTOFF_DATE:
-                #     log_message(f"🗓️ Filtering out sale {sale.get('TicketNumber')} - date {sale_dt} before cutoff {CUTOFF_DATE}")
-                #     continue
-                
-                if sale_dt:
-                    log_message(f"🗓️ Processing sale {sale.get('TicketNumber')} - date {sale_dt}")
-                else:
-                    log_message(f"🗓️ Processing sale {sale.get('TicketNumber')} - no date found")
+                if not sale_dt or sale_dt < CUTOFF_DATE:
+                    continue  # Skip old sales - no logging to reduce spam
 
                 sale_info = {
                     "TicketDateTime": sale.get("TicketDateTime"),

@@ -21,7 +21,7 @@ log_message(f"🔍 DEBUG: Cutoff date: {CUTOFF_DATE}")
 
 purchase_history_fields = [
     "TicketDateTime", "TicketNumber", "SaleDateTime", "StoreCode", "TerminalId", "Cashier",
-    "AccountNumber", "CustomerId",
+    "AccountNumber", "CustomerId", "CustomerName", "CustomerEmail", "CustomerPhone",
     "Sku", "Description", "Quantity", "AmountPaid", "Discount", "Department", "SupplierName"
 ]
 
@@ -215,6 +215,13 @@ def fetch_pos_transactions_for_store(store_code=None,
                     if not sale_dt or sale_dt < CUTOFF_DATE:
                         continue  # Skip old sales
 
+                    # Get customer info if available
+                    customer_info = sale_header.get("Customer", {})
+                    
+                    # Debug: Log customer data for first few sales
+                    if len(all_rows) < 3:
+                        log_message(f"🔍 DEBUG: Customer data: {customer_info}")
+                    
                     sale_info = {
                         "TicketDateTime": sale_header.get("TicketDateTime"),
                         "TicketNumber": sale_header.get("TicketNumber"),
@@ -222,8 +229,11 @@ def fetch_pos_transactions_for_store(store_code=None,
                         "StoreCode": sale.get("StoreCode"),
                         "TerminalId": sale_header.get("TerminalId"),
                         "Cashier": sale_header.get("CashierName"),
-                        "AccountNumber": sale_header.get("AccountNumber"),
-                        "CustomerId": sale_header.get("CustomerId"),
+                        "AccountNumber": customer_info.get("AccountNumber"),
+                        "CustomerId": customer_info.get("CustomerId"),
+                        "CustomerName": customer_info.get("FirstName", "") + " " + customer_info.get("LastName", ""),
+                        "CustomerEmail": customer_info.get("Email"),
+                        "CustomerPhone": customer_info.get("Phone"),
                     }
 
                     for item in sale_header.get("SaleLines", []):

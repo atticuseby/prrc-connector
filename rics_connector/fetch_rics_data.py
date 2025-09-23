@@ -98,6 +98,11 @@ def fetch_pos_transactions_for_store(store_code=None,
     log_message(f"🔍 DEBUG: Current year: {datetime.utcnow().year}")
 
     while True:
+        # Safety check: prevent infinite loops (check at start of each iteration)
+        if page_count > 50:  # Max 50 pages per store
+            log_message(f"⏰ Store {store_code}: Hit max pages limit ({page_count})")
+            break
+            
         payload = {
             "Take": take,
             "Skip": skip,
@@ -236,12 +241,13 @@ def fetch_pos_transactions_for_store(store_code=None,
                         all_rows.append(row)
 
             page_count += 1
-            if max_purchase_pages and page_count >= max_purchase_pages:
-                break
             
-            # Safety check: prevent infinite loops
+            # Safety check: prevent infinite loops (check BEFORE processing)
             if page_count > 50:  # Max 50 pages per store
                 log_message(f"⏰ Store {store_code}: Hit max pages limit ({page_count})")
+                break
+                
+            if max_purchase_pages and page_count >= max_purchase_pages:
                 break
                 
             skip += take

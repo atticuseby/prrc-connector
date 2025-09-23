@@ -15,7 +15,7 @@ MAX_WORKERS = 1  # Reduced to 1 to avoid rate limiting
 DEBUG_MODE = False
 
 ABSOLUTE_TIMEOUT_SECONDS = 120
-CUTOFF_DATE = datetime.utcnow() - timedelta(days=7)  # 7 days cutoff
+CUTOFF_DATE = datetime.utcnow() - timedelta(days=30)  # Temporarily extended to 30 days for debugging
 
 purchase_history_fields = [
     "TicketDateTime", "TicketNumber", "SaleDateTime", "StoreCode", "TerminalId", "Cashier",
@@ -130,8 +130,13 @@ def fetch_pos_transactions_for_store(store_code=None,
 
             for sale in sales:
                 sale_dt = parse_dt(sale.get("TicketDateTime") or sale.get("SaleDateTime"))
+                
+                # Debug: Log first few sales to see what dates we're getting
+                if len(all_rows) < 5:  # Only log first 5 sales for debugging
+                    log_message(f"🔍 Sale {sale.get('TicketNumber')}: date={sale_dt}, cutoff={CUTOFF_DATE}")
+                
                 if not sale_dt or sale_dt < CUTOFF_DATE:
-                    continue  # Skip old sales - no logging to reduce spam
+                    continue  # Skip old sales
 
                 sale_info = {
                     "TicketDateTime": sale.get("TicketDateTime"),

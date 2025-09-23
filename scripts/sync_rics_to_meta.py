@@ -149,6 +149,10 @@ def build_events_from_csv(csv_path: str) -> list[dict]:
         customer_name = first.get("CustomerName", "").strip()
         name_parts = customer_name.split(" ", 1) if customer_name else ["", ""]
         
+        # Ensure we have at least 2 parts (first name, last name)
+        if len(name_parts) < 2:
+            name_parts.extend([""] * (2 - len(name_parts)))
+        
         mk = {
             "em": sha256_norm(first.get("CustomerEmail")),
             "ph": sha256_phone(first.get("CustomerPhone")),

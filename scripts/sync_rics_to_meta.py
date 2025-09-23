@@ -15,7 +15,7 @@ ACCESS_TOKEN = os.getenv("META_ACCESS_TOKEN")
 API_URL = f"https://graph.facebook.com/v19.0/{DATASET_ID}/events"
 HEADERS = {"Content-Type": "application/json"}
 
-INPUT_CSV_PATH = os.getenv("RICS_INPUT_CSV", "optimizely_connector/output/rics_customer_purchase_history_latest.csv")
+INPUT_CSV_PATH = os.getenv("RICS_INPUT_CSV", "rics_customer_purchase_history_deduped.csv")
 BATCH_SIZE = 100
 CURRENCY = "USD"
 COUNTRY_DEFAULT = "US"
@@ -190,15 +190,20 @@ def send_in_batches(all_events: list[dict], batch_size: int = BATCH_SIZE) -> Non
 # Main
 # =========================
 def main():
+    import sys
+    
+    # Use command line argument if provided, otherwise use environment variable
+    csv_path = sys.argv[1] if len(sys.argv) > 1 else INPUT_CSV_PATH
+    
     print("🔄 Starting RICS → Meta Offline Conversions sync...")
     if not ACCESS_TOKEN or not DATASET_ID:
         print("❌ Missing META_ACCESS_TOKEN or META_DATASET_ID")
         return
-    if not os.path.exists(INPUT_CSV_PATH):
-        print(f"❌ CSV not found at {INPUT_CSV_PATH}")
+    if not os.path.exists(csv_path):
+        print(f"❌ CSV not found at {csv_path}")
         return
 
-    events = build_events_from_csv(INPUT_CSV_PATH)
+    events = build_events_from_csv(csv_path)
     if not events:
         print("ℹ️ No eligible events to send.")
         return

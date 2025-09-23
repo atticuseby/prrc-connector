@@ -240,10 +240,19 @@ def fetch_pos_transactions_for_store(store_code=None,
                     sale_lines = sale_header.get("SaleLines", [])
                     
                     # Debug: Log SaleLines info for first few sales
-                    if len(all_rows) < 3:
+                    if len(all_rows) < 5:
                         log_message(f"🔍 DEBUG: Sale {sale_header.get('TicketNumber')} has {len(sale_lines)} SaleLines")
+                        log_message(f"🔍 DEBUG: SaleHeader keys: {list(sale_header.keys())}")
+                        if 'SaleDetails' in sale_header:
+                            log_message(f"🔍 DEBUG: SaleDetails: {sale_header.get('SaleDetails')}")
                         if sale_lines:
                             log_message(f"🔍 DEBUG: First SaleLine: {sale_lines[0]}")
+                        else:
+                            log_message(f"🔍 DEBUG: No SaleLines found - checking other fields...")
+                            # Check if sales data is in a different field
+                            for key in ['SaleDetails', 'Items', 'LineItems', 'Products']:
+                                if key in sale_header:
+                                    log_message(f"🔍 DEBUG: Found {key}: {sale_header.get(key)}")
                     
                     if sale_lines:
                         # Process each item in the sale

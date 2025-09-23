@@ -31,12 +31,20 @@ DEDUP_LOG_PATH = os.path.join("logs", "sent_ticket_ids.csv")
 def parse_dt(dt_str):
     if not dt_str:
         return None
+    
+    # Debug: Log the actual date string we're trying to parse
+    log_message(f"🔍 DEBUG: Parsing date string: '{dt_str}'")
+    
     for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%dT%H:%M:%S.%fZ",
-                "%m/%d/%Y %H:%M:%S", "%m/%d/%Y %H:%M"):
+                "%Y-%m-%dT%H:%M:%S.%f", "%m/%d/%Y %H:%M:%S", "%m/%d/%Y %H:%M"):
         try:
-            return datetime.strptime(dt_str, fmt)
-        except Exception:
+            result = datetime.strptime(dt_str, fmt)
+            log_message(f"🔍 DEBUG: Successfully parsed '{dt_str}' as {result}")
+            return result
+        except Exception as e:
+            log_message(f"🔍 DEBUG: Failed to parse '{dt_str}' with format '{fmt}': {e}")
             continue
+    log_message(f"🔍 DEBUG: Could not parse date string: '{dt_str}'")
     return None
 
 

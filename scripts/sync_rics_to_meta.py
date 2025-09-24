@@ -163,10 +163,17 @@ def build_events_from_csv(csv_path: str) -> list[dict]:
             "zip": sha256_norm(str(first.get("ZipCode") or "")),
             "country": sha256_norm(COUNTRY_DEFAULT),
             "external_id": sha256_norm(first.get("CustomerId")),
-            # Additional high-impact parameters for better matching
-            "db": sha256_norm(first.get("DateOfBirth")),  # Date of Birth (14% increase)
         }
         match_keys = {k: v for k, v in mk.items() if v}
+        
+        # Debug: Log customer data for first few events
+        if len(events) < 3:
+            print(f"🔍 DEBUG: Customer data for ticket {ticket_no}:")
+            print(f"  Email: {first.get('CustomerEmail')}")
+            print(f"  Phone: {first.get('CustomerPhone')}")
+            print(f"  Name: {first.get('CustomerName')}")
+            print(f"  Match keys: {match_keys}")
+        
         if not match_keys:
             skip_reasons["missing_keys"] += 1
             continue
@@ -183,13 +190,6 @@ def build_events_from_csv(csv_path: str) -> list[dict]:
                 "currency": CURRENCY,
                 "contents": contents,
             },
-            # Additional parameters for better matching (33% increase each)
-            "user_data": {
-                "client_ip_address": first.get("IPAddress"),  # IP Address (33% increase)
-                "client_user_agent": first.get("UserAgent"),  # User Agent (33% increase)
-                "fbc": first.get("ClickID"),  # Click ID (33% increase)
-                "fbp": first.get("BrowserID"),  # Browser ID (24% increase)
-            }
         }
         events.append(event)
 

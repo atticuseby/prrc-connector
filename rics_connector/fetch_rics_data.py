@@ -15,7 +15,7 @@ MAX_WORKERS = 1  # Reduced to 1 to avoid rate limiting
 DEBUG_MODE = False
 
 ABSOLUTE_TIMEOUT_SECONDS = 120
-CUTOFF_DATE = datetime.utcnow() - timedelta(days=7)  # 7 days from NOW to capture recent data
+CUTOFF_DATE = datetime.utcnow() - timedelta(days=30)  # 30 days to capture more recent data
 log_message(f"🔍 DEBUG: Current UTC time: {datetime.utcnow()}")
 log_message(f"🔍 DEBUG: Cutoff date: {CUTOFF_DATE}")
 
@@ -92,7 +92,7 @@ def fetch_pos_transactions_for_store(store_code=None,
     seen_keys = set()
     page_count, api_calls, skip, take = 0, 0, 0, 100
 
-    start_date = (datetime.utcnow() - timedelta(days=7)).strftime("%Y-%m-%dT%H:%M:%SZ")  # 7 days to find recent data
+    start_date = (datetime.utcnow() - timedelta(days=30)).strftime("%Y-%m-%dT%H:%M:%SZ")  # 30 days to find recent data
     end_date = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
     
     log_message(f"🔍 DEBUG: API date range - Start: {start_date}, End: {end_date}")
@@ -211,8 +211,17 @@ def fetch_pos_transactions_for_store(store_code=None,
                     
                     if len(all_rows) < 3:  # Only log first 3 sales for debugging
                         log_message(f"🔍 Sale {sale_header.get('TicketNumber')}: date={sale_dt}, cutoff={CUTOFF_DATE}")
+                        log_message(f"🔍 Raw TicketDateTime: {sale_header.get('TicketDateTime')}")
+                        log_message(f"🔍 Raw SaleDateTime: {sale_header.get('SaleDateTime')}")
+                        log_message(f"🔍 Date comparison: {sale_dt} < {CUTOFF_DATE} = {sale_dt < CUTOFF_DATE if sale_dt else 'N/A'}")
                     
-                    if not sale_dt or sale_dt < CUTOFF_DATE:
+                    if not sale_dt:
+                        log_message(f"⚠️ Skipping sale {sale_header.get('TicketNumber')} - could not parse date")
+                        continue
+                    
+                    if sale_dt < CUTOFF_DATE:
+                        if len(all_rows) < 3:  # Only log first few for debugging
+                            log_message(f"⚠️ Skipping sale {sale_header.get('TicketNumber')} - too old ({sale_dt} < {CUTOFF_DATE})")
                         continue  # Skip old sales
 
                     # Get customer info if available
@@ -317,7 +326,7 @@ def fetch_pos_transactions_for_store(store_code=None,
     return all_rows
 
 
-def fetch_rics_data_with_purchase_history(max_purchase_pages=None, debug_mode=False, return_summary=False):
+def fetch_rics_data_with_purchase_history(max_purchase_pages=None, debug_mode=False, return_summary=False, no_dedup=False):
     start_time = datetime.utcnow()
     timestamp = datetime.now().strftime("%m_%d_%Y_%H%M")
     filename = f"rics_customer_purchase_history_{timestamp}.csv"
@@ -325,8 +334,12 @@ def fetch_rics_data_with_purchase_history(max_purchase_pages=None, debug_mode=Fa
     output_path = os.path.join(output_dir, filename)
     os.makedirs(output_dir, exist_ok=True)
 
-    already_sent = load_sent_ticket_ids()
-    log_message(f"📂 Loaded {len(already_sent)} previously sent TicketNumbers")
+    if no_dedup:
+        log_message("🔧 No-dedup mode: Skipping deduplication")
+        already_sent = set()
+    else:
+        already_sent = load_sent_ticket_ids()
+        log_message(f"📂 Loaded {len(already_sent)} previously sent TicketNumbers")
 
     all_rows = []
     STORE_CODES = [1, 2, 3, 4, 6, 7, 8, 9, 10, 11, 12, 21, 22, 98, 99]
@@ -381,18 +394,22 @@ def fetch_rics_data_with_purchase_history(max_purchase_pages=None, debug_mode=Fa
     else:
         log_message(f"❌ ERROR: CSV file was not created!")
 
-    new_ticket_ids = {row["TicketNumber"] for row in all_rows}
-    skipped_count = len([tid for tid in already_sent if tid not in new_ticket_ids])
-
-    if new_ticket_ids:
-        updated_sent = already_sent.union(new_ticket_ids)
-        save_sent_ticket_ids(updated_sent)
-        summary = f"{len(new_ticket_ids)} new tickets, {skipped_count} skipped (already sent)"
-        log_message(f"✅ Dedup log updated: {len(updated_sent)} total TicketNumbers tracked")
-        log_message(f"📊 Summary: {summary}")
+    if no_dedup:
+        log_message("🔧 No-dedup mode: Skipping deduplication tracking")
+        summary = f"{len(all_rows)} total rows (no dedup)"
     else:
-        summary = "0 new tickets (all skipped)"
-        log_message("⚠️ No new TicketNumbers found in this run.")
+        new_ticket_ids = {row["TicketNumber"] for row in all_rows}
+        skipped_count = len([tid for tid in already_sent if tid not in new_ticket_ids])
+
+        if new_ticket_ids:
+            updated_sent = already_sent.union(new_ticket_ids)
+            save_sent_ticket_ids(updated_sent)
+            summary = f"{len(new_ticket_ids)} new tickets, {skipped_count} skipped (already sent)"
+            log_message(f"✅ Dedup log updated: {len(updated_sent)} total TicketNumbers tracked")
+            log_message(f"📊 Summary: {summary}")
+        else:
+            summary = "0 new tickets (all skipped)"
+            log_message("⚠️ No new TicketNumbers found in this run.")
 
     if return_summary:
         return output_path, summary

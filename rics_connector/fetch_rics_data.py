@@ -69,7 +69,7 @@ def load_sent_ticket_ids():
     """Load sent ticket IDs from local file if present."""
     try:
         with open(DEDUP_LOG_PATH, "r") as f:
-            return set(line.strip() for line in f if line.strip())
+            return set(str(line.strip()) for line in f if line.strip())
     except FileNotFoundError:
         return set()
 
@@ -78,7 +78,8 @@ def save_sent_ticket_ids(ticket_ids):
     """Save updated sent ticket IDs locally (workflow uploads logs to Drive)."""
     os.makedirs(os.path.dirname(DEDUP_LOG_PATH), exist_ok=True)
     with open(DEDUP_LOG_PATH, "w") as f:
-        for tid in sorted(ticket_ids):
+        # Convert all ticket IDs to strings before sorting to avoid type comparison errors
+        for tid in sorted(str(tid) for tid in ticket_ids):
             f.write(f"{tid}\n")
 
 
@@ -233,7 +234,7 @@ def fetch_pos_transactions_for_store(store_code=None,
                     
                     sale_info = {
                         "TicketDateTime": sale_header.get("TicketDateTime"),
-                        "TicketNumber": sale_header.get("TicketNumber"),
+                        "TicketNumber": str(sale_header.get("TicketNumber", "")),
                         "SaleDateTime": sale_header.get("SaleDateTime"),
                         "StoreCode": sale.get("StoreCode"),
                         "TerminalId": sale_header.get("TerminalId"),
@@ -398,7 +399,7 @@ def fetch_rics_data_with_purchase_history(max_purchase_pages=None, debug_mode=Fa
         log_message("🔧 No-dedup mode: Skipping deduplication tracking")
         summary = f"{len(all_rows)} total rows (no dedup)"
     else:
-        new_ticket_ids = {row["TicketNumber"] for row in all_rows}
+        new_ticket_ids = {str(row["TicketNumber"]) for row in all_rows if row["TicketNumber"]}
         skipped_count = len([tid for tid in already_sent if tid not in new_ticket_ids])
 
         if new_ticket_ids:

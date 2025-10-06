@@ -4,6 +4,7 @@ import time
 import hashlib
 import requests
 import re
+import json
 from collections import defaultdict
 from datetime import datetime, timezone, timedelta
 
@@ -102,6 +103,11 @@ def build_events_from_csv(csv_path: str) -> list[dict]:
 
     events = []
     skip_reasons = {"old": 0, "zero_value": 0, "flags": 0, "missing_keys": 0}
+    
+    # Initialize counters for logging
+    action_source_counts = {"offline": 0, "website": 0, "other": 0}
+    event_source_url_present_count = 0
+    example_event_ids = []
 
     for ticket_no, lines in tickets.items():
         first = lines[0]
@@ -145,7 +151,7 @@ def build_events_from_csv(csv_path: str) -> list[dict]:
             skip_reasons["flags"] += 1
             continue
 
-        # Match keys - using actual CSV field names
+        # User data - using actual CSV field names
         customer_name = first.get("CustomerName", "").strip()
         name_parts = customer_name.split(" ", 1) if customer_name else ["", ""]
         
@@ -153,18 +159,19 @@ def build_events_from_csv(csv_path: str) -> list[dict]:
         if len(name_parts) < 2:
             name_parts.extend([""] * (2 - len(name_parts)))
         
-        mk = {
+        user_data = {
             "em": sha256_norm(first.get("CustomerEmail")),
             "ph": sha256_phone(first.get("CustomerPhone")),
             "fn": sha256_norm(name_parts[0]),  # First name
             "ln": sha256_norm(name_parts[1]),  # Last name
             "ct": sha256_norm(first.get("City")),
             "st": sha256_norm(first.get("State")),
-            "zip": sha256_norm(str(first.get("ZipCode") or "")),
+            "zp": sha256_norm(str(first.get("ZipCode") or "")),
             "country": sha256_norm(COUNTRY_DEFAULT),
             "external_id": sha256_norm(first.get("CustomerId")),
         }
-        match_keys = {k: v for k, v in mk.items() if v}
+        # Remove None values
+        user_data = {k: v for k, v in user_data.items() if v}
         
         # Debug: Log customer data for first few events
         if len(events) < 3:
@@ -172,18 +179,23 @@ def build_events_from_csv(csv_path: str) -> list[dict]:
             print(f"  Email: {first.get('CustomerEmail')}")
             print(f"  Phone: {first.get('CustomerPhone')}")
             print(f"  Name: {first.get('CustomerName')}")
-            print(f"  Match keys: {match_keys}")
+            print(f"  User data: {user_data}")
         
-        if not match_keys:
+        if not user_data:
             skip_reasons["missing_keys"] += 1
             continue
 
+        # Create stable event ID for deduplication
+        event_id = f"purchase-{ticket_no}-{int(event_time)}"
+        
+        # Build event with proper offline Conversions API format
         event = {
             "event_name": "Purchase",
             "event_time": event_time,
-            "event_id": f"purchase-{ticket_no}",
-            "event_source_url": "https://prrc-connector.com",
-            "match_keys": match_keys,
+            "action_source": "offline",  # CRITICAL: Must be "offline" for offline events
+            "event_id": event_id,
+            # NO event_source_url for offline events - this was causing the fake domain issue
+            "user_data": user_data,  # Use user_data, not match_keys
             "custom_data": {
                 "order_id": str(ticket_no),
                 "value": round(total_value, 2),
@@ -191,21 +203,62 @@ def build_events_from_csv(csv_path: str) -> list[dict]:
                 "contents": contents,
             },
         }
+        
+        # Count action sources
+        action_source_counts["offline"] += 1
+        
+        # Track example event IDs
+        if len(example_event_ids) < 3:
+            example_event_ids.append({
+                "event_id": event_id,
+                "has_event_source_url": "event_source_url" in event
+            })
+        
         events.append(event)
 
     print(f"ℹ️ Skip summary: {skip_reasons}")
     print(f"🔍 DEBUG: Total events processed: {len(tickets)}")
     print(f"🔍 DEBUG: Events after filtering: {len(events)}")
+    
+    # Log action source counts
+    print(f"📊 Action source counts: {action_source_counts}")
+    print(f"📊 Event source URL present count: {event_source_url_present_count}")
+    print(f"📊 Example event IDs: {example_event_ids}")
+    
+    # Save run summary for debugging
+    run_summary = {
+        "timestamp": datetime.now().isoformat(),
+        "action_source_counts": action_source_counts,
+        "event_source_url_present_count": event_source_url_present_count,
+        "example_event_ids": example_event_ids,
+        "total_events": len(events),
+        "skip_reasons": skip_reasons
+    }
+    
+    os.makedirs("logs", exist_ok=True)
+    summary_file = f"logs/run_summary_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+    with open(summary_file, "w") as f:
+        json.dump(run_summary, f, indent=2)
+    print(f"📊 Run summary saved to: {summary_file}")
+    
     return events
 
 # =========================
 # Sender
 # =========================
 def send_batch(events: list[dict]) -> None:
-    payload = {"data": events, "access_token": ACCESS_TOKEN}
+    # Add upload tag for better tracking
+    upload_tag = f"rics_{datetime.now().strftime('%Y%m%d')}"
+    
+    payload = {
+        "data": events, 
+        "access_token": ACCESS_TOKEN,
+        "upload_tag": upload_tag
+    }
+    
     resp = requests.post(API_URL, headers=HEADERS, json=payload, timeout=60)
     if resp.ok:
-        print(f"✅ Sent batch of {len(events)} events")
+        print(f"✅ Sent batch of {len(events)} events with upload_tag: {upload_tag}")
     else:
         print(f"❌ Failed batch ({resp.status_code}) → {resp.text}")
 
@@ -229,6 +282,9 @@ def main():
     csv_path = sys.argv[1] if len(sys.argv) > 1 else INPUT_CSV_PATH
     
     print("🔄 Starting RICS → Meta Offline Conversions sync...")
+    print(f"🔍 Using dataset ID: {DATASET_ID}")
+    print(f"🔍 Using CSV: {csv_path}")
+    
     if not ACCESS_TOKEN or not DATASET_ID:
         print("❌ Missing META_ACCESS_TOKEN or META_DATASET_ID")
         return
@@ -242,6 +298,7 @@ def main():
         return
 
     print(f"📦 Prepared {len(events)} offline Purchase events")
+    print("🔍 All events will have action_source='offline' and no event_source_url")
     send_in_batches(events, BATCH_SIZE)
     print("✅ Finished sending events.")
 

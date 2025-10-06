@@ -53,9 +53,10 @@ def test_meta_connection():
     test_event = {
         "event_name": "Purchase",
         "event_time": current_time,
+        "action_source": "offline",  # CRITICAL: Must be "offline" for offline events
         "event_id": f"test-purchase-{current_time}",
-        "event_source_url": "https://prrc-connector.com/test",
-        "match_keys": {
+        # NO event_source_url for offline events
+        "user_data": {  # Use user_data, not match_keys
             "em": sha256_norm(test_email),
             "country": sha256_norm("US")
         },

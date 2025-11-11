@@ -11,6 +11,11 @@ jobs:
 
     env:
       OPTIMIZELY_API_TOKEN: ${{ secrets.OPTIMIZELY_API_TOKEN }}
+      GDRIVE_CREDENTIALS: ${{ secrets.GDRIVE_CREDENTIALS }}
+      GDRIVE_FOLDER_ID: ${{ secrets.GDRIVE_FOLDER_ID }}
+      DRY_RUN: ${{ secrets.DRY_RUN }}
+      RSU_MAX_FILES: ${{ secrets.RSU_MAX_FILES || '1' }}
+      OPTIMIZELY_EVENT_NAME: ${{ secrets.OPTIMIZELY_EVENT_NAME || 'registration' }}
 
     steps:
       - name: ⬇️ Checkout repository
@@ -24,6 +29,26 @@ jobs:
       - name: 📦 Install Python dependencies
         run: pip install -r requirements.txt
 
+      - name: 🔧 Set PYTHONPATH
+        run: echo "PYTHONPATH=${GITHUB_WORKSPACE}" >> $GITHUB_ENV
+
+      - name: 🧪 Sanity import
+        run: |
+          python - <<'PY'
+          import os, sys
+          print("PYTHONPATH:", os.getenv("PYTHONPATH"))
+          try:
+              import runsignup_connector.main_runsignup as m
+              import runsignup_connector.optimizely_client
+              from scripts.process_runsignup_csvs import process_runsignup_csvs
+              print("✅ Sanity import ok")
+          except ImportError as e:
+              print(f"❌ Import error: {e}")
+              sys.exit(1)
+          PY
+
+      - name: 🧪 Run import tests
+        run: python tests/test_imports.py
+
       - name: 🔄 Process & sync to Optimizely
-        run: python runsignup_connector/main_runsignup.py
-        working-directory: ${{ github.workspace }}
+        run: python -m runsignup_connector.main_runsignup

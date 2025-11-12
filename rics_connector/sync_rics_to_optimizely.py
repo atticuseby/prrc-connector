@@ -12,10 +12,17 @@ from scripts.helpers import log_message
 
 OPTIMIZELY_ENDPOINT = "https://api.zaius.com/v3/events"
 BATCH_SIZE = 500
+OPTIMIZELY_LIST_ID_RICS = os.getenv("OPTIMIZELY_LIST_ID_RICS", "").strip()
 
 def run_sync():
     data_folder = "data"
     all_events = []
+    
+    # Log list routing info
+    if OPTIMIZELY_LIST_ID_RICS:
+        log_message(f"📋 Pushing RICS purchases to list: {OPTIMIZELY_LIST_ID_RICS}")
+    else:
+        log_message("⚠️ OPTIMIZELY_LIST_ID_RICS not set - contacts will not be subscribed to list")
 
     # Read CSVs from /data
     for filename in os.listdir(data_folder):
@@ -55,11 +62,17 @@ def run_sync():
                     # Remove empty/null values
                     props = {k: v for k, v in props.items() if v not in (None, "", "NULL")}
 
-                    all_events.append({
+                    event = {
                         "type": "customer_update",
                         "identifiers": identifiers,
                         "properties": props
-                    })
+                    }
+                    
+                    # Add list subscription if list ID is configured
+                    if OPTIMIZELY_LIST_ID_RICS:
+                        event["lists"] = [{"id": OPTIMIZELY_LIST_ID_RICS, "subscribe": True}]
+                    
+                    all_events.append(event)
 
     # Batch send
     total = len(all_events)

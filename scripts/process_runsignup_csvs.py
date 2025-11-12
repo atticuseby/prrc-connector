@@ -31,6 +31,20 @@ GDRIVE_CREDENTIALS = os.getenv("GDRIVE_CREDENTIALS", "").strip()
 GDRIVE_FOLDER_ID = os.getenv("GDRIVE_FOLDER_ID", "").strip()
 OPTIMIZELY_EVENT_NAME = os.getenv("OPTIMIZELY_EVENT_NAME", "registration").strip()
 
+# Partner folder ID mapping: folder ID env var -> partner ID
+PARTNER_FOLDER_MAP = {
+    os.getenv("GDRIVE_FOLDER_ID_1384", "").strip(): "1384",
+    os.getenv("GDRIVE_FOLDER_ID_1385", "").strip(): "1385",
+    os.getenv("GDRIVE_FOLDER_ID_1411", "").strip(): "1411",
+}
+
+# Partner to Optimizely list ID mapping
+PARTNER_LIST_MAP = {
+    "1384": os.getenv("OPTIMIZELY_LIST_ID_1384", "").strip(),
+    "1385": os.getenv("OPTIMIZELY_LIST_ID_1385", "").strip(),
+    "1411": os.getenv("OPTIMIZELY_LIST_ID_1411", "").strip(),
+}
+
 # Header mapping: RunSignup CSV headers -> canonical keys
 HEADER_MAP = {
     "First Name": "first_name",
@@ -215,6 +229,28 @@ def _map_row(row: Dict) -> Tuple[Optional[Dict], Optional[Dict], Optional[str]]:
     return profile_attrs, event_props, registration_ts
 
 
+def _detect_partner_and_list(folder_id: str) -> Tuple[Optional[str], Optional[str]]:
+    """
+    Detect partner ID and Optimizely list ID from folder ID.
+    
+    Returns:
+        Tuple of (partner_id, list_id) or (None, None) if not found
+    """
+    # Remove empty entries from PARTNER_FOLDER_MAP
+    folder_map = {k: v for k, v in PARTNER_FOLDER_MAP.items() if k}
+    
+    # Find partner ID from folder ID
+    partner_id = folder_map.get(folder_id)
+    
+    if not partner_id:
+        return None, None
+    
+    # Get list ID for this partner
+    list_id = PARTNER_LIST_MAP.get(partner_id)
+    
+    return partner_id, list_id
+
+
 def process_runsignup_csvs():
     """Main processing function: read CSVs from Google Drive and sync to Optimizely."""
     
@@ -222,6 +258,22 @@ def process_runsignup_csvs():
     print(f"DRY_RUN: {DRY_RUN}")
     print(f"Max files to process: {RSU_MAX_FILES}")
     print()
+    
+    # Detect partner and list from folder ID
+    partner_id, list_id = _detect_partner_and_list(GDRIVE_FOLDER_ID)
+    
+    if not partner_id or not list_id:
+        print(f"⚠️ Warning: No partner/list mapping found for folder ID: {GDRIVE_FOLDER_ID}")
+        print("Available partner folders:")
+        for folder_id, pid in PARTNER_FOLDER_MAP.items():
+            if folder_id:
+                print(f"  - Partner {pid}: {folder_id}")
+        print("Continuing without list subscription...")
+    else:
+        print(f"✅ Partner ID: {partner_id}")
+        print(f"✅ Folder ID: {GDRIVE_FOLDER_ID}")
+        print(f"✅ Optimizely List ID: {list_id}")
+        print()
     
     # Initialize Google Drive service
     try:
@@ -284,7 +336,9 @@ def process_runsignup_csvs():
                         "email": _normalize_email(row.get("Email Address", "")),
                         "profile_attrs": profile_attrs,
                         "event_props": event_props,
-                        "timestamp": registration_ts
+                        "timestamp": registration_ts,
+                        "list_id": list_id,
+                        "partner_id": partner_id
                     })
                 
                 # Skip actual posting if DRY_RUN
@@ -294,7 +348,7 @@ def process_runsignup_csvs():
                 # Post profile update
                 try:
                     email = _normalize_email(row.get("Email Address", ""))
-                    status_code, response_text = post_profile(email, profile_attrs)
+                    status_code, response_text = post_profile(email, profile_attrs, list_id)
                     if status_code in (200, 202):
                         posted_profiles += 1
                     else:
@@ -309,7 +363,8 @@ def process_runsignup_csvs():
                         email,
                         OPTIMIZELY_EVENT_NAME,
                         event_props,
-                        registration_ts
+                        registration_ts,
+                        list_id
                     )
                     if status_code in (200, 202):
                         posted_events += 1
@@ -327,6 +382,9 @@ def process_runsignup_csvs():
     print("\n" + "=" * 50)
     print("SUMMARY")
     print("=" * 50)
+    print(f"Partner ID: {partner_id or 'N/A'}")
+    print(f"Folder ID: {GDRIVE_FOLDER_ID}")
+    print(f"Optimizely List ID: {list_id or 'N/A'}")
     print(f"Files processed: {len(csv_files)}")
     print(f"Total rows: {total_rows}")
     print(f"Valid rows: {valid_rows}")
@@ -342,6 +400,8 @@ def process_runsignup_csvs():
         for i, sample in enumerate(sample_rows, 1):
             print(f"\n  Row {i}:")
             print(f"    Email: {sample['email']}")
+            print(f"    Partner ID: {sample.get('partner_id', 'N/A')}")
+            print(f"    List ID: {sample.get('list_id', 'N/A')}")
             print(f"    Profile attrs: {json.dumps(sample['profile_attrs'], indent=6)}")
             print(f"    Event props: {json.dumps(sample['event_props'], indent=6)}")
             print(f"    Timestamp: {sample['timestamp']}")

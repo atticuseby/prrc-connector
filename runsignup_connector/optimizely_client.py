@@ -27,13 +27,14 @@ def _get_headers() -> Dict[str, str]:
     }
 
 
-def post_profile(email: str, attrs: Dict) -> Tuple[int, str]:
+def post_profile(email: str, attrs: Dict, list_id: Optional[str] = None) -> Tuple[int, str]:
     """
     Post a profile update to Optimizely.
     
     Args:
         email: Email address of the profile
         attrs: Dictionary of profile attributes
+        list_id: Optional Optimizely list ID to subscribe the contact to
         
     Returns:
         Tuple of (status_code, response_text)
@@ -50,6 +51,10 @@ def post_profile(email: str, attrs: Dict) -> Tuple[int, str]:
         },
         "attributes": attrs
     }
+    
+    # Add list subscription if list_id is provided
+    if list_id:
+        payload["lists"] = [{"id": list_id, "subscribe": True}]
     
     try:
         response = requests.post(
@@ -69,7 +74,8 @@ def post_event(
     email: str,
     event_name: str,
     properties: Dict,
-    timestamp_iso: Optional[str] = None
+    timestamp_iso: Optional[str] = None,
+    list_id: Optional[str] = None
 ) -> Tuple[int, str]:
     """
     Post an event to Optimizely.
@@ -79,6 +85,7 @@ def post_event(
         event_name: Name of the event (e.g., "registration")
         properties: Dictionary of event properties
         timestamp_iso: ISO 8601 timestamp string (optional, defaults to now)
+        list_id: Optional Optimizely list ID to subscribe the contact to
         
     Returns:
         Tuple of (status_code, response_text)
@@ -102,6 +109,10 @@ def post_event(
         },
         "properties": properties
     }
+    
+    # Add list subscription if list_id is provided
+    if list_id:
+        payload["lists"] = [{"id": list_id, "subscribe": True}]
     
     try:
         response = requests.post(

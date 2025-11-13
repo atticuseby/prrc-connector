@@ -31,12 +31,7 @@ GDRIVE_CREDENTIALS = os.getenv("GDRIVE_CREDENTIALS", "").strip()
 RSU_FOLDER_IDS = os.getenv("RSU_FOLDER_IDS", "").strip()
 OPTIMIZELY_EVENT_NAME = os.getenv("OPTIMIZELY_EVENT_NAME", "registration").strip()
 
-# Partner to Optimizely list ID mapping
-PARTNER_LIST_MAP = {
-    "1384": os.getenv("OPTIMIZELY_LIST_ID_1384", "").strip(),
-    "1385": os.getenv("OPTIMIZELY_LIST_ID_1385", "").strip(),
-    "1411": os.getenv("OPTIMIZELY_LIST_ID_1411", "").strip(),
-}
+# Partner to Optimizely list ID mapping is built dynamically in load_partner_mappings()
 
 # Header mapping: RunSignup CSV headers -> canonical keys
 HEADER_MAP = {
@@ -62,51 +57,74 @@ def _validate_required_env():
         raise RuntimeError(f"Missing required env: {', '.join(missing)}")
 
 
-def load_partner_folder_map():
+def load_partner_mappings():
     """
-    Build partner-to-folder and folder-to-partner mappings.
+    Build partner-to-folder and partner-to-list mappings.
+    
+    RSU_FOLDER_IDS contains partner IDs (e.g., "1384,1385,1411").
+    For each partner, we look up:
+    - GDRIVE_FOLDER_ID_{partner_id} → folder_id
+    - OPTIMIZELY_LIST_ID_{partner_id} → list_id
     
     Returns:
-        Tuple of (folder_ids, partner_to_folder, folder_to_partner)
+        Tuple of (enabled_partner_ids, partner_to_folder, partner_to_list)
     """
-    # Add explicit debug logging
-    rsu_raw = os.getenv("RSU_FOLDER_IDS", "")
-    id_1384 = os.getenv("GDRIVE_FOLDER_ID_1384", "").strip()
-    id_1385 = os.getenv("GDRIVE_FOLDER_ID_1385", "").strip()
-    id_1411 = os.getenv("GDRIVE_FOLDER_ID_1411", "").strip()
+    rsu_raw = os.getenv("RSU_FOLDER_IDS", "").strip()
     
     print(f"🔍 DEBUG: RSU_FOLDER_IDS raw: {rsu_raw}")
-    print(f"🔍 DEBUG: GDRIVE_FOLDER_ID_1384: {id_1384[-6:] if id_1384 else 'NOT SET'}")
-    print(f"🔍 DEBUG: GDRIVE_FOLDER_ID_1385: {id_1385[-6:] if id_1385 else 'NOT SET'}")
-    print(f"🔍 DEBUG: GDRIVE_FOLDER_ID_1411: {id_1411[-6:] if id_1411 else 'NOT SET'}")
     
-    # Build both directions and validate
-    folder_ids = [x.strip() for x in rsu_raw.split(",") if x.strip()]
+    # Parse RSU_FOLDER_IDS as comma-separated partner IDs
+    enabled_partner_ids = [pid.strip() for pid in rsu_raw.split(",") if pid.strip()]
     
-    # Map partner -> folder
-    partner_to_folder = {
-        "1384": id_1384,
-        "1385": id_1385,
-        "1411": id_1411,
-    }
+    if not enabled_partner_ids:
+        raise RuntimeError("RSU_FOLDER_IDS is empty or not set. Set it to comma-separated partner IDs (e.g., '1384,1385,1411')")
     
-    # Map folder -> partner (only for non-empty ids)
-    folder_to_partner = {v: k for k, v in partner_to_folder.items() if v}
+    print(f"🔍 DEBUG: Parsed partner IDs from RSU_FOLDER_IDS: {', '.join(enabled_partner_ids)}")
     
-    # Validate that every RSU_FOLDER_IDS entry is known
-    unknown = [fid for fid in folder_ids if fid not in folder_to_partner]
-    if unknown:
-        print(f"❌ ERROR: Unmapped folder IDs: {', '.join([fid[-6:] for fid in unknown])}")
-        print("These folder IDs from RSU_FOLDER_IDS do not match any GDRIVE_FOLDER_ID_* values")
+    # Build partner → folder mapping
+    partner_to_folder = {}
+    partner_to_list = {}
     
-    # List maps and return
-    available = [f"{p}:{partner_to_folder[p][-6:]}" for p in partner_to_folder if partner_to_folder[p]]
-    if available:
-        print(f"✅ Available partner folders: {', '.join(available)}")
-    else:
-        print("⚠️ WARNING: No partner folders configured")
+    # Known partners
+    known_partners = ["1384", "1385", "1411"]
     
-    return folder_ids, partner_to_folder, folder_to_partner
+    for partner_id in known_partners:
+        folder_id = os.getenv(f"GDRIVE_FOLDER_ID_{partner_id}", "").strip()
+        list_id = os.getenv(f"OPTIMIZELY_LIST_ID_{partner_id}", "").strip()
+        
+        if folder_id:
+            partner_to_folder[partner_id] = folder_id
+            print(f"🔍 DEBUG: GDRIVE_FOLDER_ID_{partner_id}: {folder_id[-6:]}")
+        else:
+            print(f"🔍 DEBUG: GDRIVE_FOLDER_ID_{partner_id}: NOT SET")
+        
+        if list_id:
+            partner_to_list[partner_id] = list_id
+        else:
+            print(f"🔍 DEBUG: OPTIMIZELY_LIST_ID_{partner_id}: NOT SET")
+    
+    # Validate that every enabled partner has required config
+    missing_config = []
+    for partner_id in enabled_partner_ids:
+        if partner_id not in known_partners:
+            missing_config.append(f"Partner {partner_id} is not a known partner (known: {', '.join(known_partners)})")
+        elif partner_id not in partner_to_folder:
+            missing_config.append(f"Partner {partner_id} missing GDRIVE_FOLDER_ID_{partner_id}")
+        elif partner_id not in partner_to_list:
+            missing_config.append(f"Partner {partner_id} missing OPTIMIZELY_LIST_ID_{partner_id}")
+    
+    if missing_config:
+        error_msg = "Configuration errors:\n  " + "\n  ".join(missing_config)
+        raise RuntimeError(error_msg)
+    
+    # Log final mapping table
+    print("\n📋 Partner → Folder → List mapping:")
+    for partner_id in enabled_partner_ids:
+        folder_id = partner_to_folder[partner_id]
+        list_id = partner_to_list[partner_id]
+        print(f"   Partner {partner_id}: folder {folder_id[-6:]} → list {list_id}")
+    
+    return enabled_partner_ids, partner_to_folder, partner_to_list
 
 
 def _get_drive_service():
@@ -285,24 +303,22 @@ def process_runsignup_csvs():
     print("=== RUNSIGNUP CSV PROCESSOR ===")
     print(f"DRY_RUN: {DRY_RUN}")
     print(f"Max files to process: {RSU_MAX_FILES if RSU_MAX_FILES > 0 else 'all'}")
+    print()
     
     # Validate required env vars
     _validate_required_env()
     
-    # Log RSU_FOLDER_IDS (last 6 chars of each)
-    if RSU_FOLDER_IDS:
-        folder_ids_short = [fid[-6:] for fid in RSU_FOLDER_IDS.split(",") if fid.strip()]
-        print(f"RSU_FOLDER_IDS: {', '.join(folder_ids_short)}")
-    else:
-        print("⚠️ Warning: RSU_FOLDER_IDS not set")
+    # Load partner mappings (RSU_FOLDER_IDS contains partner IDs)
+    enabled_partner_ids, partner_to_folder, partner_to_list = load_partner_mappings()
+    
+    # Self-check: assert all enabled partners have complete config
+    for partner_id in enabled_partner_ids:
+        if partner_id not in partner_to_folder:
+            raise RuntimeError(f"Missing GDRIVE_FOLDER_ID_{partner_id} for partner {partner_id}")
+        if partner_id not in partner_to_list:
+            raise RuntimeError(f"Missing OPTIMIZELY_LIST_ID_{partner_id} for partner {partner_id}")
     
     print()
-    
-    # Load partner folder mappings
-    folder_ids, p2f, f2p = load_partner_folder_map()
-    
-    if not folder_ids:
-        raise RuntimeError("No folder IDs found in RSU_FOLDER_IDS. Please set RSU_FOLDER_IDS with comma-separated folder IDs.")
     
     # Initialize Google Drive service
     try:
@@ -312,22 +328,22 @@ def process_runsignup_csvs():
         print(f"❌ Failed to connect to Google Drive: {e}")
         raise
     
-    # Collect files from all folders
+    # Collect files from all partner folders
     files_global = []
+    folders_processed = 0
     
-    for fid in folder_ids:
-        partner_id = f2p.get(fid)
-        if not partner_id:
-            print(f"❌ ERROR: No partner mapping for folder {fid[-6:]}, skipping this folder.")
-            print(f"   Folder ID {fid[-6:]} from RSU_FOLDER_IDS does not match any GDRIVE_FOLDER_ID_* value")
-            continue
+    for partner_id in enabled_partner_ids:
+        folder_id = partner_to_folder[partner_id]
+        list_id = partner_to_list[partner_id]
         
-        print(f"✅ Folder {fid[-6:]} mapped to partner {partner_id}")
+        print(f"\n📁 Processing partner {partner_id}:")
+        print(f"   Folder: {folder_id[-6:]}")
+        print(f"   List: {list_id}")
         
         # List CSV files in this folder
         try:
-            files = drive_list_csvs(drive_service, fid)
-            print(f"   Folder {fid[-6:]} (partner {partner_id}) has {len(files)} CSV file(s).")
+            files = drive_list_csvs(drive_service, folder_id)
+            print(f"   Found {len(files)} CSV file(s)")
             
             # Log file names
             if files:
@@ -337,15 +353,17 @@ def process_runsignup_csvs():
             # Attach metadata for routing
             for f in files:
                 f["_partner_id"] = partner_id
-                f["_folder_id"] = fid
+                f["_folder_id"] = folder_id
+                f["_list_id"] = list_id
             
             files_global.extend(files)
+            folders_processed += 1
         except Exception as e:
-            print(f"❌ Error listing files in folder {fid[-6:]}: {e}")
+            print(f"❌ Error listing files in folder {folder_id[-6:]}: {e}")
             continue
     
     if not files_global:
-        print("⚠️ No CSV files found in any folder")
+        print(f"\n⚠️ No CSV files found in any folder (processed {folders_processed} folder(s))")
         return 0
     
     # Sort by modifiedTime (newest first) and limit
@@ -358,7 +376,7 @@ def process_runsignup_csvs():
     
     # Log selected files
     for f in files_global:
-        print(f"   Selected CSV: {f['name']} from folder {f['_folder_id'][-6:]} (partner {f['_partner_id']})")
+        print(f"   Selected CSV: {f['name']} from partner {f['_partner_id']} (folder {f['_folder_id'][-6:]})")
     
     print()
     
@@ -376,11 +394,7 @@ def process_runsignup_csvs():
         file_name = file_info["name"]
         partner_id = file_info["_partner_id"]
         folder_id = file_info["_folder_id"]
-        
-        # Get list ID for this partner
-        list_id = PARTNER_LIST_MAP.get(partner_id)
-        if not list_id:
-            raise RuntimeError(f"No Optimizely list ID configured for partner {partner_id}. Set OPTIMIZELY_LIST_ID_{partner_id}")
+        list_id = file_info["_list_id"]  # Already attached during collection
         
         print(f"Processing file {file_name} → partner {partner_id} → list {list_id}")
         
@@ -462,12 +476,14 @@ def process_runsignup_csvs():
     print("\n" + "=" * 50)
     print("SUMMARY")
     print("=" * 50)
+    print(f"Folders processed: {folders_processed}")
     print(f"Files processed: {len(files_global)}")
     print(f"Total rows: {total_rows}")
     print(f"Valid rows: {valid_rows}")
     print(f"Skipped rows: {skipped_rows}")
     print(f"Posted profiles: {posted_profiles}")
     print(f"Posted events: {posted_events}")
+    print(f"Rows processed: {rows_processed}")
     print(f"DRY_RUN: {DRY_RUN}")
     print("=" * 50)
     
@@ -475,7 +491,8 @@ def process_runsignup_csvs():
     if DRY_RUN and sample_rows_by_partner:
         print("\n📋 Sample mapped rows (first 2 per partner):")
         for partner_id, samples in sample_rows_by_partner.items():
-            list_id = PARTNER_LIST_MAP.get(partner_id, 'N/A')
+            # Get list_id from first sample (all samples from same partner have same list_id)
+            list_id = samples[0].get('list_id', 'N/A') if samples else 'N/A'
             print(f"\n  Partner {partner_id} (List: {list_id}):")
             for i, sample in enumerate(samples, 1):
                 print(f"\n    Row {i} from {sample.get('file_name', 'unknown')}:")

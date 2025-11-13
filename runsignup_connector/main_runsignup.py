@@ -8,8 +8,12 @@ from scripts.process_runsignup_csvs import process_runsignup_csvs
 
 def run_all():
     print("=== RUNSIGNUP ➜ OPTIMIZELY SYNC START ===")
-    process_runsignup_csvs()
-    print("✅ All new records pushed to Optimizely")
+    rows_processed = process_runsignup_csvs()
+    
+    if rows_processed > 0:
+        print(f"✅ {rows_processed} records pushed to Optimizely")
+    else:
+        print("ℹ️ No records processed (no CSV rows found after filtering).")
 
 if __name__ == "__main__":
     run_all()

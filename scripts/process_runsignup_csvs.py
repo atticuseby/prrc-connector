@@ -74,7 +74,14 @@ def load_partner_mappings():
     print(f"🔍 DEBUG: RSU_FOLDER_IDS raw: {rsu_raw}")
     
     # Parse RSU_FOLDER_IDS as comma-separated partner IDs
-    enabled_partner_ids = [pid.strip() for pid in rsu_raw.split(",") if pid.strip()]
+    # Strip whitespace and remove 'id_' prefix if present (handles both "1384" and "id_1384" formats)
+    raw_ids = [pid.strip() for pid in rsu_raw.split(",") if pid.strip()]
+    enabled_partner_ids = []
+    for raw_id in raw_ids:
+        # Remove 'id_' prefix if present
+        partner_id = raw_id.replace("id_", "").replace("ID_", "").strip()
+        if partner_id:
+            enabled_partner_ids.append(partner_id)
     
     if not enabled_partner_ids:
         raise RuntimeError("RSU_FOLDER_IDS is empty or not set. Set it to comma-separated partner IDs (e.g., '1384,1385,1411')")

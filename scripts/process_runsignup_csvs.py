@@ -381,9 +381,15 @@ def process_runsignup_csvs():
     
     print(f"\n📂 Total CSVs selected: {len(files_global)}")
     
-    # Log selected files
-    for f in files_global:
-        print(f"   Selected CSV: {f['name']} from partner {f['_partner_id']} (folder {f['_folder_id'][-6:]})")
+    # Log selected files with full details
+    print("\n📋 Files to process:")
+    for idx, f in enumerate(files_global, 1):
+        modified_time = f.get("modifiedTime", "unknown")
+        print(f"   {idx}. {f['name']}")
+        print(f"      Partner: {f['_partner_id']} | Folder: {f['_folder_id'][-6:]} | List: {f['_list_id']}")
+        print(f"      Modified: {modified_time}")
+        if f.get("webViewLink"):
+            print(f"      Link: {f['webViewLink']}")
     
     print()
     
@@ -395,6 +401,7 @@ def process_runsignup_csvs():
     posted_events = 0
     rows_processed = 0  # Track rows that were actually processed (valid rows)
     sample_rows_by_partner = {}  # Store first 2 mapped rows per partner for DRY_RUN logging
+    processed_files = []  # Track which files were actually processed
     
     for file_info in files_global:
         file_id = file_info["id"]
@@ -403,18 +410,24 @@ def process_runsignup_csvs():
         folder_id = file_info["_folder_id"]
         list_id = file_info["_list_id"]  # Already attached during collection
         
-        print(f"Processing file {file_name} → partner {partner_id} → list {list_id}")
+        print(f"\n{'='*60}")
+        print(f"📄 Processing file: {file_name}")
+        print(f"   Partner: {partner_id} | Folder: {folder_id[-6:]} | List: {list_id}")
+        print(f"{'='*60}")
         
         try:
             csv_content = _download_csv(drive_service, file_id)
+            print(f"✅ Downloaded {file_name} ({len(csv_content)} bytes)")
         except Exception as e:
             print(f"❌ Failed to download {file_name}: {e}")
             continue
         
         # Parse CSV
         reader = csv.DictReader(io.StringIO(csv_content))
+        file_row_count = 0
         
         for row_idx, row in enumerate(reader, start=2):  # Start at 2 (header is row 1)
+            file_row_count += 1
             total_rows += 1
             
             try:
@@ -478,21 +491,40 @@ def process_runsignup_csvs():
                 print(f"❌ Error processing row {row_idx} in {file_name}: {e}")
                 skipped_rows += 1
                 continue
+        
+        # Log file processing summary
+        print(f"\n✅ Completed {file_name}:")
+        print(f"   Total rows in file: {file_row_count}")
+        print(f"   Valid rows processed: {valid_rows - sum(f.get('valid_rows', 0) for f in processed_files)}")
+        processed_files.append({
+            "name": file_name,
+            "partner_id": partner_id,
+            "folder_id": folder_id[-6:],
+            "list_id": list_id,
+            "total_rows": file_row_count,
+            "valid_rows": valid_rows - sum(f.get('valid_rows', 0) for f in processed_files)
+        })
     
     # Print summary
-    print("\n" + "=" * 50)
+    print("\n" + "=" * 60)
     print("SUMMARY")
-    print("=" * 50)
+    print("=" * 60)
     print(f"Folders processed: {folders_processed}")
-    print(f"Files processed: {len(files_global)}")
-    print(f"Total rows: {total_rows}")
-    print(f"Valid rows: {valid_rows}")
-    print(f"Skipped rows: {skipped_rows}")
-    print(f"Posted profiles: {posted_profiles}")
-    print(f"Posted events: {posted_events}")
-    print(f"Rows processed: {rows_processed}")
-    print(f"DRY_RUN: {DRY_RUN}")
-    print("=" * 50)
+    print(f"Files processed: {len(processed_files)}")
+    print(f"\nFiles processed:")
+    for f in processed_files:
+        print(f"  • {f['name']} (Partner {f['partner_id']}, Folder {f['folder_id']}, List {f['list_id']})")
+        print(f"    Rows: {f.get('total_rows', 0)} total, {f.get('valid_rows', 0)} valid")
+    print(f"\nOverall:")
+    print(f"  Total rows: {total_rows}")
+    print(f"  Valid rows: {valid_rows}")
+    print(f"  Skipped rows: {skipped_rows}")
+    if not DRY_RUN:
+        print(f"  Posted profiles: {posted_profiles}")
+        print(f"  Posted events: {posted_events}")
+    print(f"  Rows processed: {rows_processed}")
+    print(f"  DRY_RUN: {DRY_RUN}")
+    print("=" * 60)
     
     # Print sample rows if DRY_RUN (first 2 per partner)
     if DRY_RUN and sample_rows_by_partner:

@@ -441,6 +441,7 @@ def process_runsignup_csvs():
                     continue
                 
                 valid_rows += 1
+                file_valid_rows += 1
                 rows_processed += 1
                 
                 # Store sample rows for DRY_RUN (first 2 per partner)

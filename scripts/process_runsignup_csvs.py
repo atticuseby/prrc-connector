@@ -495,14 +495,18 @@ def process_runsignup_csvs():
         # Log file processing summary
         print(f"\n✅ Completed {file_name}:")
         print(f"   Total rows in file: {file_row_count}")
-        print(f"   Valid rows processed: {valid_rows - sum(f.get('valid_rows', 0) for f in processed_files)}")
+        print(f"   Valid rows: {file_valid_rows}")
+        print(f"   Skipped rows: {file_skipped_rows}")
+        if not DRY_RUN:
+            print(f"   Posted to Optimizely: {file_valid_rows} profiles, {file_valid_rows} events")
         processed_files.append({
             "name": file_name,
             "partner_id": partner_id,
             "folder_id": folder_id[-6:],
             "list_id": list_id,
             "total_rows": file_row_count,
-            "valid_rows": valid_rows - sum(f.get('valid_rows', 0) for f in processed_files)
+            "valid_rows": file_valid_rows,
+            "skipped_rows": file_skipped_rows
         })
     
     # Print summary
@@ -513,8 +517,9 @@ def process_runsignup_csvs():
     print(f"Files processed: {len(processed_files)}")
     print(f"\nFiles processed:")
     for f in processed_files:
-        print(f"  • {f['name']} (Partner {f['partner_id']}, Folder {f['folder_id']}, List {f['list_id']})")
-        print(f"    Rows: {f.get('total_rows', 0)} total, {f.get('valid_rows', 0)} valid")
+        print(f"  • {f['name']}")
+        print(f"    Partner: {f['partner_id']} | Folder: {f['folder_id']} | List: {f['list_id']}")
+        print(f"    Rows: {f.get('total_rows', 0)} total, {f.get('valid_rows', 0)} valid, {f.get('skipped_rows', 0)} skipped")
     print(f"\nOverall:")
     print(f"  Total rows: {total_rows}")
     print(f"  Valid rows: {valid_rows}")

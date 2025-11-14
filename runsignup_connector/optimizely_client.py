@@ -29,7 +29,10 @@ def _get_headers() -> Dict[str, str]:
 
 def post_profile(email: str, attrs: Dict, list_id: Optional[str] = None) -> Tuple[int, str]:
     """
-    Post a profile update to Optimizely.
+    Post a profile update to Optimizely using the events endpoint.
+    
+    Uses the /v3/events endpoint with type "customer_update" (same as RICS connector)
+    instead of /v3/profiles endpoint, as this is the working pattern in the codebase.
     
     Args:
         email: Email address of the profile
@@ -43,13 +46,18 @@ def post_profile(email: str, attrs: Dict, list_id: Optional[str] = None) -> Tupl
         ValueError: If OPTIMIZELY_API_TOKEN is missing
         requests.RequestException: On network errors
     """
+    from datetime import datetime, timezone
+    
     headers = _get_headers()
     
+    # Use events endpoint with customer_update type (same pattern as RICS connector)
     payload = {
+        "type": "customer_update",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "identifiers": {
             "email": email
         },
-        "attributes": attrs
+        "properties": attrs  # Use "properties" not "attributes" for events endpoint
     }
     
     # Add list subscription if list_id is provided
@@ -58,7 +66,7 @@ def post_profile(email: str, attrs: Dict, list_id: Optional[str] = None) -> Tupl
     
     try:
         response = requests.post(
-            OPTIMIZELY_PROFILES_ENDPOINT,
+            OPTIMIZELY_EVENTS_ENDPOINT,  # Use events endpoint, not profiles
             headers=headers,
             json=payload,
             timeout=10

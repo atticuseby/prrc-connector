@@ -425,6 +425,8 @@ def process_runsignup_csvs():
         # Parse CSV
         reader = csv.DictReader(io.StringIO(csv_content))
         file_row_count = 0
+        file_valid_rows = 0
+        file_skipped_rows = 0
         
         for row_idx, row in enumerate(reader, start=2):  # Start at 2 (header is row 1)
             file_row_count += 1
@@ -435,6 +437,7 @@ def process_runsignup_csvs():
                 
                 if profile_attrs is None:
                     skipped_rows += 1
+                    file_skipped_rows += 1
                     continue
                 
                 valid_rows += 1

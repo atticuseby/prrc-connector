@@ -33,6 +33,82 @@ def _get_headers() -> Dict[str, str]:
     }
 
 
+def subscribe_to_list(email: str, list_id: str) -> Tuple[int, str]:
+    """
+    Subscribe a profile to an Optimizely email list.
+    
+    Uses the /v3/profiles endpoint with subscriptions field to subscribe a contact to a list.
+    This respects unsubscribe state - won't re-subscribe if they've opted out.
+    
+    Args:
+        email: Email address of the profile
+        list_id: Optimizely list ID to subscribe to
+        
+    Returns:
+        Tuple of (status_code, response_text)
+        
+    Raises:
+        ValueError: If OPTIMIZELY_API_TOKEN is missing
+        requests.RequestException: On network errors
+    """
+    headers = _get_headers()
+    
+    # Use profiles endpoint with subscriptions field
+    payload = {
+        "identifiers": {
+            "email": email
+        },
+        "subscriptions": [
+            {
+                "list_id": list_id,
+                "subscribed": True
+            }
+        ]
+    }
+    
+    # Retry logic for network errors and 5xx status codes
+    for attempt in range(1, MAX_RETRIES + 1):
+        try:
+            response = requests.post(
+                OPTIMIZELY_PROFILES_ENDPOINT,
+                headers=headers,
+                json=payload,
+                timeout=TIMEOUT
+            )
+            
+            # Retry on 5xx errors (server errors)
+            if response.status_code >= 500:
+                if attempt < MAX_RETRIES:
+                    delay = RETRY_DELAY * attempt
+                    time.sleep(delay)
+                    continue
+                else:
+                    return response.status_code, response.text
+            
+            # Return immediately for 2xx, 4xx (don't retry client errors)
+            return response.status_code, response.text
+            
+        except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as e:
+            if attempt < MAX_RETRIES:
+                delay = RETRY_DELAY * attempt
+                time.sleep(delay)
+                continue
+            else:
+                raise requests.exceptions.RequestException(
+                    f"Network error subscribing {email} to list {list_id} after {MAX_RETRIES} attempts: {e}"
+                )
+        except requests.exceptions.RequestException as e:
+            # Don't retry on other request exceptions (4xx errors, etc.)
+            raise requests.exceptions.RequestException(
+                f"Network error subscribing {email} to list {list_id}: {e}"
+            )
+    
+    # Should never reach here, but just in case
+    raise requests.exceptions.RequestException(
+        f"Failed to subscribe {email} to list {list_id} after {MAX_RETRIES} attempts"
+    )
+
+
 def post_profile(email: str, attrs: Dict, list_id: Optional[str] = None) -> Tuple[int, str]:
     """
     Post a profile update to Optimizely using the events endpoint.
@@ -66,9 +142,8 @@ def post_profile(email: str, attrs: Dict, list_id: Optional[str] = None) -> Tupl
         "properties": attrs  # Use "properties" not "attributes" for events endpoint
     }
     
-    # Add list subscription if list_id is provided
-    if list_id:
-        payload["lists"] = [{"id": list_id, "subscribe": True}]
+    # Note: List subscription is handled separately via subscribe_to_list()
+    # The events endpoint doesn't reliably handle list subscriptions
     
     # Retry logic for network errors and 5xx status codes
     for attempt in range(1, MAX_RETRIES + 1):
@@ -153,9 +228,8 @@ def post_event(
         "properties": properties
     }
     
-    # Add list subscription if list_id is provided
-    if list_id:
-        payload["lists"] = [{"id": list_id, "subscribe": True}]
+    # Note: List subscription is handled separately via subscribe_to_list()
+    # The events endpoint doesn't reliably handle list subscriptions
     
     # Retry logic for network errors and 5xx status codes
     for attempt in range(1, MAX_RETRIES + 1):

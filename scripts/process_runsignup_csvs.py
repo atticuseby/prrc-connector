@@ -21,7 +21,7 @@ from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseDownload
 from google.oauth2 import service_account
 
-from runsignup_connector.optimizely_client import post_profile, post_event
+from runsignup_connector.optimizely_client import post_profile, post_event, subscribe_to_list
 
 
 # Configuration
@@ -399,6 +399,7 @@ def process_runsignup_csvs():
     skipped_rows = 0
     posted_profiles = 0
     posted_events = 0
+    subscribed_to_lists = 0  # Track successful list subscriptions
     rows_processed = 0  # Track rows that were actually processed (valid rows)
     sample_rows_by_partner = {}  # Store first 2 mapped rows per partner for DRY_RUN logging
     processed_files = []  # Track which files were actually processed
@@ -466,13 +467,26 @@ def process_runsignup_csvs():
                 # Post profile update
                 try:
                     email = _normalize_email(row.get("Email Address", ""))
-                    status_code, response_text = post_profile(email, profile_attrs, list_id)
+                    status_code, response_text = post_profile(email, profile_attrs)
                     if status_code in (200, 202):
                         posted_profiles += 1
                     else:
                         print(f"⚠️ Profile post failed for {email}: {status_code} - {response_text[:200]}")
                 except Exception as e:
                     print(f"❌ Error posting profile for row {row_idx} in {file_name}: {e}")
+                
+                # Subscribe to list (if list_id is provided)
+                if list_id:
+                    try:
+                        email = _normalize_email(row.get("Email Address", ""))
+                        status_code, response_text = subscribe_to_list(email, list_id)
+                        if status_code in (200, 202, 204):
+                            subscribed_to_lists += 1
+                            print(f"✅ Subscribed {email} to list {list_id}")
+                        else:
+                            print(f"⚠️ List subscription failed for {email}: {status_code} - {response_text[:200]}")
+                    except Exception as e:
+                        print(f"❌ Error subscribing {email} to list {list_id}: {e}")
                 
                 # Post event
                 try:
@@ -481,8 +495,7 @@ def process_runsignup_csvs():
                         email,
                         OPTIMIZELY_EVENT_NAME,
                         event_props,
-                        registration_ts,
-                        list_id
+                        registration_ts
                     )
                     if status_code in (200, 202):
                         posted_events += 1
@@ -531,6 +544,7 @@ def process_runsignup_csvs():
     if not DRY_RUN:
         print(f"  Posted profiles: {posted_profiles}")
         print(f"  Posted events: {posted_events}")
+        print(f"  Subscribed to lists: {subscribed_to_lists}")
     print(f"  Rows processed: {rows_processed}")
     print(f"  DRY_RUN: {DRY_RUN}")
     print("=" * 60)

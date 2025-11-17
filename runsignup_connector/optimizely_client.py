@@ -7,7 +7,8 @@ Provides functions to post profile updates and events to Optimizely.
 import os
 import time
 import requests
-from typing import Dict, Optional, Tuple
+import json
+from typing import Dict, Optional, Tuple, Literal
 
 
 OPTIMIZELY_API_TOKEN = os.getenv("OPTIMIZELY_API_TOKEN", "").strip()
@@ -31,6 +32,95 @@ def _get_headers() -> Dict[str, str]:
         "x-api-key": OPTIMIZELY_API_TOKEN,
         "Content-Type": "application/json"
     }
+
+
+def get_profile(email: str) -> Optional[Dict]:
+    """
+    Fetch an existing profile from Optimizely by email.
+    
+    Uses the /v3/profiles endpoint with email identifier.
+    
+    Args:
+        email: Email address of the profile
+        
+    Returns:
+        Profile data as dict if found, None if not found or on error
+        
+    Raises:
+        ValueError: If OPTIMIZELY_API_TOKEN is missing
+        requests.RequestException: On network errors
+    """
+    headers = _get_headers()
+    
+    # Use GET /v3/profiles with email identifier
+    # The API accepts identifiers as query parameters or in the request body
+    # We'll use a POST request with identifiers in the body to fetch the profile
+    payload = {
+        "identifiers": {
+            "email": email
+        }
+    }
+    
+    # Retry logic for network errors and 5xx status codes
+    for attempt in range(1, MAX_RETRIES + 1):
+        try:
+            # Try GET with email as query parameter first
+            # If that doesn't work, we'll try POST with identifiers in body
+            response = requests.get(
+                OPTIMIZELY_PROFILES_ENDPOINT,
+                headers=headers,
+                params={"email": email},
+                timeout=TIMEOUT
+            )
+            
+            # If GET doesn't work (405 Method Not Allowed), try POST
+            if response.status_code == 405:
+                response = requests.post(
+                    OPTIMIZELY_PROFILES_ENDPOINT,
+                    headers=headers,
+                    json=payload,
+                    timeout=TIMEOUT
+                )
+            
+            # Retry on 5xx errors (server errors)
+            if response.status_code >= 500:
+                if attempt < MAX_RETRIES:
+                    delay = RETRY_DELAY * attempt
+                    time.sleep(delay)
+                    continue
+                else:
+                    return None  # Return None on persistent server errors
+            
+            # 404 means profile doesn't exist - that's fine, return None
+            if response.status_code == 404:
+                return None
+            
+            # 200/202 means profile found
+            if response.status_code in (200, 202):
+                try:
+                    return response.json()
+                except json.JSONDecodeError:
+                    return None
+            
+            # Other 4xx errors - profile might not exist or invalid request
+            if response.status_code >= 400:
+                return None
+            
+            return None
+            
+        except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as e:
+            if attempt < MAX_RETRIES:
+                delay = RETRY_DELAY * attempt
+                time.sleep(delay)
+                continue
+            else:
+                # On network error, return None (don't fail the whole process)
+                return None
+        except requests.exceptions.RequestException:
+            # On other request exceptions, return None
+            return None
+    
+    return None
 
 
 def subscribe_to_list(email: str, list_id: str) -> Tuple[int, str]:
@@ -108,6 +198,110 @@ def subscribe_to_list(email: str, list_id: str) -> Tuple[int, str]:
     raise requests.exceptions.RequestException(
         f"Failed to subscribe {email} to list {list_id} after {MAX_RETRIES} attempts"
     )
+
+
+def upsert_profile_with_subscription(
+    email: str,
+    profile_attrs: Dict,
+    list_id: str
+) -> Tuple[Literal["created", "updated"], str, bool]:
+    """
+    Upsert a profile and handle list subscription idempotently.
+    
+    This function:
+    1. Fetches the existing profile by email
+    2. If profile doesn't exist: creates it and subscribes to list_id
+    3. If profile exists: checks subscription status
+       - If unsubscribed or globally suppressed: does NOT change it
+       - If missing or pending: sets to subscribed
+    
+    Args:
+        email: Email address of the profile
+        profile_attrs: Dictionary of profile attributes to update
+        list_id: Optimizely list ID to subscribe to (if not unsubscribed)
+        
+    Returns:
+        Tuple of (action: "created" | "updated", status_message: str, was_subscribed: bool)
+        - action: Whether we created a new profile or updated existing
+        - status_message: Human-readable status message
+        - was_subscribed: True if we subscribed (or already subscribed), False if kept unsubscribed
+        
+    Raises:
+        ValueError: If OPTIMIZELY_API_TOKEN is missing
+        requests.RequestException: On network errors
+    """
+    # Fetch existing profile
+    existing_profile = get_profile(email)
+    
+    if existing_profile is None:
+        # Profile doesn't exist - create it and subscribe
+        status_code, response_text = post_profile(email, profile_attrs)
+        
+        if status_code not in (200, 202):
+            raise requests.exceptions.RequestException(
+                f"Failed to create profile for {email}: {status_code} - {response_text[:200]}"
+            )
+        
+        # Subscribe to list
+        sub_status, sub_response = subscribe_to_list(email, list_id)
+        if sub_status in (200, 202, 204):
+            return ("created", f"Created profile and subscribed to list {list_id}", True)
+        else:
+            # Profile created but subscription failed - still return success for profile
+            return ("created", f"Created profile but subscription failed: {sub_status}", False)
+    
+    # Profile exists - check subscription status
+    subscriptions = existing_profile.get("subscriptions", [])
+    
+    # Find subscription for this list_id
+    list_subscription = None
+    for sub in subscriptions:
+        if sub.get("list_id") == list_id:
+            list_subscription = sub
+            break
+    
+    # Check if unsubscribed or globally suppressed
+    if list_subscription:
+        sub_status = list_subscription.get("subscribed", True)
+        # If explicitly unsubscribed, don't change it
+        if sub_status is False:
+            # Still update profile attributes, but don't change subscription
+            status_code, response_text = post_profile(email, profile_attrs)
+            if status_code not in (200, 202):
+                raise requests.exceptions.RequestException(
+                    f"Failed to update profile for {email}: {status_code} - {response_text[:200]}"
+                )
+            return ("updated", f"Updated profile but kept unsubscribed from list {list_id}", False)
+    
+    # Check for global suppression
+    # Some APIs have a global suppression flag
+    if existing_profile.get("suppressed", False) or existing_profile.get("unsubscribed", False):
+        # Globally suppressed - don't subscribe
+        status_code, response_text = post_profile(email, profile_attrs)
+        if status_code not in (200, 202):
+            raise requests.exceptions.RequestException(
+                f"Failed to update profile for {email}: {status_code} - {response_text[:200]}"
+            )
+        return ("updated", f"Updated profile but kept globally suppressed/unsubscribed", False)
+    
+    # Subscription is missing, pending, or subscribed - update it
+    # First update profile
+    status_code, response_text = post_profile(email, profile_attrs)
+    if status_code not in (200, 202):
+        raise requests.exceptions.RequestException(
+            f"Failed to update profile for {email}: {status_code} - {response_text[:200]}"
+        )
+    
+    # Then subscribe (if not already subscribed)
+    if not list_subscription or list_subscription.get("subscribed", False) is not True:
+        sub_status, sub_response = subscribe_to_list(email, list_id)
+        if sub_status in (200, 202, 204):
+            return ("updated", f"Updated profile and subscribed to list {list_id}", True)
+        else:
+            return ("updated", f"Updated profile but subscription failed: {sub_status}", False)
+    else:
+        # Already subscribed
+        return ("updated", f"Updated profile, already subscribed to list {list_id}", True)
 
 
 def post_profile(email: str, attrs: Dict, list_id: Optional[str] = None) -> Tuple[int, str]:

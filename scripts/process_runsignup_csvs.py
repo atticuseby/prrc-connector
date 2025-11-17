@@ -21,7 +21,10 @@ from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseDownload
 from google.oauth2 import service_account
 
-from runsignup_connector.optimizely_client import post_profile, post_event, subscribe_to_list
+from runsignup_connector.optimizely_client import (
+    upsert_profile_with_subscription,
+    post_event
+)
 
 
 # Configuration
@@ -29,7 +32,12 @@ DRY_RUN = os.getenv("DRY_RUN", "true").lower() == "true"
 RSU_MAX_FILES = int(os.getenv("RSU_MAX_FILES", "0") or "0")
 GDRIVE_CREDENTIALS = os.getenv("GDRIVE_CREDENTIALS", "").strip()
 RSU_FOLDER_IDS = os.getenv("RSU_FOLDER_IDS", "").strip()
-OPTIMIZELY_EVENT_NAME = os.getenv("OPTIMIZELY_EVENT_NAME", "registration").strip()
+OPTIMIZELY_EVENT_NAME = "runsignup_registration"  # Consistent event type
+
+# TEST MODE configuration
+RSU_TEST_MODE = os.getenv("RSU_TEST_MODE", "false").lower() == "true"
+RSU_TEST_EMAIL = os.getenv("RSU_TEST_EMAIL", "").strip()
+RSU_TEST_MAX_ROWS = 5  # Process only 5 rows in test mode
 
 # Partner to Optimizely list ID mapping is built dynamically in load_partner_mappings()
 
@@ -309,6 +317,13 @@ def process_runsignup_csvs():
     
     print("=== RUNSIGNUP CSV PROCESSOR ===")
     print(f"DRY_RUN: {DRY_RUN}")
+    print(f"TEST_MODE: {RSU_TEST_MODE}")
+    if RSU_TEST_MODE:
+        if not RSU_TEST_EMAIL:
+            raise RuntimeError("RSU_TEST_MODE is true but RSU_TEST_EMAIL is not set")
+        print(f"TEST_EMAIL: {RSU_TEST_EMAIL}")
+        print(f"TEST_MAX_ROWS: {RSU_TEST_MAX_ROWS}")
+        print("⚠️  TEST MODE: Only processing first 5 rows and overriding emails with TEST_EMAIL")
     print(f"Max files to process: {RSU_MAX_FILES if RSU_MAX_FILES > 0 else 'all'}")
     print()
     
@@ -403,6 +418,8 @@ def process_runsignup_csvs():
     rows_processed = 0  # Track rows that were actually processed (valid rows)
     sample_rows_by_partner = {}  # Store first 2 mapped rows per partner for DRY_RUN logging
     processed_files = []  # Track which files were actually processed
+    detailed_log_count = 0  # Track how many rows we've logged in detail (first few rows)
+    MAX_DETAILED_LOGS = 5  # Log first 5 rows in detail
     
     for file_info in files_global:
         file_id = file_info["id"]
@@ -430,6 +447,11 @@ def process_runsignup_csvs():
         file_skipped_rows = 0
         
         for row_idx, row in enumerate(reader, start=2):  # Start at 2 (header is row 1)
+            # TEST MODE: Only process first 5 rows
+            if RSU_TEST_MODE and rows_processed >= RSU_TEST_MAX_ROWS:
+                print(f"\n⚠️  TEST MODE: Reached max rows ({RSU_TEST_MAX_ROWS}), stopping processing")
+                break
+            
             file_row_count += 1
             total_rows += 1
             
@@ -445,13 +467,25 @@ def process_runsignup_csvs():
                 file_valid_rows += 1
                 rows_processed += 1
                 
+                # Get original email before TEST MODE override
+                original_email = _normalize_email(row.get("Email Address", ""))
+                
+                # TEST MODE: Override email with test email
+                if RSU_TEST_MODE:
+                    email = RSU_TEST_EMAIL
+                    if detailed_log_count < MAX_DETAILED_LOGS:
+                        print(f"\n🧪 TEST MODE: Overriding email {original_email} → {email}")
+                else:
+                    email = original_email
+                
                 # Store sample rows for DRY_RUN (first 2 per partner)
                 if DRY_RUN:
                     if partner_id not in sample_rows_by_partner:
                         sample_rows_by_partner[partner_id] = []
                     if len(sample_rows_by_partner[partner_id]) < 2:
                         sample_rows_by_partner[partner_id].append({
-                            "email": _normalize_email(row.get("Email Address", "")),
+                            "email": email,
+                            "original_email": original_email if RSU_TEST_MODE else email,
                             "profile_attrs": profile_attrs,
                             "event_props": event_props,
                             "timestamp": registration_ts,
@@ -461,52 +495,57 @@ def process_runsignup_csvs():
                         })
                     # Log subscription in DRY_RUN mode
                     if list_id:
-                        email = _normalize_email(row.get("Email Address", ""))
-                        print(f"[DRY_RUN] Would subscribe {email} to list {list_id}")
+                        print(f"[DRY_RUN] Would upsert profile {email} and subscribe to list {list_id}")
                 
                 # Skip actual posting if DRY_RUN
                 if DRY_RUN:
                     continue
                 
-                # Post profile update
+                # Upsert profile with idempotent subscription logic
+                should_log_detail = detailed_log_count < MAX_DETAILED_LOGS
+                if should_log_detail:
+                    print(f"\n📝 Processing row {row_idx} (email: {email}):")
+                
                 try:
-                    email = _normalize_email(row.get("Email Address", ""))
-                    status_code, response_text = post_profile(email, profile_attrs)
-                    if status_code in (200, 202):
-                        posted_profiles += 1
-                    else:
-                        print(f"⚠️ Profile post failed for {email}: {status_code} - {response_text[:200]}")
+                    action, status_msg, was_subscribed = upsert_profile_with_subscription(
+                        email,
+                        profile_attrs,
+                        list_id
+                    )
+                    
+                    posted_profiles += 1
+                    if was_subscribed:
+                        subscribed_to_lists += 1
+                    
+                    if should_log_detail:
+                        print(f"   Profile: {action} - {status_msg}")
+                    elif detailed_log_count == 0:
+                        # Log first row in summary format
+                        print(f"   First row: {email} - {action} - {status_msg}")
+                    
+                    detailed_log_count += 1
+                    
                 except Exception as e:
-                    print(f"❌ Error posting profile for row {row_idx} in {file_name}: {e}")
+                    print(f"❌ Error upserting profile for {email} (row {row_idx} in {file_name}): {e}")
+                    if should_log_detail:
+                        print(f"   Error details: {str(e)}")
                 
-                # Subscribe to list (if list_id is provided)
-                if list_id:
-                    try:
-                        email = _normalize_email(row.get("Email Address", ""))
-                        status_code, response_text = subscribe_to_list(email, list_id)
-                        if status_code in (200, 202, 204):
-                            subscribed_to_lists += 1
-                            print(f"✅ Subscribed {email} to list {list_id}")
-                        else:
-                            print(f"⚠️ List subscription failed for {email}: {status_code} - {response_text[:200]}")
-                    except Exception as e:
-                        print(f"❌ Error subscribing {email} to list {list_id}: {e}")
-                
-                # Post event
+                # Post event (use consistent event type: runsignup_registration)
                 try:
-                    email = _normalize_email(row.get("Email Address", ""))
                     status_code, response_text = post_event(
                         email,
-                        OPTIMIZELY_EVENT_NAME,
+                        OPTIMIZELY_EVENT_NAME,  # "runsignup_registration"
                         event_props,
                         registration_ts
                     )
                     if status_code in (200, 202):
                         posted_events += 1
+                        if detailed_log_count <= MAX_DETAILED_LOGS:
+                            print(f"   Event: Posted {OPTIMIZELY_EVENT_NAME} event")
                     else:
                         print(f"⚠️ Event post failed for {email}: {status_code} - {response_text[:200]}")
                 except Exception as e:
-                    print(f"❌ Error posting event for row {row_idx} in {file_name}: {e}")
+                    print(f"❌ Error posting event for {email} (row {row_idx} in {file_name}): {e}")
                     
             except Exception as e:
                 print(f"❌ Error processing row {row_idx} in {file_name}: {e}")
@@ -549,6 +588,8 @@ def process_runsignup_csvs():
         print(f"  Posted profiles: {posted_profiles}")
         print(f"  Posted events: {posted_events}")
         print(f"  Subscribed to lists: {subscribed_to_lists}")
+    if RSU_TEST_MODE:
+        print(f"\n⚠️  TEST MODE was enabled - only processed {rows_processed} rows with email override to {RSU_TEST_EMAIL}")
     print(f"  Rows processed: {rows_processed}")
     print(f"  DRY_RUN: {DRY_RUN}")
     print("=" * 60)

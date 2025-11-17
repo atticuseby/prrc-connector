@@ -37,7 +37,7 @@ def subscribe_to_list(email: str, list_id: str) -> Tuple[int, str]:
     """
     Subscribe a profile to an Optimizely email list.
     
-    Uses the /v3/profiles endpoint with attributes field containing subscription info.
+    Uses the /v3/events endpoint with a list_subscribe event type.
     This respects unsubscribe state - won't re-subscribe if they've opted out.
     
     Args:
@@ -51,21 +51,19 @@ def subscribe_to_list(email: str, list_id: str) -> Tuple[int, str]:
         ValueError: If OPTIMIZELY_API_TOKEN is missing
         requests.RequestException: On network errors
     """
+    from datetime import datetime, timezone
+    
     headers = _get_headers()
     
-    # Use profiles endpoint with attributes field (required by API)
-    # Include subscription in attributes
+    # Use events endpoint with list_subscribe event type
     payload = {
+        "type": "list_subscribe",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "identifiers": {
             "email": email
         },
-        "attributes": {
-            "subscriptions": [
-                {
-                    "list_id": list_id,
-                    "subscribed": True
-                }
-            ]
+        "properties": {
+            "list_id": list_id
         }
     }
     

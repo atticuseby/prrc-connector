@@ -37,7 +37,7 @@ def subscribe_to_list(email: str, list_id: str) -> Tuple[int, str]:
     """
     Subscribe a profile to an Optimizely email list.
     
-    Uses the /v3/profiles endpoint with subscriptions field to subscribe a contact to a list.
+    Uses the /v3/profiles endpoint with attributes field containing subscription info.
     This respects unsubscribe state - won't re-subscribe if they've opted out.
     
     Args:
@@ -53,17 +53,20 @@ def subscribe_to_list(email: str, list_id: str) -> Tuple[int, str]:
     """
     headers = _get_headers()
     
-    # Use profiles endpoint with subscriptions field
+    # Use profiles endpoint with attributes field (required by API)
+    # Include subscription in attributes
     payload = {
         "identifiers": {
             "email": email
         },
-        "subscriptions": [
-            {
-                "list_id": list_id,
-                "subscribed": True
-            }
-        ]
+        "attributes": {
+            "subscriptions": [
+                {
+                    "list_id": list_id,
+                    "subscribed": True
+                }
+            ]
+        }
     }
     
     # Retry logic for network errors and 5xx status codes

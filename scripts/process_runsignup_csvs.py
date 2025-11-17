@@ -459,6 +459,10 @@ def process_runsignup_csvs():
                             "partner_id": partner_id,
                             "file_name": file_name
                         })
+                    # Log subscription in DRY_RUN mode
+                    if list_id:
+                        email = _normalize_email(row.get("Email Address", ""))
+                        print(f"[DRY_RUN] Would subscribe {email} to list {list_id}")
                 
                 # Skip actual posting if DRY_RUN
                 if DRY_RUN:

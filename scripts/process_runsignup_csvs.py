@@ -11,8 +11,9 @@ import json
 import csv
 import io
 import re
+import hashlib
 from datetime import datetime, timezone
-from typing import Dict, Optional, List, Tuple
+from typing import Dict, Optional, List, Tuple, Set
 
 # Add parent directory to path for imports
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -38,6 +39,9 @@ OPTIMIZELY_EVENT_NAME = "runsignup_registration"  # Consistent event type
 RSU_TEST_MODE = os.getenv("RSU_TEST_MODE", "false").lower() == "true"
 RSU_TEST_EMAIL = os.getenv("RSU_TEST_EMAIL", "").strip()
 RSU_TEST_MAX_ROWS = 5  # Process only 5 rows in test mode
+
+# Event deduplication
+PROCESSED_EVENTS_LOG = os.path.join(os.path.dirname(__file__), "..", "logs", "processed_runsignup_events.json")
 
 # Partner to Optimizely list ID mapping is built dynamically in load_partner_mappings()
 
@@ -212,6 +216,83 @@ def _normalize_email(email: str) -> Optional[str]:
         return None
     
     return email
+
+
+def _generate_event_key(email: str, event_props: Dict, registration_ts: Optional[str]) -> str:
+    """
+    Generate a unique key for an event to use for deduplication.
+    
+    Uses email + event name + event year + bib + registration timestamp
+    to uniquely identify a registration event.
+    
+    Args:
+        email: Normalized email address
+        event_props: Event properties dict
+        registration_ts: Registration timestamp (ISO format)
+        
+    Returns:
+        SHA256 hash of the event key components
+    """
+    # Build key from unique identifiers
+    key_parts = [
+        email.lower().strip(),
+        str(event_props.get("event", "")).strip(),
+        str(event_props.get("event_year", "")).strip(),
+        str(event_props.get("bib", "")).strip(),
+        str(registration_ts or "").strip()
+    ]
+    
+    # Join and hash
+    key_string = "|".join(key_parts)
+    return hashlib.sha256(key_string.encode("utf-8")).hexdigest()
+
+
+def load_processed_events() -> Set[str]:
+    """
+    Load set of previously processed event keys from log file.
+    
+    Returns:
+        Set of event key hashes
+    """
+    if not os.path.exists(PROCESSED_EVENTS_LOG):
+        return set()
+    
+    try:
+        with open(PROCESSED_EVENTS_LOG, "r") as f:
+            data = json.load(f)
+            # Handle both old format (list) and new format (dict with keys)
+            if isinstance(data, list):
+                return set(data)
+            elif isinstance(data, dict) and "events" in data:
+                return set(data["events"])
+            else:
+                return set()
+    except (json.JSONDecodeError, IOError) as e:
+        print(f"⚠️ Warning: Could not load processed events log: {e}")
+        return set()
+
+
+def save_processed_events(event_keys: Set[str]):
+    """
+    Save processed event keys to log file.
+    
+    Args:
+        event_keys: Set of event key hashes to save
+    """
+    os.makedirs(os.path.dirname(PROCESSED_EVENTS_LOG), exist_ok=True)
+    
+    # Save as JSON with metadata
+    data = {
+        "events": sorted(list(event_keys)),
+        "last_updated": datetime.now(timezone.utc).isoformat(),
+        "total_events": len(event_keys)
+    }
+    
+    try:
+        with open(PROCESSED_EVENTS_LOG, "w") as f:
+            json.dump(data, f, indent=2)
+    except IOError as e:
+        print(f"⚠️ Warning: Could not save processed events log: {e}")
 
 
 def _parse_timestamp(ts_str: str) -> Optional[str]:
@@ -408,6 +489,14 @@ def process_runsignup_csvs():
     
     print()
     
+    # Load processed events for deduplication
+    processed_event_keys = load_processed_events()
+    new_event_keys = set()  # Track new events processed in this run
+    skipped_duplicate_events = 0
+    
+    if not DRY_RUN:
+        print(f"📋 Loaded {len(processed_event_keys)} previously processed events for deduplication")
+    
     # Process each file
     total_rows = 0
     valid_rows = 0
@@ -530,22 +619,34 @@ def process_runsignup_csvs():
                     if should_log_detail:
                         print(f"   Error details: {str(e)}")
                 
-                # Post event (use consistent event type: runsignup_registration)
-                try:
-                    status_code, response_text = post_event(
-                        email,
-                        OPTIMIZELY_EVENT_NAME,  # "runsignup_registration"
-                        event_props,
-                        registration_ts
-                    )
-                    if status_code in (200, 202):
-                        posted_events += 1
-                        if detailed_log_count <= MAX_DETAILED_LOGS:
-                            print(f"   Event: Posted {OPTIMIZELY_EVENT_NAME} event")
-                    else:
-                        print(f"⚠️ Event post failed for {email}: {status_code} - {response_text[:200]}")
-                except Exception as e:
-                    print(f"❌ Error posting event for {email} (row {row_idx} in {file_name}): {e}")
+                # Generate event key for deduplication
+                event_key = _generate_event_key(email, event_props, registration_ts)
+                
+                # Check if event was already processed
+                is_duplicate = event_key in processed_event_keys
+                
+                if is_duplicate:
+                    skipped_duplicate_events += 1
+                    if detailed_log_count < MAX_DETAILED_LOGS:
+                        print(f"   Event: Skipped (already processed)")
+                else:
+                    # Post event (use consistent event type: runsignup_registration)
+                    try:
+                        status_code, response_text = post_event(
+                            email,
+                            OPTIMIZELY_EVENT_NAME,  # "runsignup_registration"
+                            event_props,
+                            registration_ts
+                        )
+                        if status_code in (200, 202):
+                            posted_events += 1
+                            new_event_keys.add(event_key)  # Mark as processed
+                            if detailed_log_count <= MAX_DETAILED_LOGS:
+                                print(f"   Event: Posted {OPTIMIZELY_EVENT_NAME} event")
+                        else:
+                            print(f"⚠️ Event post failed for {email}: {status_code} - {response_text[:200]}")
+                    except Exception as e:
+                        print(f"❌ Error posting event for {email} (row {row_idx} in {file_name}): {e}")
                     
             except Exception as e:
                 print(f"❌ Error processing row {row_idx} in {file_name}: {e}")
@@ -587,7 +688,16 @@ def process_runsignup_csvs():
     if not DRY_RUN:
         print(f"  Posted profiles: {posted_profiles}")
         print(f"  Posted events: {posted_events}")
+        print(f"  Skipped duplicate events: {skipped_duplicate_events}")
         print(f"  Subscribed to lists: {subscribed_to_lists}")
+        
+        # Save processed events for next run
+        if new_event_keys:
+            updated_keys = processed_event_keys.union(new_event_keys)
+            save_processed_events(updated_keys)
+            print(f"\n💾 Saved {len(new_event_keys)} new event keys to deduplication log")
+            print(f"   Total tracked events: {len(updated_keys)}")
+    
     if RSU_TEST_MODE:
         print(f"\n⚠️  TEST MODE was enabled - only processed {rows_processed} rows with email override to {RSU_TEST_EMAIL}")
     print(f"  Rows processed: {rows_processed}")

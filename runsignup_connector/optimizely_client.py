@@ -71,7 +71,7 @@ def subscribe_to_list(email: str, list_id: str) -> Tuple[int, str]:
     for attempt in range(1, MAX_RETRIES + 1):
         try:
             response = requests.post(
-                OPTIMIZELY_PROFILES_ENDPOINT,
+                OPTIMIZELY_EVENTS_ENDPOINT,  # Use events endpoint for list subscriptions
                 headers=headers,
                 json=payload,
                 timeout=TIMEOUT

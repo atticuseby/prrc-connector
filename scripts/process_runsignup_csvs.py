@@ -691,12 +691,16 @@ def process_runsignup_csvs():
         print(f"  Skipped duplicate events: {skipped_duplicate_events}")
         print(f"  Subscribed to lists: {subscribed_to_lists}")
         
-        # Save processed events for next run
+        # Save processed events for next run (preserve existing + add new)
+        updated_keys = processed_event_keys.union(new_event_keys)
         if new_event_keys:
-            updated_keys = processed_event_keys.union(new_event_keys)
             save_processed_events(updated_keys)
             print(f"\n💾 Saved {len(new_event_keys)} new event keys to deduplication log")
             print(f"   Total tracked events: {len(updated_keys)}")
+        elif len(processed_event_keys) > 0:
+            # Even if no new events, save to preserve existing tracked events
+            save_processed_events(updated_keys)
+            print(f"\n💾 Preserved {len(processed_event_keys)} existing tracked events")
     
     if RSU_TEST_MODE:
         print(f"\n⚠️  TEST MODE was enabled - only processed {rows_processed} rows with email override to {RSU_TEST_EMAIL}")

@@ -176,7 +176,17 @@ def subscribe_to_list(email: str, list_id: str) -> Tuple[int, str]:
                 else:
                     return response.status_code, response.text
             
-            # Return immediately for 2xx, 4xx (don't retry client errors)
+            # Log non-2xx responses for debugging
+            if response.status_code not in (200, 202, 204):
+                # Include response body in error for debugging
+                try:
+                    response_json = response.json()
+                    error_msg = f"Status {response.status_code}: {json.dumps(response_json)}"
+                except:
+                    error_msg = f"Status {response.status_code}: {response.text[:200]}"
+                return response.status_code, error_msg
+            
+            # Return immediately for 2xx (don't retry client errors)
             return response.status_code, response.text
             
         except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as e:
@@ -198,6 +208,45 @@ def subscribe_to_list(email: str, list_id: str) -> Tuple[int, str]:
     raise requests.exceptions.RequestException(
         f"Failed to subscribe {email} to list {list_id} after {MAX_RETRIES} attempts"
     )
+
+
+def check_subscription_status(email: str, list_id: str) -> Optional[Dict]:
+    """
+    Check if a profile is subscribed to a specific list.
+    
+    Fetches the profile and returns subscription information for the given list_id.
+    
+    Args:
+        email: Email address of the profile
+        list_id: Optimizely list ID to check
+        
+    Returns:
+        Dictionary with subscription info if found, None if profile doesn't exist
+        Format: {"subscribed": bool, "list_id": str, "status": str}
+    """
+    profile = get_profile(email)
+    if not profile:
+        return None
+    
+    subscriptions = profile.get("subscriptions", [])
+    for sub in subscriptions:
+        if sub.get("list_id") == list_id:
+            return {
+                "subscribed": sub.get("subscribed", False),
+                "list_id": list_id,
+                "status": "subscribed" if sub.get("subscribed") else "unsubscribed",
+                "profile_suppressed": profile.get("suppressed", False),
+                "profile_unsubscribed": profile.get("unsubscribed", False)
+            }
+    
+    # List subscription not found
+    return {
+        "subscribed": False,
+        "list_id": list_id,
+        "status": "not_found",
+        "profile_suppressed": profile.get("suppressed", False),
+        "profile_unsubscribed": profile.get("unsubscribed", False)
+    }
 
 
 def upsert_profile_with_subscription(
@@ -260,21 +309,7 @@ def upsert_profile_with_subscription(
             list_subscription = sub
             break
     
-    # Check if unsubscribed or globally suppressed
-    if list_subscription:
-        sub_status = list_subscription.get("subscribed", True)
-        # If explicitly unsubscribed, don't change it
-        if sub_status is False:
-            # Still update profile attributes, but don't change subscription
-            status_code, response_text = post_profile(email, profile_attrs)
-            if status_code not in (200, 202):
-                raise requests.exceptions.RequestException(
-                    f"Failed to update profile for {email}: {status_code} - {response_text[:200]}"
-                )
-            return ("updated", f"Updated profile but kept unsubscribed from list {list_id}", False)
-    
-    # Check for global suppression
-    # Some APIs have a global suppression flag
+    # Check for global suppression first (takes precedence)
     if existing_profile.get("suppressed", False) or existing_profile.get("unsubscribed", False):
         # Globally suppressed - don't subscribe
         status_code, response_text = post_profile(email, profile_attrs)
@@ -284,7 +319,30 @@ def upsert_profile_with_subscription(
             )
         return ("updated", f"Updated profile but kept globally suppressed/unsubscribed", False)
     
-    # Subscription is missing, pending, or subscribed - update it
+    # Check if explicitly unsubscribed from this specific list
+    if list_subscription:
+        sub_status = list_subscription.get("subscribed")
+        # If explicitly unsubscribed (False), don't change it
+        if sub_status is False:
+            # Still update profile attributes, but don't change subscription
+            status_code, response_text = post_profile(email, profile_attrs)
+            if status_code not in (200, 202):
+                raise requests.exceptions.RequestException(
+                    f"Failed to update profile for {email}: {status_code} - {response_text[:200]}"
+                )
+            return ("updated", f"Updated profile but kept unsubscribed from list {list_id}", False)
+        
+        # If already subscribed (True), skip subscription call to avoid duplicate events
+        if sub_status is True:
+            # Update profile but don't call subscribe_to_list (already subscribed)
+            status_code, response_text = post_profile(email, profile_attrs)
+            if status_code not in (200, 202):
+                raise requests.exceptions.RequestException(
+                    f"Failed to update profile for {email}: {status_code} - {response_text[:200]}"
+                )
+            return ("updated", f"Updated profile, already subscribed to list {list_id} (skipped duplicate subscription event)", True)
+    
+    # Subscription is missing, None, or pending - subscribe them
     # First update profile
     status_code, response_text = post_profile(email, profile_attrs)
     if status_code not in (200, 202):
@@ -292,16 +350,13 @@ def upsert_profile_with_subscription(
             f"Failed to update profile for {email}: {status_code} - {response_text[:200]}"
         )
     
-    # Then subscribe (if not already subscribed)
-    if not list_subscription or list_subscription.get("subscribed", False) is not True:
-        sub_status, sub_response = subscribe_to_list(email, list_id)
-        if sub_status in (200, 202, 204):
-            return ("updated", f"Updated profile and subscribed to list {list_id}", True)
-        else:
-            return ("updated", f"Updated profile but subscription failed: {sub_status}", False)
+    # Then subscribe (subscription is missing or not explicitly True)
+    sub_status, sub_response = subscribe_to_list(email, list_id)
+    if sub_status in (200, 202, 204):
+        return ("updated", f"Updated profile and subscribed to list {list_id}", True)
     else:
-        # Already subscribed
-        return ("updated", f"Updated profile, already subscribed to list {list_id}", True)
+        # Log the actual response for debugging
+        return ("updated", f"Updated profile but subscription failed: {sub_status} - {sub_response[:200]}", False)
 
 
 def post_profile(email: str, attrs: Dict, list_id: Optional[str] = None) -> Tuple[int, str]:

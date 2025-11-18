@@ -30,7 +30,7 @@ from runsignup_connector.optimizely_client import (
 
 # Configuration
 DRY_RUN = os.getenv("DRY_RUN", "true").lower() == "true"
-RSU_MAX_FILES = int(os.getenv("RSU_MAX_FILES", "0") or "0")
+# Note: We always select the most recent CSV from each folder (one per partner)
 GDRIVE_CREDENTIALS = os.getenv("GDRIVE_CREDENTIALS", "").strip()
 RSU_FOLDER_IDS = os.getenv("RSU_FOLDER_IDS", "").strip()
 OPTIMIZELY_EVENT_NAME = "runsignup_registration"  # Consistent event type
@@ -405,7 +405,7 @@ def process_runsignup_csvs():
         print(f"TEST_EMAIL: {RSU_TEST_EMAIL}")
         print(f"TEST_MAX_ROWS: {RSU_TEST_MAX_ROWS}")
         print("⚠️  TEST MODE: Only processing first 5 rows and overriding emails with TEST_EMAIL")
-    print(f"Max files to process: {RSU_MAX_FILES if RSU_MAX_FILES > 0 else 'all'}")
+    print(f"File selection: Most recent CSV from each folder (one per partner)")
     print()
     
     # Validate required env vars
@@ -432,6 +432,7 @@ def process_runsignup_csvs():
         raise
     
     # Collect files from all partner folders
+    # For each folder, select only the most recent CSV file
     files_global = []
     folders_processed = 0
     
@@ -448,18 +449,27 @@ def process_runsignup_csvs():
             files = drive_list_csvs(drive_service, folder_id)
             print(f"   Found {len(files)} CSV file(s)")
             
-            # Log file names
-            if files:
-                file_names = [f.get("name", "unknown") for f in files]
-                print(f"   Files: {', '.join(file_names[:5])}{'...' if len(file_names) > 5 else ''}")
+            if not files:
+                print(f"   ⚠️ No CSV files found in this folder, skipping")
+                continue
+            
+            # Sort by modifiedTime (newest first) and take only the most recent one
+            files.sort(key=lambda f: f.get("modifiedTime", ""), reverse=True)
+            most_recent_file = files[0]
             
             # Attach metadata for routing
-            for f in files:
-                f["_partner_id"] = partner_id
-                f["_folder_id"] = folder_id
-                f["_list_id"] = list_id
+            most_recent_file["_partner_id"] = partner_id
+            most_recent_file["_folder_id"] = folder_id
+            most_recent_file["_list_id"] = list_id
             
-            files_global.extend(files)
+            files_global.append(most_recent_file)
+            
+            # Log the selected file and other available files
+            print(f"   ✅ Selected: {most_recent_file.get('name', 'unknown')}")
+            if len(files) > 1:
+                other_files = [f.get("name", "unknown") for f in files[1:5]]
+                print(f"   📋 Other files in folder ({len(files) - 1} total): {', '.join(other_files)}{'...' if len(files) > 5 else ''}")
+            
             folders_processed += 1
         except Exception as e:
             print(f"❌ Error listing files in folder {folder_id[-6:]}: {e}")
@@ -468,12 +478,6 @@ def process_runsignup_csvs():
     if not files_global:
         print(f"\n⚠️ No CSV files found in any folder (processed {folders_processed} folder(s))")
         return 0
-    
-    # Sort by modifiedTime (newest first) and limit
-    files_global.sort(key=lambda f: f.get("modifiedTime", ""), reverse=True)
-    
-    if RSU_MAX_FILES > 0:
-        files_global = files_global[:RSU_MAX_FILES]
     
     print(f"\n📂 Total CSVs selected: {len(files_global)}")
     

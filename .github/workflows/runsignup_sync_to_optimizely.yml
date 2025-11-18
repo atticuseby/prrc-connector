@@ -20,7 +20,6 @@ jobs:
       OPTIMIZELY_LIST_ID_1385: ${{ secrets.OPTIMIZELY_LIST_ID_1385 }}
       OPTIMIZELY_LIST_ID_1411: ${{ secrets.OPTIMIZELY_LIST_ID_1411 }}
       DRY_RUN: ${{ secrets.DRY_RUN }}
-      RSU_MAX_FILES: ${{ secrets.RSU_MAX_FILES || '0' }}
       OPTIMIZELY_EVENT_NAME: ${{ secrets.OPTIMIZELY_EVENT_NAME || 'registration' }}
 
     steps:

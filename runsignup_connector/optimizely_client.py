@@ -284,20 +284,16 @@ def upsert_profile_with_subscription(
     
     if existing_profile is None:
         # Profile doesn't exist - create it and subscribe
-        status_code, response_text = post_profile(email, profile_attrs)
+        # Include list_id in post_profile to subscribe in the same call (like RICS connector)
+        status_code, response_text = post_profile(email, profile_attrs, list_id)
         
         if status_code not in (200, 202):
             raise requests.exceptions.RequestException(
                 f"Failed to create profile for {email}: {status_code} - {response_text[:200]}"
             )
         
-        # Subscribe to list
-        sub_status, sub_response = subscribe_to_list(email, list_id)
-        if sub_status in (200, 202, 204):
-            return ("created", f"Created profile and subscribed to list {list_id}", True)
-        else:
-            # Profile created but subscription failed - still return success for profile
-            return ("created", f"Created profile but subscription failed: {sub_status}", False)
+        # Subscription is included in the customer_update event, so we're done
+        return ("created", f"Created profile and subscribed to list {list_id}", True)
     
     # Profile exists - check subscription status
     subscriptions = existing_profile.get("subscriptions", [])
@@ -324,39 +320,34 @@ def upsert_profile_with_subscription(
         sub_status = list_subscription.get("subscribed")
         # If explicitly unsubscribed (False), don't change it
         if sub_status is False:
-            # Still update profile attributes, but don't change subscription
-            status_code, response_text = post_profile(email, profile_attrs)
+            # Still update profile attributes, but don't include list_id (don't change subscription)
+            status_code, response_text = post_profile(email, profile_attrs, list_id=None)
             if status_code not in (200, 202):
                 raise requests.exceptions.RequestException(
                     f"Failed to update profile for {email}: {status_code} - {response_text[:200]}"
                 )
             return ("updated", f"Updated profile but kept unsubscribed from list {list_id}", False)
         
-        # If already subscribed (True), skip subscription call to avoid duplicate events
+        # If already subscribed (True), update profile but don't need to re-subscribe
         if sub_status is True:
-            # Update profile but don't call subscribe_to_list (already subscribed)
-            status_code, response_text = post_profile(email, profile_attrs)
+            # Update profile without list_id since already subscribed (avoids duplicate subscription)
+            status_code, response_text = post_profile(email, profile_attrs, list_id=None)
             if status_code not in (200, 202):
                 raise requests.exceptions.RequestException(
                     f"Failed to update profile for {email}: {status_code} - {response_text[:200]}"
                 )
-            return ("updated", f"Updated profile, already subscribed to list {list_id} (skipped duplicate subscription event)", True)
+            return ("updated", f"Updated profile, already subscribed to list {list_id}", True)
     
     # Subscription is missing, None, or pending - subscribe them
-    # First update profile
-    status_code, response_text = post_profile(email, profile_attrs)
+    # Include list_id in post_profile to subscribe in the same call (like RICS connector)
+    status_code, response_text = post_profile(email, profile_attrs, list_id)
     if status_code not in (200, 202):
         raise requests.exceptions.RequestException(
             f"Failed to update profile for {email}: {status_code} - {response_text[:200]}"
         )
     
-    # Then subscribe (subscription is missing or not explicitly True)
-    sub_status, sub_response = subscribe_to_list(email, list_id)
-    if sub_status in (200, 202, 204):
-        return ("updated", f"Updated profile and subscribed to list {list_id}", True)
-    else:
-        # Log the actual response for debugging
-        return ("updated", f"Updated profile but subscription failed: {sub_status} - {sub_response[:200]}", False)
+    # Subscription is included in the customer_update event, so we're done
+    return ("updated", f"Updated profile and subscribed to list {list_id}", True)
 
 
 def post_profile(email: str, attrs: Dict, list_id: Optional[str] = None) -> Tuple[int, str]:
@@ -365,6 +356,9 @@ def post_profile(email: str, attrs: Dict, list_id: Optional[str] = None) -> Tupl
     
     Uses the /v3/events endpoint with type "customer_update" (same as RICS connector)
     instead of /v3/profiles endpoint, as this is the working pattern in the codebase.
+    
+    If list_id is provided, includes it in the "lists" field to subscribe the profile
+    to the list (same pattern as RICS connector).
     
     Args:
         email: Email address of the profile
@@ -392,8 +386,10 @@ def post_profile(email: str, attrs: Dict, list_id: Optional[str] = None) -> Tupl
         "properties": attrs  # Use "properties" not "attributes" for events endpoint
     }
     
-    # Note: List subscription is handled separately via subscribe_to_list()
-    # The events endpoint doesn't reliably handle list subscriptions
+    # Include list subscription in the event payload (same pattern as RICS connector)
+    # This is more reliable than using a separate list_subscribe event
+    if list_id:
+        payload["lists"] = [{"id": list_id, "subscribe": True}]
     
     # Retry logic for network errors and 5xx status codes
     for attempt in range(1, MAX_RETRIES + 1):

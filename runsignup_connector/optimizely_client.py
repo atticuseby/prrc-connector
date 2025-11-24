@@ -319,25 +319,28 @@ def upsert_profile_with_subscription(
     # Check if explicitly unsubscribed from this specific list
     if list_subscription:
         sub_status = list_subscription.get("subscribed")
-        # If explicitly unsubscribed (False), don't change it
+        # If explicitly unsubscribed (False), don't change it - RESPECT USER PREFERENCE
         if sub_status is False:
-            # Still update profile attributes, but don't include list_id (don't change subscription)
+            # Still update profile attributes, but don't subscribe (respect unsubscribe)
             status_code, response_text = post_profile(email, profile_attrs, list_id=None)
             if status_code not in (200, 202):
                 raise requests.exceptions.RequestException(
                     f"Failed to update profile for {email}: {status_code} - {response_text[:200]}"
                 )
-            return ("updated", f"Updated profile but kept unsubscribed from list {list_id}", False)
+            return ("updated", f"Updated profile but kept unsubscribed from list {list_id} (respecting user preference)", False)
         
-        # If already subscribed (True), update profile but don't need to re-subscribe
+        # If already subscribed (True), update profile but don't re-subscribe - AVOID DUPLICATES
         if sub_status is True:
-            # Update profile without list_id since already subscribed (avoids duplicate subscription)
+            # Update profile without subscribing since already subscribed (avoids duplicate subscription events)
             status_code, response_text = post_profile(email, profile_attrs, list_id=None)
             if status_code not in (200, 202):
                 raise requests.exceptions.RequestException(
                     f"Failed to update profile for {email}: {status_code} - {response_text[:200]}"
                 )
-            return ("updated", f"Updated profile, already subscribed to list {list_id}", True)
+            return ("updated", f"Updated profile, already subscribed to list {list_id} (skipped duplicate subscription)", True)
+        
+        # If sub_status is None or unexpected value, treat as missing and subscribe
+        # (This shouldn't happen, but handle gracefully)
     
     # Subscription is missing, None, or pending - subscribe them
     # First update profile

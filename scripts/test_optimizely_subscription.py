@@ -128,13 +128,15 @@ def test_profiles_endpoint_with_subscriptions(email, list_id):
         return None, str(e)
 
 def test_list_subscribe_event(email, list_id):
-    """Test method 3: list_subscribe event type"""
+    """Test method 3: list event with subscribe action (per Optimizely docs)"""
     print("\n" + "="*70)
-    print("TEST 3: list_subscribe event type")
+    print("TEST 3: list event with subscribe action (per Optimizely docs)")
     print("="*70)
     
+    # According to Optimizely docs, the event type should be "list" with action "subscribe"
     payload = {
-        "type": "list_subscribe",
+        "type": "list",
+        "action": "subscribe",
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "identifiers": {
             "email": email
@@ -238,7 +240,7 @@ def main():
     print("\n⏳ Waiting 5 seconds before next test...")
     time.sleep(5)
     
-    # Test 3: list_subscribe event
+    # Test 3: list event with subscribe action (per Optimizely docs)
     status3, response3 = test_list_subscribe_event(email, list_id)
     
     # Summary
@@ -247,7 +249,7 @@ def main():
     print("="*70)
     print(f"Test 1 (customer_update with lists): {status1}")
     print(f"Test 2 (profiles with subscriptions): {status2}")
-    print(f"Test 3 (list_subscribe event): {status3}")
+    print(f"Test 3 (list event with subscribe action): {status3}")
     
     print("\n💡 Next steps:")
     print(f"   1. Wait 3-5 minutes for Optimizely to process the events")

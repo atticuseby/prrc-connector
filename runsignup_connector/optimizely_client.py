@@ -127,8 +127,8 @@ def subscribe_to_list(email: str, list_id: str) -> Tuple[int, str]:
     """
     Subscribe a profile to an Optimizely email list.
     
-    Uses the /v3/events endpoint with a list_subscribe event type.
-    This respects unsubscribe state - won't re-subscribe if they've opted out.
+    Uses the /v3/events endpoint with a "list" event type and "subscribe" action,
+    per Optimizely documentation: https://docs.developers.optimizely.com/web/docs/subscription-lists
     
     Args:
         email: Email address of the profile
@@ -145,9 +145,10 @@ def subscribe_to_list(email: str, list_id: str) -> Tuple[int, str]:
     
     headers = _get_headers()
     
-    # Use events endpoint with list_subscribe event type
+    # Per Optimizely docs: event type should be "list" with action "subscribe"
     payload = {
-        "type": "list_subscribe",
+        "type": "list",
+        "action": "subscribe",
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "identifiers": {
             "email": email

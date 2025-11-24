@@ -27,6 +27,7 @@ if not OPTIMIZELY_API_TOKEN:
 
 OPTIMIZELY_EVENTS_ENDPOINT = "https://api.zaius.com/v3/events"
 OPTIMIZELY_PROFILES_ENDPOINT = "https://api.zaius.com/v3/profiles"
+OPTIMIZELY_SUBSCRIPTIONS_ENDPOINT = "https://api.zaius.com/v3/lists/subscriptions"
 
 def get_headers():
     return {
@@ -127,23 +128,18 @@ def test_profiles_endpoint_with_subscriptions(email, list_id):
         print(f"❌ Error: {e}")
         return None, str(e)
 
-def test_list_subscribe_event(email, list_id):
-    """Test method 3: list event with subscribe action (per Optimizely docs)"""
+def test_dedicated_subscriptions_endpoint(email, list_id):
+    """Test method 3: Dedicated /v3/lists/subscriptions endpoint (per Optimizely API docs)"""
     print("\n" + "="*70)
-    print("TEST 3: list event with subscribe action (per Optimizely docs)")
+    print("TEST 3: Dedicated /v3/lists/subscriptions endpoint (CORRECT METHOD)")
     print("="*70)
     
-    # According to Optimizely docs, the event type should be "list" with action "subscribe"
+    # Per Optimizely API docs: POST /v3/lists/subscriptions
+    # This is the dedicated endpoint for subscriptions, not events!
     payload = {
-        "type": "list",
-        "action": "subscribe",
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-        "identifiers": {
-            "email": email
-        },
-        "properties": {
-            "list_id": list_id
-        }
+        "subscribed": True,
+        "list_id": list_id,
+        "email": email
     }
     
     print(f"📤 Sending payload:")
@@ -151,7 +147,7 @@ def test_list_subscribe_event(email, list_id):
     
     try:
         response = requests.post(
-            OPTIMIZELY_EVENTS_ENDPOINT,
+            OPTIMIZELY_SUBSCRIPTIONS_ENDPOINT,
             headers=get_headers(),
             json=payload,
             timeout=30
@@ -240,8 +236,8 @@ def main():
     print("\n⏳ Waiting 5 seconds before next test...")
     time.sleep(5)
     
-    # Test 3: list event with subscribe action (per Optimizely docs)
-    status3, response3 = test_list_subscribe_event(email, list_id)
+    # Test 3: Dedicated subscriptions endpoint (the CORRECT method per API docs)
+    status3, response3 = test_dedicated_subscriptions_endpoint(email, list_id)
     
     # Summary
     print("\n" + "="*70)
@@ -249,7 +245,10 @@ def main():
     print("="*70)
     print(f"Test 1 (customer_update with lists): {status1}")
     print(f"Test 2 (profiles with subscriptions): {status2}")
-    print(f"Test 3 (list event with subscribe action): {status3}")
+    print(f"Test 3 (dedicated /v3/lists/subscriptions endpoint): {status3}")
+    print()
+    print("💡 Test 3 uses the CORRECT endpoint per Optimizely API documentation!")
+    print("   This should actually subscribe the profile to the list.")
     
     print("\n💡 Next steps:")
     print(f"   1. Wait 3-5 minutes for Optimizely to process the events")

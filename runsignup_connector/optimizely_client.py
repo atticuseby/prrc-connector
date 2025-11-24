@@ -127,8 +127,10 @@ def subscribe_to_list(email: str, list_id: str) -> Tuple[int, str]:
     """
     Subscribe a profile to an Optimizely email list.
     
-    Uses the /v3/events endpoint with a "list" event type and "subscribe" action,
-    per Optimizely documentation: https://docs.developers.optimizely.com/web/docs/subscription-lists
+    Uses the dedicated /v3/lists/subscriptions endpoint per Optimizely API docs:
+    https://docs.developers.optimizely.com/optimizely-data-platform/docs/subscribe-unsubscribe
+    
+    This is the correct endpoint for managing list subscriptions, not events.
     
     Args:
         email: Email address of the profile
@@ -141,28 +143,22 @@ def subscribe_to_list(email: str, list_id: str) -> Tuple[int, str]:
         ValueError: If OPTIMIZELY_API_TOKEN is missing
         requests.RequestException: On network errors
     """
-    from datetime import datetime, timezone
-    
     headers = _get_headers()
     
-    # Per Optimizely docs: event type should be "list" with action "subscribe"
+    # Use the dedicated subscriptions endpoint per Optimizely API docs
     payload = {
-        "type": "list",
-        "action": "subscribe",
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-        "identifiers": {
-            "email": email
-        },
-        "properties": {
-            "list_id": list_id
-        }
+        "subscribed": True,
+        "list_id": list_id,
+        "email": email
     }
+    
+    OPTIMIZELY_SUBSCRIPTIONS_ENDPOINT = "https://api.zaius.com/v3/lists/subscriptions"
     
     # Retry logic for network errors and 5xx status codes
     for attempt in range(1, MAX_RETRIES + 1):
         try:
             response = requests.post(
-                OPTIMIZELY_EVENTS_ENDPOINT,  # Use events endpoint for list subscriptions
+                OPTIMIZELY_SUBSCRIPTIONS_ENDPOINT,  # Use dedicated subscriptions endpoint
                 headers=headers,
                 json=payload,
                 timeout=TIMEOUT

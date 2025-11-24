@@ -285,16 +285,20 @@ def upsert_profile_with_subscription(
     
     if existing_profile is None:
         # Profile doesn't exist - create it and subscribe
-        # Include list_id in post_profile to subscribe in the same call (like RICS connector)
-        status_code, response_text = post_profile(email, profile_attrs, list_id)
+        # First create the profile
+        status_code, response_text = post_profile(email, profile_attrs, list_id=None)
         
         if status_code not in (200, 202):
             raise requests.exceptions.RequestException(
                 f"Failed to create profile for {email}: {status_code} - {response_text[:200]}"
             )
         
-        # Subscription is included in the customer_update event, so we're done
-        return ("created", f"Created profile and subscribed to list {list_id}", True)
+        # Then subscribe using the documented "list" event with "subscribe" action
+        sub_status, sub_response = subscribe_to_list(email, list_id)
+        if sub_status in (200, 202, 204):
+            return ("created", f"Created profile and subscribed to list {list_id}", True)
+        else:
+            return ("created", f"Created profile but subscription failed: {sub_status}", False)
     
     # Profile exists - check subscription status
     subscriptions = existing_profile.get("subscriptions", [])
@@ -340,15 +344,19 @@ def upsert_profile_with_subscription(
             return ("updated", f"Updated profile, already subscribed to list {list_id}", True)
     
     # Subscription is missing, None, or pending - subscribe them
-    # Include list_id in post_profile to subscribe in the same call (like RICS connector)
-    status_code, response_text = post_profile(email, profile_attrs, list_id)
+    # First update profile
+    status_code, response_text = post_profile(email, profile_attrs, list_id=None)
     if status_code not in (200, 202):
         raise requests.exceptions.RequestException(
             f"Failed to update profile for {email}: {status_code} - {response_text[:200]}"
         )
     
-    # Subscription is included in the customer_update event, so we're done
-    return ("updated", f"Updated profile and subscribed to list {list_id}", True)
+    # Then subscribe using the documented "list" event with "subscribe" action
+    sub_status, sub_response = subscribe_to_list(email, list_id)
+    if sub_status in (200, 202, 204):
+        return ("updated", f"Updated profile and subscribed to list {list_id}", True)
+    else:
+        return ("updated", f"Updated profile but subscription failed: {sub_status} - {sub_response[:200]}", False)
 
 
 def post_profile(email: str, attrs: Dict, list_id: Optional[str] = None) -> Tuple[int, str]:
@@ -388,7 +396,8 @@ def post_profile(email: str, attrs: Dict, list_id: Optional[str] = None) -> Tupl
     }
     
     # Include list subscription in the event payload (same pattern as RICS connector)
-    # This is more reliable than using a separate list_subscribe event
+    # Note: Per Optimizely docs, we could also use a separate "list" event with "subscribe" action
+    # But the RICS connector uses this pattern, so keeping it for consistency
     if list_id:
         payload["lists"] = [{"id": list_id, "subscribe": True}]
     

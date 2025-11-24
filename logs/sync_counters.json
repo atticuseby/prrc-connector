@@ -1,0 +1,12 @@
+{
+  "timestamp": "2025-10-09T13:28:16.577062",
+  "counters": {
+    "raw_count": 0,
+    "after_cutoff_count": 0,
+    "after_dedup_count": 0,
+    "api_errors": 0,
+    "empty_responses": 0
+  },
+  "no_dedup": false,
+  "debug_mode": true
+}

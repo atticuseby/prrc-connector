@@ -63,7 +63,7 @@ def test_rics_api():
         "TicketDateEnd": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
         "BatchStartDate": (datetime.utcnow() - timedelta(days=7)).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "BatchEndDate": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "StoreCode": 1
+        "StoreCode": "1"
     }
     
     try:

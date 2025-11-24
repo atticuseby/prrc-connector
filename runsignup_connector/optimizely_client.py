@@ -391,6 +391,14 @@ def post_profile(email: str, attrs: Dict, list_id: Optional[str] = None) -> Tupl
     if list_id:
         payload["lists"] = [{"id": list_id, "subscribe": True}]
     
+    # Debug logging for subscription attempts
+    if list_id:
+        import json as json_module
+        print(f"🔍 DEBUG: Posting profile with list subscription:")
+        print(f"   Email: {email}")
+        print(f"   List ID: {list_id}")
+        print(f"   Payload (lists field): {json_module.dumps(payload.get('lists', []), indent=2)}")
+    
     # Retry logic for network errors and 5xx status codes
     for attempt in range(1, MAX_RETRIES + 1):
         try:
@@ -400,6 +408,16 @@ def post_profile(email: str, attrs: Dict, list_id: Optional[str] = None) -> Tupl
                 json=payload,
                 timeout=TIMEOUT
             )
+            
+            # Debug logging for responses
+            if list_id:
+                print(f"🔍 DEBUG: API Response for subscription:")
+                print(f"   Status: {response.status_code}")
+                try:
+                    response_json = response.json()
+                    print(f"   Response body: {json_module.dumps(response_json, indent=2)[:500]}")
+                except:
+                    print(f"   Response text: {response.text[:500]}")
             
             # Retry on 5xx errors (server errors)
             if response.status_code >= 500:

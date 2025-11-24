@@ -15,7 +15,7 @@ MAX_WORKERS = 1  # Reduced to 1 to avoid rate limiting
 DEBUG_MODE = False
 
 ABSOLUTE_TIMEOUT_SECONDS = 120
-CUTOFF_DATE = datetime.utcnow() - timedelta(days=30)  # 30 days to capture more recent data
+CUTOFF_DATE = datetime.utcnow() - timedelta(days=45)  # 45 days to capture September 30th data
 log_message(f"🔍 DEBUG: Current UTC time: {datetime.utcnow()}")
 log_message(f"🔍 DEBUG: Cutoff date: {CUTOFF_DATE}")
 
@@ -93,7 +93,7 @@ def fetch_pos_transactions_for_store(store_code=None,
     seen_keys = set()
     page_count, api_calls, skip, take = 0, 0, 0, 100
 
-    start_date = (datetime.utcnow() - timedelta(days=30)).strftime("%Y-%m-%dT%H:%M:%SZ")  # 30 days to find recent data
+    start_date = (datetime.utcnow() - timedelta(days=45)).strftime("%Y-%m-%dT%H:%M:%SZ")  # 45 days to capture September 30th data
     end_date = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
     
     log_message(f"🔍 DEBUG: API date range - Start: {start_date}, End: {end_date}")
@@ -115,9 +115,9 @@ def fetch_pos_transactions_for_store(store_code=None,
             "Skip": skip,
             "TicketDateStart": start_date,
             "TicketDateEnd": end_date,
-            "BatchStartDate": start_date,   # Added
-            "BatchEndDate": end_date,       # Added
-            "StoreCode": store_code
+            "BatchStartDate": start_date,
+            "BatchEndDate": end_date,
+            "StoreCode": str(store_code)
         }
 
         try:

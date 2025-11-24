@@ -1,0 +1,30 @@
+{
+  "timestamp": "2025-10-09T09:52:23.672103",
+  "action_source_counts": {
+    "offline": 449,
+    "website": 0,
+    "other": 0
+  },
+  "event_source_url_present_count": 0,
+  "example_event_ids": [
+    {
+      "event_id": "purchase-26544-1759418190",
+      "has_event_source_url": false
+    },
+    {
+      "event_id": "purchase-26545-1759419124",
+      "has_event_source_url": false
+    },
+    {
+      "event_id": "purchase-26546-1759419828",
+      "has_event_source_url": false
+    }
+  ],
+  "total_events": 449,
+  "skip_reasons": {
+    "old": 1,
+    "zero_value": 39,
+    "flags": 0,
+    "missing_keys": 0
+  }
+}

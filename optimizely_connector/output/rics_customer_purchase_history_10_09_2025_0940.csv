@@ -1,0 +1,220 @@
+TicketDateTime,TicketNumber,SaleDateTime,StoreCode,TerminalId,Cashier,AccountNumber,CustomerId,CustomerName,CustomerEmail,CustomerPhone,Sku,Description,Quantity,AmountPaid,Discount,Department,SupplierName
+2025-09-12T13:11:09.507,26149,2025-09-12T13:11:09.507,1,,,7033096009,5c774657-142a-4fae-9384-b34e013151be,Beth Kralles,bkralles@gmail.com,,,Return,-2,-119.98,0.0,Accessory,Superfeet
+2025-09-12T13:27:42.313,26150,2025-09-12T13:27:42.313,1,,,8626680334,e5656d33-f352-434e-85b5-b355012b34cb,Shweta Shanbhag,shwetas19@gmail.com,,,Return,-1,-157.5,0.0,Footwear|Maximal|Women,Hoka One One
+2025-09-12T13:53:07.83,26151,2025-09-12T13:53:07.83,1,,,4142486569,f1a140c6-7f7e-4ef1-b097-b3340121677f,Allison Pettigrew,allisonannpitt@gmail.com,,,Regular Sale,1,21.25,0.0,Apparel|Men's|Tops|Graphic Tee,NEXT LEVEL
+2025-09-12T14:09:14.253,26152,2025-09-12T14:09:14.253,1,,,7039737635,4fe42f68-d11d-4702-8a35-b34301577bae,Karen Rife,arancak11@gmail.com,,,Special Order Deposit,1,0.0,0.0,Footwear|Neutral|NEUTRAL|Women,BROOKS
+2025-09-12T14:14:55.617,26153,2025-09-12T14:14:55.617,1,,,,, ,,,,Regular Sale,1,165.0,0.0,Footwear|High Cushion|Women,BROOKS
+2025-09-12T14:20:53.917,26154,2025-09-12T14:20:53.917,1,,,7036268974,83971348-a79f-4821-814e-a8ca01338425,Ron Reyes,ellecorp@gmail.com,,,Regular Sale,1,148.5,0.0,Footwear|High Cushion|Women,BROOKS
+2025-09-12T14:24:51.36,26155,2025-09-12T14:24:51.36,1,,,6177104018,f7380792-ff32-40a9-ba02-b356012f097e,Shaili Puligari,shailikreddy@gmail.com,,,Regular Sale,1,67.46,0.0,Footwear|Lifestyle|Regular|Women,Oofos
+2025-09-12T14:40:46.853,26156,2025-09-12T14:40:46.853,1,,,5714426125,5f95c93b-5346-4493-912c-a788011f4928,Steve Kellam,srkellam@gmail.com,,,Regular Sale,1,45.0,0.0,Accessory,CEP Compression
+2025-09-11T15:55:19.973,126862,2025-09-11T15:55:19.973,2,,,7039813679,b69038d9-4b30-4f92-b337-b35501478a57,Judy Herbert,judyaherbert@gmail.com,,,Regular Sale,1,0.0,0.0,Footwear|Maximal|Women,Hoka One One
+2025-09-11T15:56:41.28,126863,2025-09-11T15:56:41.28,2,,,7039813679,b69038d9-4b30-4f92-b337-b35501478a57,Judy Herbert,judyaherbert@gmail.com,,,Regular Sale,1,155.0,0.0,Footwear|Maximal|Women,Hoka One One
+2025-09-11T16:00:13.483,126864,2025-09-11T16:00:13.483,2,,,,, ,,,,Return,-1,-155.0,0.0,Footwear|Maximal|Women,Hoka One One
+2025-09-11T16:05:50.953,126865,2025-09-11T16:05:50.953,2,,,5717498116,25f44f49-9672-4f39-bf28-a03a0139f18a,John Coleman,jcoleman@progress-environmental.com,,,Regular Sale,1,116.0,0.0,Footwear|Neutral|NEUTRAL|Men,NIKE
+2025-09-11T16:17:07.97,126866,2025-09-11T16:17:07.97,2,,,,, ,,,,Regular Sale,1,13.0,0.0,Accessory,PRR
+2025-09-11T16:38:10.157,126867,2025-09-11T16:38:10.157,2,,,9173968636,2403632c-67fe-470f-a1e3-b2e3012cfb61,Stephanie Hoyos,,,,Regular Sale,1,144.5,0.0,Footwear|High Cushion|Women,SAUCONY
+2025-09-11T16:59:41.553,126868,2025-09-11T16:59:41.553,2,,,5712414892,ea9d3dbe-e583-47e7-942a-af0e0129dae3,Daniel  Kuehn,dan.p.kuehn@gmail.com,,,Regular Sale,1,150.0,0.0,Footwear|Neutral|NEUTRAL|Men,BROOKS
+2025-09-11T17:21:02.67,126869,2025-09-11T17:21:02.67,2,,,7032399565,56553a43-f6d9-426d-8184-a117016b7c52,Jackie Gruendel,jackieconcaugh@yahoo.com,,,Regular Sale,1,72.25,0.0,Competition|XC|Men,SAUCONY
+2025-09-12T18:19:26.71,97224,2025-09-12T18:19:26.71,3,,,4435382317,811bc851-5b3b-4c24-9b46-b1b701417237,Jeanette Rachman,jeanette.rachman@gmail.com,,,Regular Sale,24,4.08,0.0,Accessory,Blazer
+2025-09-12T18:26:18.297,97225,2025-09-12T18:26:18.297,3,,,,, ,,,,Regular Sale,1,140.0,0.0,Footwear|Stability|STABILITY|Women,MIZUNO
+2025-09-12T18:56:26.003,97226,2025-09-12T18:56:26.003,3,,,5406560172,3c9b01d9-988e-4599-ace3-ac420126d07f,Jambaar Stills,jambaarstills@gmail.com,,,Regular Sale,2,5.8,0.0,Accessory|Hydration,Maurten
+2025-09-12T19:41:34.78,97227,2025-09-12T19:41:34.78,3,,,7039275177,2fb1a7b2-f6f3-4096-bf0d-b35601863370,Wonmi Han ,wanmihon@gmail.com,,,Regular Sale,1,148.5,0.0,Footwear|High Cushion|Women,BROOKS
+2025-09-12T17:49:33.433,122014,2025-09-12T17:49:33.433,3,,,3179101469,751eee2e-698a-49ab-b3a9-b356016773fb,Alex  Schiffer ,aschiffer186@gmail.com,,,Regular Sale,1,150.0,0.0,Footwear|Light Stability|Men,SAUCONY
+2025-09-12T18:10:49.577,122015,2025-09-12T18:10:49.577,3,,,7039097179,ec1eebba-60f8-48ce-a5da-9f84011342ac,Kate Reen,,,,Regular Sale,2,5.5,0.0,Accessory|Chewable,SKRATCH LABS
+2025-09-12T18:24:53.227,122016,2025-09-12T18:24:53.227,3,,,4102060798,89ae89d0-0ca6-4a8f-b1ed-b35601712b64,Jason  Vanisko ,jasonvansiko@gmail.com,,,Regular Sale,1,165.0,0.0,Footwear|High Cushion|Men,ASICS
+2025-09-12T18:36:36.217,122017,2025-09-12T18:36:36.217,3,,,,, ,,,,Regular Sale,1,50.96,0.0,Accessory,Currex
+2025-09-12T18:41:45.637,122018,2025-09-12T18:41:45.637,3,,,5405394951,71a3a2e0-5fe9-4081-ac3d-a04b015a400e,Narasimham Nimmagadda,nvssln@yahoo.com,,,Regular Sale,12,49.2,0.0,Accessory|Gel,Maurten
+2025-09-12T18:50:43.6,122019,2025-09-12T18:50:43.6,3,,,7035987165,783ebbac-25b5-4577-8979-af3601427c77,Julio La Guardia,Julio_LaGuardia@hotmail.com,,,Regular Sale,2,5.8,0.0,Accessory|Bar,xact nutrition
+2025-09-12T18:57:33.267,122020,2025-09-12T18:57:33.267,3,,,5716234412,9bd84cf5-85f4-463d-ae60-b112015eb780,Jagadish Ijjuroutu,,,,Regular Sale,1,11.0,0.0,Accessory,PRR
+2025-09-12T18:59:24.607,122021,2025-09-12T18:59:24.607,3,,,7038296274,fbde24c9-df0f-47d6-be97-ae530179bd85,Jeff Trinh,jeffrey.trinh@yahoo.com,,,Regular Sale,3,9.0,0.0,Accessory|Gel,GU
+2025-09-12T19:09:50.91,122022,2025-09-12T19:09:50.91,3,,,,, ,,,,Regular Sale,1,46.75,0.0,Apparel|Men's|Tops|Short Sleeve,NIKE
+2025-09-13T09:38:06.82,97228,2025-09-13T09:38:06.82,3,,,5709029399,b52e69cf-28ee-4dd7-b75c-a7df011f127b,Marie Gomez,mag703@Ymail.com,,,Special Order Cancel,-1,0.0,0.0,Footwear|Maximal|Women,Hoka One One
+2025-09-13T10:55:14.957,97229,2025-09-13T10:55:14.957,3,,,2407559149,232a9770-87cc-4a78-ac9b-b14e0136ed89,Patti Busuioceanu,pattiocean1@gmail.com,,,Regular Sale,1,13.6,0.0,Accessory,Jogology
+2025-09-13T10:59:45.923,97230,2025-09-13T10:59:45.923,3,,,,, ,,,,Regular Sale,1,200.0,0.0,Footwear|High Cushion|Women,BROOKS
+2025-09-13T11:08:27.513,97231,2025-09-13T11:08:27.513,3,,,7049428472,7d592763-8eb0-428d-b43c-aff3013cd8dc,Sonja Webster,webstersonja@gmail.com,,,Regular Sale,1,136.0,0.0,Footwear|Neutral|NEUTRAL|Women,BROOKS
+2025-09-13T11:30:15.733,97232,2025-09-13T11:30:15.733,3,,,,, ,,,,Regular Sale,1,150.0,0.0,Footwear|Neutral|NEUTRAL|Women,BROOKS
+2025-09-13T11:34:43.64,97233,2025-09-13T11:34:43.64,3,,,5713930768,1a1b0fc4-29c8-46a1-8d19-a39401256a63,Matt Mccoart,mccoart1@mac.com,,,Regular Sale,1,150.0,0.0,Footwear|Neutral|NEUTRAL|Men,BROOKS
+2025-09-13T11:37:15.513,97234,2025-09-13T11:37:15.513,3,,,7036670155,cb356d54-1064-4283-a9bd-ab5c01648643,Collin McCauley,collin_mccauley13@yahoo.com,,,Regular Sale,3,8.1,0.0,Accessory|Gel,GU
+2025-09-13T11:56:46.76,97235,2025-09-13T11:56:46.76,3,,,6172516487,fc0d1c59-ebac-4789-85b2-b357010645a4,Jeff Gould,,,,Regular Sale,1,140.24,0.0,Footwear|High Cushion|Women,NEW BALANCE
+2025-09-13T11:57:52.67,97236,2025-09-13T11:57:52.67,3,,,5712155827,78a7899d-ad74-4a79-b291-a0a800e7f1d7,Andre Lobo,dre_lobes@hotmail.com,,,Regular Sale,1,76.5,0.0,Apparel|Men's|Bottoms|Shorts,NIKE
+2025-09-13T12:00:46.737,97237,2025-09-13T12:00:46.737,3,,,,, ,,,,Regular Sale,1,159.99,0.0,Footwear|Light Stability|Men,On Running
+2025-09-13T12:13:09.367,97238,2025-09-13T12:13:09.367,3,,,7039353894,9ce3e9b2-3d71-4e5c-a2ab-b357010ab381,Bryan Lopez,,,,Regular Sale,1,180.0,0.0,Footwear|High Cushion|Men,NIKE
+2025-09-13T12:38:04.2,97239,2025-09-13T12:38:04.2,3,,,7738584856,cc57ba30-9dfb-45f4-8719-ec01ab30fefb,Mindy Soranno,trimindy@hotmail.com,,,Regular Sale,1,155.0,0.0,Footwear|Maximal|Women,Hoka One One
+2025-09-13T12:50:04.357,97240,2025-09-13T12:50:04.357,3,,,7704023244,76587d71-dabd-413b-b597-b35701153580,Lynn Shipes,,,,Regular Sale,1,160.0,0.0,Footwear|Stability|STABILITY|Women,Altra
+2025-09-13T13:07:58.493,97241,2025-09-13T13:07:58.493,3,,,5714748937,06de540a-adc5-4264-92e5-b0a2014de240,Cristopher Lance Hinagpis,lancehinagpis@gmail.com,,,Regular Sale,1,2.0,0.0,Accessory|Gel,GU
+2025-09-13T13:10:50.767,97242,2025-09-13T13:10:50.767,3,,,5713401253,a8a12b19-5146-4e41-833b-b2c6011db7bc,John Hughes,JohnPop33@gmail.com,,,Regular Sale,1,5.47,0.0,Accessory|Injury|Massage,PRO-TEC
+2025-09-13T13:26:51.11,97243,2025-09-13T13:26:51.11,3,,,7032645807,07357f70-12b5-41fb-b46b-aa90017f974a,Fredric Wilson,,,,Regular Sale,1,140.0,0.0,Footwear|Stability|STABILITY|Men,BROOKS
+2025-09-13T13:31:13.19,97244,2025-09-13T13:31:13.19,3,,,,, ,,,,Regular Sale,1,18.0,0.0,Accessory,Feetures
+2025-09-13T13:45:00.32,97245,2025-09-13T13:45:00.32,3,,,7036294386,372b1c2c-6d8f-45ef-b22d-b2fc014b545e,Elisabeth Gibb,,,,Regular Sale,1,29.95,0.0,Apparel|Women's|Tops|Short Sleeve,PRR
+2025-09-13T13:50:26.423,97246,2025-09-13T13:50:26.423,3,,,7038628849,80eb4047-f125-4999-9690-a99d00ff4d35,Renee Priess,rpriess@cox.net,,,Regular Sale,1,18.0,0.0,Accessory,Feetures
+2025-09-13T13:53:20.703,97247,2025-09-13T13:53:20.703,3,,,7034679828,2755dafb-9bae-442e-8bb3-a33c013d0054,Diane Davis,ddavis5613@aol.com,,,Regular Sale,1,165.0,0.0,Footwear|Stability Cushion|Women,ASICS
+2025-09-13T14:05:51.48,97248,2025-09-13T14:05:51.48,3,,,,, ,,,,Regular Sale,1,88.0,0.0,Footwear|Lifestyle|Regular|Men,Birkenstock
+2025-09-13T11:25:08.37,122023,2025-09-13T11:25:08.37,3,,,4074847797,e8110a0b-492e-454f-92d1-b35700fddd5b,Cade Schexnayder,,,,Regular Sale,1,118.99,0.0,Footwear|Stability|STABILITY|Men,NEW BALANCE
+2025-09-13T11:58:23.393,122024,2025-09-13T11:58:23.393,3,,,7036890811,5c60287a-8a08-4f0f-9cff-9f1b0126bc40,Elizabeth Lacher,eslacher@verizon.net,,,Regular Sale,1,170.0,0.0,Footwear|High Cushion|Women,SAUCONY
+2025-09-13T12:35:41.693,122025,2025-09-13T12:35:41.693,3,,,5185215153,6917b88f-f6a7-4085-bd8a-b1350111abfb,Austin Green,austin20green@gmail.com,,,Regular Sale,1,165.0,0.0,Footwear|High Cushion|Men,BROOKS
+2025-09-13T13:26:25.37,122026,2025-09-13T13:26:25.37,3,,,7037772208,29a997bb-869b-4ea3-9468-a0020125d951,Michele Zgonc,zgoncm@hotmail.com,,,Regular Sale,1,150.0,0.0,Footwear|Maximal|Women,Hoka One One
+2025-09-13T13:44:54.123,122027,2025-09-13T13:44:54.123,3,,,7034473521,641744a8-690a-4613-9961-aa46010de2f7,Mikel Costellia,,,,Return,-1,-140.0,0.0,Footwear|Stability|STABILITY|Women,BROOKS
+2025-09-13T12:39:36.47,108118,2025-09-13T12:39:36.47,4,,,7035076266,a30ff72c-e2d8-4c24-a6a3-b3570112647f,Elizabeth Poole,epoole81@gmail.com,,,Regular Sale,1,139.99,0.0,Footwear|Stability|STABILITY|Women,NEW BALANCE
+2025-09-13T12:43:03.437,108119,2025-09-13T12:43:03.437,4,,,7036470886,e7d615e0-8936-4de5-ae16-a13f014d38d0,Cat Lujan,,,,Return,-1,-150.0,0.0,Footwear|High Cushion|Men,ASICS
+2025-09-13T12:57:13.2,108120,2025-09-13T12:57:13.2,4,,,,, ,,,,Regular Sale,1,7.49,0.0,Accessory|Hydration,Nuun
+2025-09-13T13:15:09.627,108121,2025-09-13T13:15:09.627,4,,,7812480424,82445fde-e508-425e-8d15-b1210122a000,Jessica Dwyer,jessicadwyer31@gmail.com,,,Regular Sale,6,22.14,0.0,Accessory|Gel,Maurten
+2025-09-13T13:20:23.42,108122,2025-09-13T13:20:23.42,4,,,2567380495,04d1aaf9-d799-4e3c-ba5a-b357011d528f,Sydney Young,sydneyrene2014@gmail.com,,,Regular Sale,1,165.0,0.0,Footwear|High Cushion|Women,ASICS
+2025-09-13T13:21:49.133,108123,2025-09-13T13:21:49.133,4,,,2319440422,066bd0f3-4b99-4942-8851-b340016aab68,Grace Failor,,,,Regular Sale,3,10.5,0.0,Accessory|Chewable,Salt Stick 
+2025-09-13T13:25:52.027,108124,2025-09-13T13:25:52.027,4,,,,, ,,,,Regular Sale,1,3.25,0.0,Accessory|Gel,UCan
+2025-09-13T13:46:03.06,108125,2025-09-13T13:46:03.06,4,,,8143608443,65a59738-39b8-4a57-a2ea-a04101072c08,Shawna Barry,shawnabarry@gmail.com,,,Regular Sale,1,143.99,0.0,Footwear|High Cushion|Women,On Running
+2025-09-13T13:52:46.03,108126,2025-09-13T13:52:46.03,4,,,,, ,,,,Regular Sale,1,2.92,0.0,Accessory|Chewable,CLIF BAR
+2025-09-13T13:55:15.43,108127,2025-09-13T13:55:15.43,4,,,3309041188,02aab646-580c-4ec8-87b5-adbf0157f2d7,Katherine McCauley,katherinemccauley780@yahoo.com,,,Regular Sale,1,150.0,0.0,Footwear|Maximal|Women,Hoka One One
+2025-09-13T14:20:07.297,108128,2025-09-13T14:20:07.297,4,,,2159338174,685a87e0-9d8d-4c12-8c03-b336018a5a10,Delaney Denton,delaneydenton1@gmail.com,,,Regular Sale,1,97.5,0.0,Footwear|Minimal|Neutral|Men,SAUCONY
+2025-09-13T14:21:53.533,108129,2025-09-13T14:21:53.533,4,,,5207624652,da757f4c-39df-4122-abb6-b357012e8ac1,Brad Specht,,,,Regular Sale,1,109.95,0.0,Footwear|Stability|STABILITY|Men,ASICS
+2025-09-13T14:47:54.46,108130,2025-09-13T14:47:54.46,4,,,,, ,,,,Regular Sale,1,2.0,0.0,Accessory|Gel,GU
+2025-09-13T14:54:34.777,108131,2025-09-13T14:54:34.777,4,,,,, ,,,,Regular Sale,1,4.1,0.0,Accessory|Gel,Maurten
+2025-09-13T15:05:47.897,108132,2025-09-13T15:05:47.897,4,,,,, ,,,,Regular Sale,1,2.39,0.0,Accessory|Bar,UnTAPPED
+2025-09-13T15:10:47.153,108133,2025-09-13T15:10:47.153,4,,,,, ,,,,Regular Sale,1,49.95,0.0,Apparel|Women's|Tops|Half Zip,NIKE
+2025-09-13T15:12:22.79,108134,2025-09-13T15:12:22.79,4,,,,, ,,,,Regular Sale,1,32.0,0.0,Apparel|Women's|Bottoms|Shorts,NIKE
+2025-09-13T15:15:27.29,108135,2025-09-13T15:15:27.29,4,,,,, ,,,,Regular Sale,1,3.25,0.0,Accessory|Gel,UCan
+2025-09-13T15:26:00.4,108136,2025-09-13T15:26:00.4,4,,,,, ,,,,Regular Sale,1,95.0,0.0,Footwear|Minimal|Neutral|Men,SAUCONY
+2025-09-13T15:30:37.507,108137,2025-09-13T15:30:37.507,4,,,,, ,,,,Regular Sale,1,33.0,0.0,Accessory|Hydration|Bottle,NATHAN
+2025-09-13T15:34:35.417,108138,2025-09-13T15:34:35.417,4,,,7177810689,5c951a26-bc41-47c8-b380-b352011d894b,Samantha Ream,,,,Regular Sale,1,3.5,0.0,Accessory|Chewable,Salt Stick 
+2025-09-13T15:41:28.79,108139,2025-09-13T15:41:28.79,4,,,7248149047,3d1b8235-ea09-48d9-ab65-b2df0186683a,Ryan Giallonardo,rgiallanardo02@gmail.com,,,Regular Sale,1,212.49,0.0,Competition|Road|Men,NEW BALANCE
+2025-09-13T15:51:05.82,108140,2025-09-13T15:51:05.82,4,,,,, ,,,,Regular Sale,1,2.0,0.0,Accessory|Gel,GU
+2025-09-13T15:57:49.047,108141,2025-09-13T15:57:49.047,4,,,,, ,,,,Regular Sale,1,2.92,0.0,Accessory|Chewable,CLIF BAR
+2025-09-13T16:05:09.803,108142,2025-09-13T16:05:09.803,4,,,7037720087,b4fcffb0-ad84-41fa-a476-ad1c0121fa49,Anna Barratt,94barratt@gmail.com,,,Regular Sale,1,18.0,0.0,Accessory,SmartWool
+2025-09-13T16:08:49.9,108143,2025-09-13T16:08:49.9,4,,,,, ,,,,Regular Sale,1,5.0,0.0,Accessory|Gel,Maurten
+2025-09-13T16:19:08.693,108144,2025-09-13T16:19:08.693,4,,,6262445768,8140cb01-8237-46e2-bcf3-b35400f1516e,Grace Hong,gracehong615@gmail.com,,,Return,-1,-165.0,0.0,Footwear|High Cushion|Women,BROOKS
+2025-09-13T16:21:35.833,108145,2025-09-13T16:21:35.833,4,,,,, ,,,,Regular Sale,1,179.99,0.0,Footwear|High Cushion|Women,On Running
+2025-09-13T16:23:59.54,108146,2025-09-13T16:23:59.54,4,,,3046290362,0500c2d7-dced-4b32-9679-b357014ffda6,Lara Bernstein,,,,Regular Sale,1,164.99,0.0,Footwear|High Cushion|Women,NEW BALANCE
+2025-09-13T16:40:17.667,108147,2025-09-13T16:40:17.667,4,,,4074965124,966fc873-649f-4340-bcc7-b35701546e36,Victoria Freytes-Lew,,,,Regular Sale,1,119.0,0.0,Footwear|Stability|STABILITY|Women,BROOKS
+2025-09-13T17:17:13.53,108148,2025-09-13T17:17:13.53,4,,,7033095370,802b62fa-049c-4333-95ab-b357015e4b63,Robert Kravinsky,rkravinsky@gmail.com,,,Return,-1,-139.99,0.0,Footwear|Stability|STABILITY|Men,NEW BALANCE
+2025-09-13T17:32:18.06,108149,2025-09-13T17:32:18.06,4,,,,, ,,,,Regular Sale,2,4.0,0.0,Accessory|Gel,GU
+2025-09-13T17:41:54.453,108150,2025-09-13T17:41:54.453,4,,,8048337433,2341bb2f-b180-4bea-8669-b30f016a6465,Samantha Keener,samantha_keener@icloud.com,,,Regular Sale,3,6.0,0.0,Accessory|Gel,GU
+2025-09-13T17:46:50.833,108151,2025-09-13T17:46:50.833,4,,,3023796600,2a929fc7-9fc7-4b4e-b226-a7ca0158d093,Angela Catella,angelarab@hotmail.com,,,Regular Sale,1,55.21,0.0,Competition|XC|Women,SAUCONY
+2025-09-13T17:54:17.637,108152,2025-09-13T17:54:17.637,4,,,,, ,,,,Regular Sale,6,24.6,0.0,Accessory|Gel,Maurten
+2025-09-13T18:04:44.483,108153,2025-09-13T18:04:44.483,4,,,5163611244,3c15d592-0242-4a45-aef4-af45012e336c,Grace Sullivan,,,,Regular Sale,1,49.5,0.0,Apparel|Women's|Compression|Short,TRACKSMITH
+2025-09-14T12:36:37.967,108154,2025-09-14T12:36:37.967,4,,,2404343248,c2c4c987-867f-4917-9ba7-b35801114c1e,brandy  spraker,brandyspraker@yahoo.com,,,Regular Sale,1,140.0,0.0,Footwear|Stability|STABILITY|Women,BROOKS
+2025-09-14T12:40:15.78,108155,2025-09-14T12:40:15.78,4,,,7034390682,3b1325d5-9c27-444b-b66c-aef701190c41,ARON FRENCZ ,aron.franz@gmail.com,,,Regular Sale,1,17.85,0.0,Accessory,BALEGA
+2025-09-14T12:49:39.21,108156,2025-09-14T12:49:39.21,4,,,,, ,,,,Regular Sale,1,2.5,0.0,Accessory|Hydration,PILLAR
+2025-09-14T13:44:16.017,108157,2025-09-14T13:44:16.017,4,,,2029887103,fa5ae1f8-5514-4e4f-9d15-b3580123ca4d,David Bubeev,davidbubeev@gmail.com,,,Regular Sale,1,118.99,0.0,Footwear|Stability|STABILITY|Men,NEW BALANCE
+2025-09-14T13:45:22.94,108158,2025-09-14T13:45:22.94,4,,,,, ,,,,Regular Sale,1,2.69,0.0,Accessory|Chewable,Honey Stinger
+2025-09-14T13:49:45.87,108159,2025-09-14T13:49:45.87,4,,,3134152731,14d74695-cfb2-4e3f-a2e8-b35801256944,senan  sumrein ,sumrein.senan@gmail.com,,,Regular Sale,1,35.0,0.0,Accessory|Injury|Other,Medi-Dyne Health
+2025-09-14T14:12:58.097,108160,2025-09-14T14:12:58.097,4,,,4026694392,ec942877-6798-470b-89f9-b358012bf176,Ehwah Hso,ehwah00005@gmail.com,,,Regular Sale,1,15.3,0.0,Accessory,Feetures
+2025-09-14T14:17:11.59,108161,2025-09-14T14:17:11.59,4,,,5628102621,c985aa9d-afdd-41fd-a8ec-b358012d2436,erin  carroll,erincarroll@yahoo.com,,,Regular Sale,1,148.75,0.0,Footwear|Neutral|NEUTRAL|Women,SAUCONY
+2025-09-14T14:37:44.25,108162,2025-09-14T14:37:44.25,4,,,2709782715,ceb090eb-7982-485e-a296-b3580131bcc5,lauren  gremizzi ,laurengremizzi@gmail.com,,,Regular Sale,3,8.7,0.0,Accessory|Hydration,Maurten
+2025-09-13T13:55:57.2,102766,2025-09-13T13:55:57.2,6,,,7036154544,523f755b-a119-4763-afc0-9f36014f3a3e,Jean Baderschneider,,,,Coupon,1,-18.0,0.0,,
+2025-09-13T13:57:53.413,102767,2025-09-13T13:57:53.413,6,,,8018314409,fcd9f732-f3ee-49ff-ac21-b3570127e50d,Mary Bates,,,,Regular Sale,1,140.0,0.0,Footwear|Stability|STABILITY|Women,ASICS
+2025-09-13T13:59:54.63,102768,2025-09-13T13:59:54.63,6,,,6316781802,7cf40ccd-78b3-481b-a19b-a982015533cc,Gareth Barendse,gtb426@gmail.com,,,Regular Sale,1,150.0,0.0,Footwear|Neutral|NEUTRAL|Men,BROOKS
+2025-09-13T14:06:22.13,102769,2025-09-13T14:06:22.13,6,,,7194334354,56880d4b-3a64-4a14-87dc-b357012a2fa6,Patrick Jackson,patrick1jack@gmail.com,,,Regular Sale,1,38.0,0.0,Apparel|Men's|Bottoms|Underwear,SAXX Underwear 
+2025-09-13T14:21:45.443,102770,2025-09-13T14:21:45.443,6,,,2022576252,2cf84e2f-eee3-4df6-b99d-b357012e51b6,Maura Roll,flynn_maura@yahoo.com,,,Regular Sale,1,76.49,0.0,Footwear|Youth|Stability|Girls,NEW BALANCE
+2025-09-13T14:26:08.743,102771,2025-09-13T14:26:08.743,6,,,7033561947,f2fb3b34-504c-47c8-a329-a3480131e232,Sharon North,north.sharon168@gmail.com,,,Regular Sale,1,123.25,0.0,Footwear|Neutral|NEUTRAL|Women,NIKE
+2025-09-13T14:29:08.74,102772,2025-09-13T14:29:08.74,6,,,2022563469,dbd0813a-d30a-47ae-940b-a47a01591b19,Larry Taxson,ltaxson@gmail.com,,,Regular Sale,1,140.25,0.0,Footwear|High Cushion|Women,ASICS
+2025-09-13T14:39:53.24,102773,2025-09-13T14:39:53.24,6,,,6145952345,22bfe862-4cbe-40c6-8bdb-a026015ac110,Beth Nelson,nelson_beth@hotmail.com,,,Return,-1,-140.0,0.0,Footwear|Stability|STABILITY|Women,BROOKS
+2025-09-13T14:55:41.667,102774,2025-09-13T14:55:41.667,6,,,,, ,,,,Regular Sale,1,1.72,0.0,Accessory|Bar,Honey Stinger
+2025-09-13T15:27:00.303,102775,2025-09-13T15:27:00.303,6,,,5715087964,d1e7274b-eca4-4527-af88-b35701406216,Elijah Pointer,elijahpointer@gmail.com,,,Regular Sale,1,90.0,0.0,Footwear|Youth|Neutral|Girls,ASICS
+2025-09-13T15:30:59.073,102776,2025-09-13T15:30:59.073,6,,,,, ,,,,Regular Sale,1,150.0,0.0,Footwear|High Cushion|Men,On Running
+2025-09-13T15:41:13.277,102777,2025-09-13T15:41:13.277,6,,,7032825702,988754e0-8b1d-4a46-babb-b3570144435f,Greg McRobbie,,,,Regular Sale,1,90.0,0.0,Footwear|Youth|Neutral|Girls,ASICS
+2025-09-13T15:43:03.427,102778,2025-09-13T15:43:03.427,6,,,7032686604,dc6e7a93-5587-4cdb-a336-b3570144c985,Daniel Donnelly,,,,Regular Sale,1,110.5,0.0,Footwear|Neutral|NEUTRAL|Men,Altra
+2025-09-13T16:05:06.44,102779,2025-09-13T16:05:06.44,6,,,,, ,,,,Regular Sale,1,2.0,0.0,Accessory|Gel,GU
+2025-09-13T16:09:31.12,102780,2025-09-13T16:09:31.12,6,,,5712098790,b0d68abc-c127-49b2-8ee5-b357014bda2a,Maria Brock,mmarianilla@gmail.com,,,Regular Sale,1,149.99,0.0,Footwear|Neutral|NEUTRAL|Women,NEW BALANCE
+2025-09-13T16:12:27.49,102781,2025-09-13T16:12:27.49,6,,,,, ,,,,Regular Sale,1,149.99,0.0,Footwear|Neutral|NEUTRAL|Women,NEW BALANCE
+2025-09-13T16:24:15.567,102782,2025-09-13T16:24:15.567,6,,,5183967043,d6c7ab59-5c65-45ab-9045-ae0d0110bf66,Sarah Glassman,sjglassman@gmail.com,,,Regular Sale,1,123.25,0.0,Footwear|Stability|STABILITY|Women,NIKE
+2025-09-13T16:32:32.74,102783,2025-09-13T16:32:32.74,6,,,2197987066,d9f4e9f6-7d2b-43c3-bff4-ae6601753a5a,Luke Perrin,perrin.luke.m@gmail.com,,,Regular Sale,1,140.0,0.0,Footwear|Stability|STABILITY|Men,ASICS
+2025-09-13T16:37:05.937,102784,2025-09-13T16:37:05.937,6,,,5712681445,8703c975-5bac-493f-9334-b357015379b9,Maryum Fatimi,maryumfatmi@hotmail.com,,,Regular Sale,1,140.0,0.0,Footwear|Stability|STABILITY|Women,ASICS
+2025-09-13T17:12:23.303,102785,2025-09-13T17:12:23.303,6,,,,, ,,,,Regular Sale,3,12.3,0.0,Accessory|Gel,Maurten
+2025-09-13T17:19:47.033,102786,2025-09-13T17:19:47.033,6,,,7032206346,7c616006-5f93-4ab6-978d-b0b10156f557,Jackie Calderon,jcalderon532@gmail.com,,,Regular Sale,1,175.0,0.0,Footwear|Maximal|Women,Hoka One One
+2025-09-13T17:20:37.04,102787,2025-09-13T17:20:37.04,6,,,,, ,,,,Regular Sale,1,25.0,0.0,Apparel|Men's|Tops|Graphic Tee,NEXT LEVEL
+2025-09-13T17:52:59.713,102788,2025-09-13T17:52:59.713,6,,,7037132899,46535365-adac-4fc4-891c-abf70146f962,Christy Larson,christyanejon@gmail.com,,,Regular Sale,1,94.99,0.0,Footwear|Youth|Stability|Girls,NEW BALANCE
+2025-09-13T17:58:17.423,102789,2025-09-13T17:58:17.423,6,,,7034374433,925ad9e0-1097-40af-b4ad-abbe01344d4c,Cindy Magielnicki,cshayne7@aol.com,,,Return,-1,-164.99,0.0,Footwear|High Cushion|Women,NEW BALANCE
+2025-09-13T18:04:09.6,102790,2025-09-13T18:04:09.6,6,,,7033910101,e975bf3b-fcb3-43c7-858d-a012017afed4,Jay Macia,,,,Special Order Deposit,1,174.9,0.0,Footwear|High Cushion|Women,BROOKS
+2025-09-14T11:35:10.997,102791,2025-09-14T11:35:10.997,6,,,9192448511,cfee7308-43b0-4f6e-939f-acec013411b7,Bobbie Devkota,bcdevkota@gmail.com,,,Regular Sale,1,127.5,0.0,Footwear|Neutral|NEUTRAL|Women,BROOKS
+2025-09-14T12:13:09.633,102792,2025-09-14T12:13:09.633,6,,,3103449624,46594c80-d49d-4b8a-ad88-a09a010d96ae,Elliot Norman,runner_13.1@hotmail.com,,,Regular Sale,1,67.5,0.0,Boys,ASICS
+2025-09-14T12:14:50.16,102793,2025-09-14T12:14:50.16,6,,,5857486087,95b8c123-2318-427f-8ff1-b29901326921,Eric Piato,eric.s.piato@gmail.com,,,Regular Sale,1,165.0,0.0,Footwear|High Cushion|Men,ASICS
+2025-09-14T12:50:50.583,102794,2025-09-14T12:50:50.583,6,,,7032009849,196028b7-f320-413f-8e16-aabb011d156f,Ditmar Redfern,ditmar12@yahoo.com,,,Regular Sale,1,165.0,0.0,Footwear|High Cushion|Men,BROOKS
+2025-09-14T13:00:17.663,102795,2025-09-14T13:00:17.663,6,,,3216935256,c013457d-f273-4e3c-b1e2-a69b01762a72,Heather Wautlet,hcudmore@me.com,,,Regular Sale,1,50.99,0.0,Accessory,Superfeet
+2025-09-14T13:28:21.43,102796,2025-09-14T13:28:21.43,6,,,7038613923,601723f5-f7e9-4d7e-bc83-abaa017d6725,William Painter,willpainter@me.com,,,Regular Sale,1,127.5,0.0,Footwear|High Cushion|Men,Altra
+2025-09-14T13:29:49.333,102797,2025-09-14T13:29:49.333,6,,,7038613923,601723f5-f7e9-4d7e-bc83-abaa017d6725,William Painter,willpainter@me.com,,,Regular Sale,1,13.59,0.0,Accessory,nonaste
+2025-09-14T13:36:53.51,102798,2025-09-14T13:36:53.51,6,,,8603774843,02a9e368-6d9c-4cb5-8c74-aece01425c25,Adora Padilla ,adora.christenson@gmail.com,,,Regular Sale,1,126.0,0.0,Footwear|Stability|STABILITY|Women,ASICS
+2025-09-14T13:44:33.273,102799,2025-09-14T13:44:33.273,6,,,7852183360,968fe952-bd85-4950-8168-a1b900f363d1,Colleen Degrassi,colleen.degrassi@gmail.com,,,Regular Sale,1,144.5,0.0,Footwear|Stability Cushion|Men,SAUCONY
+2025-09-14T13:45:59.647,102800,2025-09-14T13:45:59.647,6,,,,, ,,,,Regular Sale,2,8.2,0.0,Accessory|Gel,Maurten
+2025-09-14T13:54:34.177,102801,2025-09-14T13:54:34.177,6,,,2023900957,8c6d2193-995d-403e-9dbc-b343014471b0,Carla Verkoren,,,,Regular Sale,1,127.5,0.0,Footwear|Maximal|Women,Hoka One One
+2025-09-14T13:57:59.62,102802,2025-09-14T13:57:59.62,6,,,8085541902,9362b3b5-b292-4012-be56-b34b0144cafe,Terry Robertson,,,,Return,-1,-127.5,0.0,Footwear|Neutral|NEUTRAL|Women,BROOKS
+2025-09-14T14:40:47.747,102803,2025-09-14T14:40:47.747,6,,,5716186368,c28a51da-9261-4688-bab9-b34b0147dde2,David Huriley,,,,Return,-1,-144.5,0.0,Competition|XC|Men,NIKE
+2025-09-14T14:46:22.363,102804,2025-09-14T14:46:22.363,6,,,2535140021,7be00430-169c-4b87-851a-b35801351e27,Joe Schomer,,,,Regular Sale,1,69.95,0.0,Apparel|Men's|Tops|Long Sleeve,Smartwool
+2025-09-14T15:02:20.903,102805,2025-09-14T15:02:20.903,6,,,7036350204,7906bc93-6004-4aad-a9c8-ae5a010508bf,Andrea Arnas,,,,Regular Sale,1,140.24,0.0,Footwear|High Cushion|Women,NEW BALANCE
+2025-09-14T15:06:54.673,102806,2025-09-14T15:06:54.673,6,,,5716186368,c28a51da-9261-4688-bab9-b34b0147dde2,David Huriley,,,,Return,-1,-144.5,0.0,Competition|XC|Men,NIKE
+2025-09-14T15:30:12.297,102807,2025-09-14T15:30:12.297,6,,,8054070315,2ad02a19-41c2-4cb4-9ad1-acfe01681a13,Debbie Bradbard,bebrafbard@gmail.com,,,Return,-1,-50.96,0.0,Accessory,Currex
+2025-09-10T11:53:51.033,146641,2025-09-10T11:53:51.033,8,,,7033109464,845d6e67-39e9-49ae-9447-b35401059bf2,elliott davis,elliott.m.davis@gmail.com,,,Coupon,1,-50.0,0.0,,
+2025-09-10T11:55:25.88,146642,2025-09-10T11:55:25.88,8,,,5403383333,2ee79a5a-cd71-49fe-8b5d-ac5000edcfad,Barbara Butts,babutts357@gmail.com,,,Regular Sale,2,169.98,0.0,Footwear|Maximal|Women,Hoka One One
+2025-09-10T12:05:45.05,146643,2025-09-10T12:05:45.05,8,,,7039150913,8b30035e-f6c5-4699-8294-afce011f88d0,Dixie Hallaj,no,,,Regular Sale,1,170.0,0.0,Footwear|Stability|STABILITY|Women,Altra
+2025-09-10T12:19:39.757,146644,2025-09-10T12:19:39.757,8,,,5712461877,8e14c478-27bb-46ba-969e-b354010ccd6c,roseann martin,roseann_martin@hotmail.com,,,Regular Sale,1,127.5,0.0,Footwear|High Cushion|Women,Altra
+2025-09-10T12:46:54.37,146645,2025-09-10T12:46:54.37,8,,,7038624371,59685b7b-01da-41b2-9e36-b35401146338,mary eward,marymeward@gmail.com,,,Regular Sale,1,165.0,0.0,Footwear|High Cushion|Women,ASICS
+2025-09-10T13:29:19.317,146646,2025-09-10T13:29:19.317,8,,,7034471500,170bf5d3-697b-449a-81a9-b354011fb5ee,Jutka Terris,no,,,Regular Sale,1,179.99,0.0,Footwear|High Cushion|Women,On Running
+2025-09-10T13:34:11.55,146647,2025-09-10T13:34:11.55,8,,,,, ,,,,Return,-1,-175.0,0.0,Footwear|Stability Cushion|Women,Hoka One One
+2025-09-10T13:43:17.993,146648,2025-09-10T13:43:17.993,8,,,7039444261,ba735330-a71a-444d-b6b7-a143000d8aae,James West,bzoom311@yahoo.com,,,Regular Sale,7,14.0,0.0,Accessory|Gel,GU
+2025-09-10T14:46:02.853,146649,2025-09-10T14:46:02.853,8,,,7039632007,d810b54c-7596-40a5-b4a6-a4d40170fec2,Leesia Huffner,lch001@outlook.com,,,Return,-1,-175.0,0.0,Footwear|Maximal|Women,Hoka One One
+2025-09-10T14:47:18.233,146650,2025-09-10T14:47:18.233,8,,,5202277869,1364d893-e719-4756-bffd-b35401358915,Sean Ludden,seanludden@gmail.com,,,Regular Sale,1,150.0,0.0,Footwear|Neutral|NEUTRAL|Men,BROOKS
+2025-09-10T14:55:44.867,146651,2025-09-10T14:55:44.867,8,,,7034031691,668284f9-b203-4e31-9d85-a4b9014c9c4c,Mike Cioppi,mac.bz6987@gmail.com,,,Regular Sale,1,54.99,0.0,Accessory,Superfeet
+2025-09-10T15:45:51.473,146652,2025-09-10T15:45:51.473,8,,,7038624354,53d32b1b-2733-4541-9163-aa8f0177998f,Kirsten kwitnieski,,,,Regular Sale,1,127.99,0.0,Footwear|Light Stability|Women,On Running
+2025-09-10T15:47:41.137,146653,2025-09-10T15:47:41.137,8,,,7034312640,0f1339e8-4134-4111-949e-a86e0116e244,Pam Sullivan,psullivan6620@gmail.com,,,Regular Sale,1,150.0,0.0,Footwear|Maximal|Women,Hoka One One
+2025-09-10T15:59:11.98,146654,2025-09-10T15:59:11.98,8,,,,, ,,,,Gift Card Internal,1,150.0,0.0,,
+2025-09-10T16:23:12.187,146655,2025-09-10T16:23:12.187,8,,,5714842429,73836746-5ac4-4693-a9d2-ab39016d0be3,Bailey Washington,washinbg@gmail.com,,,Regular Sale,1,127.5,0.0,Footwear|Neutral|NEUTRAL|Women,BROOKS
+2025-09-10T17:39:14.543,146656,2025-09-10T17:39:14.543,8,,,7037286078,074c6870-334e-41a6-a490-b3540164ba46,Margaret Santos,margbsantos@gmail.com,,,Regular Sale,1,145.0,0.0,Footwear|Neutral|NEUTRAL|Women,SAUCONY
+2025-09-10T17:42:02.767,146657,2025-09-10T17:42:02.767,8,,,5712711468,7c8ce0a0-8507-4e81-b4a1-a64001415f13,Timothy iversen,sirtsiversen@hotmail.com,,,Regular Sale,1,127.5,0.0,Footwear|Neutral|NEUTRAL|Men,ADIDAS
+2025-09-10T17:56:05.027,146658,2025-09-10T17:56:05.027,8,,,2408881575,0f402b9f-4c96-4dab-9f28-b322016f9990,Gaurav Ghai,Ghai.Gaurav@gmail.com,,,Special Order Deposit,1,0.0,0.0,Footwear|Maximal|Women,Hoka One One
+2025-09-10T19:00:21.203,146659,2025-09-10T19:00:21.203,8,,,2022588503,de887dc7-844d-44df-903c-a0b501825782,Brad Close,brad.close@yahoo.com,,,Regular Sale,1,59.99,0.0,Accessory,Superfeet
+2025-09-10T19:18:25.183,146660,2025-09-10T19:18:25.183,8,,,5712239064,3862b819-c1a3-463b-9f9e-b354017fb0c4,Sam Soto,samuelx95648@gamil.com,,,Regular Sale,1,150.0,0.0,Footwear|Neutral|NEUTRAL|Men,BROOKS
+2025-09-10T19:47:58.747,146661,2025-09-10T19:47:58.747,8,,,5716129100,08219ba0-dc70-455c-b73e-b35401878944,Brynn Lackey,brynn.e.lackey@gmail.com,,,Regular Sale,1,59.95,0.0,Accessory,Currex
+2025-09-11T11:26:57.323,146662,2025-09-11T11:26:57.323,8,,,3018018555,4baba773-3bac-4f54-900f-a246013b2064,Ashleigh Barraco,ashleighbarraco@gmail.com,,,Regular Sale,1,153.0,0.0,Footwear|High Cushion|Women,NIKE
+2025-09-11T11:52:20.057,146663,2025-09-11T11:52:20.057,8,,,7037270100,4bda1dc0-ae95-42e8-92b4-9fae012625c5,Ray Lower,raylower@aol.com,,,Regular Sale,1,136.0,0.0,Footwear|High Cushion|Women,SAUCONY
+2025-09-11T11:54:24.65,146664,2025-09-11T11:54:24.65,8,,,2404393448,14dded4a-78ed-4003-9816-9f610110e9a0,Steve Schulze,schulzest@verizon.net,,,Regular Sale,1,109.95,0.0,Footwear|Stability|STABILITY|Men,ASICS
+2025-09-11T11:59:29.36,146665,2025-09-11T11:59:29.36,8,,,2024398130,8cedd0c1-f0f7-4f77-9af5-a40a01021e07,Tristan Bliesner,tristanandallie@gmail.com,,,Regular Sale,1,159.99,0.0,Footwear|Neutral|NEUTRAL|Women,On Running
+2025-09-11T12:10:42.887,146666,2025-09-11T12:10:42.887,8,,,2024398130,8cedd0c1-f0f7-4f77-9af5-a40a01021e07,Tristan Bliesner,tristanandallie@gmail.com,,,Regular Sale,1,59.99,0.0,Accessory,Superfeet
+2025-09-11T12:15:57.18,146667,2025-09-11T12:15:57.18,8,,,,, ,,,,Return,-1,-155.0,0.0,Footwear|Maximal|Women,Hoka One One
+2025-09-11T12:30:31.517,146668,2025-09-11T12:30:31.517,8,,,7034438084,da4956e9-a1f3-4e0c-ba41-9f3f01496ab7,Kathy Blackley,kblackley4@aol.com,,,Regular Sale,1,59.99,0.0,Accessory,Superfeet
+2025-09-11T13:04:55.453,146669,2025-09-11T13:04:55.453,8,,,4439561761,715740ff-a3df-425d-9d41-b35101211ffb,Melissa Peden,mel.lockh@gmail.com,,,Regular Sale,1,160.0,0.0,Footwear|Neutral|NEUTRAL|Women,BROOKS
+2025-09-11T13:17:35.313,146670,2025-09-11T13:17:35.313,8,,,7037271350,d2780dd2-3791-47bf-9381-a3f9015698eb,Lisa Bencic,lbencic@msn.com,,,Return,-1,-170.0,0.0,Footwear|High Cushion|Women,SAUCONY
+2025-09-11T13:19:53.573,146671,2025-09-11T13:19:53.573,8,,,5714206587,aacd1de0-caa3-411b-8637-b355011d2e71,Angel Zubiate,elbishop48@gmail.com,,,Regular Sale,1,150.0,0.0,Footwear|High Cushion|Men,ASICS
+2025-09-11T13:22:50.147,146672,2025-09-11T13:22:50.147,8,,,5713445157,86a1975a-ee0e-4546-b4b5-b32d0157b336,Luke Hutchinson,theladymariam@gmail.com,,,Regular Sale,1,212.48,0.0,Accessory|Electronic|Watch,Garmin Internati
+2025-09-11T13:48:39.873,146673,2025-09-11T13:48:39.873,8,,,5715287909,347787c7-0ea9-4448-8800-b355012566ca,Ann Kramer,aep21500@aol.com,,,Regular Sale,1,59.99,0.0,Accessory,Superfeet
+2025-09-11T14:21:11.43,146674,2025-09-11T14:21:11.43,8,,,7039658343,99f1fa31-bdba-45ac-9b94-af990140428a,Niomi Fuentes,no,,,Regular Sale,1,162.0,0.0,Footwear|Walking|Men,Hoka One One
+2025-09-11T14:41:45.917,146675,2025-09-11T14:41:45.917,8,,,3025625807,da2b3b53-3949-49d1-b307-b0da015bc8da,Zach Opdenaker,no,,,Regular Sale,1,27.5,0.0,Accessory|Hat|Running,CIELE
+2025-09-11T18:19:29.653,10753,2025-09-11T18:19:29.653,9,,,7034091101,98ee6337-cf52-4b26-8982-ad4701434e80,James Brooks,,,,Regular Sale,1,59.95,0.0,Accessory,Currex
+2025-09-11T19:15:31.647,10754,2025-09-11T19:15:31.647,9,,,7036579670,68338b9c-ccc9-4ceb-a391-a06801764f5e,Erica Andresen,ebarber@gmu.edu,,,Regular Sale,1,144.5,0.0,Competition|XC|Men,NIKE
+2025-09-12T11:09:43.903,10755,2025-09-12T11:09:43.903,9,,,7037890475,ba5e719f-81a5-4a89-a286-b202016cabc6,Madeline Carter,madecarter.mc@gmail.com,,,Regular Sale,1,164.99,0.0,Footwear|High Cushion|Women,NEW BALANCE
+2025-09-12T11:24:29.767,10756,2025-09-12T11:24:29.767,9,,,,, ,,,,Regular Sale,1,159.99,0.0,Footwear|High Cushion|Women,On Running
+2025-09-12T11:27:34.777,10757,2025-09-12T11:27:34.777,9,,,7037729117,ee3e50f3-933c-4a02-9451-a04f00f5c2b7,Robin Witlin,witlin06@gmail.com,,,Regular Sale,1,127.5,0.0,Footwear|Neutral|NEUTRAL|Women,MIZUNO
+2025-09-12T11:45:01.523,10758,2025-09-12T11:45:01.523,9,,,7032170375,b17a2987-d87e-4b3b-95c3-b35601036ae9,Susan Holler,,,,Regular Sale,1,59.99,0.0,Accessory,Superfeet
+2025-09-12T12:01:51.7,10759,2025-09-12T12:01:51.7,9,,,4196992890,1dc84cc5-36b0-4b5c-a2da-b3560107f5d9,Suman Bajracharya,,,,Regular Sale,1,45.0,0.0,Apparel|Men's|Tops|Long Sleeve,PRR
+2025-09-12T12:18:10.007,10760,2025-09-12T12:18:10.007,9,,,8133617700,00d9871f-2b77-46b0-b9ba-b200012339b7,Claudia Nesbit,claudia@aol.com,,,Regular Sale,1,140.0,0.0,Footwear|Stability|STABILITY|Women,BROOKS
+2025-09-12T12:21:16.047,10761,2025-09-12T12:21:16.047,9,,,7039455357,720a3647-1a73-46d3-9e08-b31e0131fc8c,Zia Ahmadzada,,,,Return,-1,-150.0,0.0,Footwear|Neutral|NEUTRAL|Men,BROOKS
+2025-09-12T12:50:04.413,10762,2025-09-12T12:50:04.413,9,,,7039668779,e9199cd0-c1fd-491d-a55a-ce0d8f078ae0,Nina Compton,bellpianoartist@verizon.net,,,Return,-1,-140.25,0.0,Footwear|High Cushion|Women,BROOKS
+2025-09-12T13:15:46.867,10763,2025-09-12T13:15:46.867,9,,,7038603772,818b6747-7072-4d3f-9b45-9fb901086407,Sarah Howe,sehowe@email.wm.edu,,,Regular Sale,1,131.75,0.0,Footwear|Maximal|Women,Hoka One One
+2025-09-10T16:10:02.17,79251,2025-09-10T16:10:02.17,11,,,,, ,,,,Regular Sale,1,139.99,0.0,Footwear|Stability|STABILITY|Men,NEW BALANCE
+2025-09-10T16:12:11.72,79252,2025-09-10T16:12:11.72,11,,,3038705312,945e4113-e0e5-41be-b4c0-afef01071042,Makenzie English,,,,Regular Sale,1,165.0,0.0,Footwear|Stability Cushion|Women,ASICS
+2025-09-10T16:44:43.983,79253,2025-09-10T16:44:43.983,11,,,5716859681,2aabf209-b6eb-4236-92d7-b23e0184d2f4,Amy Blasen,,,,Regular Sale,1,131.75,0.0,Footwear|High Cushion|Women,NIKE
+2025-09-11T15:51:07.473,49924,2025-09-11T15:51:07.473,12,,,5712960030,60efbe82-70d4-40e7-946c-b22b01413bd0,Brian Long,,,,Regular Sale,1,7.49,0.0,Accessory|Hydration,Nuun
+2025-09-11T15:52:55.4,49925,2025-09-11T15:52:55.4,12,,,7038618917,35a3920c-5247-40f2-a65f-b33a015c90c8,Wyvonni Harsley,wharsley@gmail.com,,,Return,-1,-139.99,0.0,Footwear|Stability|STABILITY|Women,NEW BALANCE
+2025-09-11T15:56:35.1,49926,2025-09-11T15:56:35.1,12,,,7036154086,fc9728ee-6d33-49aa-b1aa-b0b30173d420,Austin Isaac,isaacmusic98@gmail.com,,,Regular Sale,1,148.75,0.0,Footwear|Stability Cushion|Men,Hoka One One
+2025-09-11T16:00:13.503,49927,2025-09-11T16:00:13.503,12,,,3213399929,b3c29404-a572-4cd4-aa6e-b3550149407c,Kyle  Mullins ,kyle-mullins@hotmail.com,,,Regular Sale,1,136.0,0.0,Footwear|Maximal|Men,Hoka One One
+2025-09-11T16:31:05.3,49928,2025-09-11T16:31:05.3,12,,,5714236268,d59b6bce-ea9d-4495-a6dd-b3550151b301,Regina Singh,,,,Regular Sale,1,148.75,0.0,Footwear|Maximal|Women,Hoka One One
+2025-09-11T16:44:28.07,49929,2025-09-11T16:44:28.07,12,,,,, ,,,,Regular Sale,1,119.0,0.0,Footwear|Neutral|NEUTRAL|Women,ASICS
+2025-09-11T16:52:46.213,49930,2025-09-11T16:52:46.213,12,,,7036297122,f2784a5f-a052-40e2-a2f3-46cf834e956f,Shanan Sheldon,hokee93@hotmail.com,,,Regular Sale,1,165.0,0.0,Footwear|Stability Cushion|Women,ASICS
+2025-09-10T12:20:29.153,16212,2025-09-10T12:20:29.153,21,,,7035427608,d5fa2003-fb4d-4507-9b36-a086014e3052,Patricia Skipper,pattiskipper@yahoo.com,,,Regular Sale,1,229.0,0.0,Accessory|Electronic|Watch,COROS
+2025-09-10T12:57:05.6,16213,2025-09-10T12:57:05.6,21,,,8045366741,63809479-4466-480e-bf0f-b34d015b08fc,Scott Kain,wkain@comcast.net,,,Return,-1,-135.99,0.0,Footwear|Neutral|NEUTRAL|Men,On Running
+2025-09-10T12:57:55.663,16214,2025-09-10T12:57:55.663,21,,,7169692358,759623bf-8a7d-4304-bc98-b30e01361d12,Megan Fischer,jones042@gmail.com,,,Regular Sale,1,159.99,0.0,Footwear|High Cushion|Women,On Running
+2025-09-10T13:35:04.52,16215,2025-09-10T13:35:04.52,21,,,8043630767,fed0dd62-d04e-47c9-9796-b35401218df2,Brian Kelmar,bkelmar@comcast.net,,,Regular Sale,1,16.0,0.0,Accessory,Jogology
+2025-09-10T14:37:01.597,16216,2025-09-10T14:37:01.597,21,,,9106129300,665d6b80-9efb-49f6-bd92-b354013287bd,Dana Neel,,,,Coupon,1,-0.01,0.0,,
+2025-09-10T14:53:19.287,16217,2025-09-10T14:53:19.287,21,,,3023739812,04c53afc-c40f-4eac-921e-af730134f728,Nanette Copley,peace61155@aol.com,,,Regular Sale,1,155.0,0.0,Footwear|Maximal|Women,Hoka One One
+2025-09-10T15:03:35.677,16218,2025-09-10T15:03:35.677,21,,,8048738123,536fa452-5f5a-4cd1-912a-b33e016961fc,Matt Mitchell,,,,Regular Sale,1,50.99,0.0,Accessory,Superfeet
+2025-09-10T15:36:15.883,16219,2025-09-10T15:36:15.883,21,,,9547789688,6e00571e-0d1c-437b-aafe-b1900132dba5,Hannah Keith,hbkeith07@gmail.com,,,Regular Sale,1,149.99,0.0,Footwear|Neutral|NEUTRAL|Women,NEW BALANCE
+2025-09-10T15:39:20.53,16220,2025-09-10T15:39:20.53,21,,,8436165267,f0840ff3-d67e-48d7-9e0f-b35401439a6a,Cole Procik,,,,Regular Sale,1,199.99,0.0,Competition|Road|Men,NEW BALANCE
+2025-09-10T15:42:25.903,16221,2025-09-10T15:42:25.903,21,,,5714468274,a3ebc0f9-e2cc-44b2-981f-b2de0172ce76,Mike  Hernandez ,Mikehernandez2226@gmail.com,,,Return,-1,-127.49,0.0,Footwear|Neutral|NEUTRAL|Men,NEW BALANCE
+2025-09-10T16:41:38.71,16222,2025-09-10T16:41:38.71,21,,,2088609840,245d903b-22d5-41a2-8c7a-b3540154c53f,Julie Emmett,,,,Regular Sale,1,93.5,0.0,Footwear|Youth|Neutral|Girls,Hoka One One
+2025-09-10T17:05:52.927,16223,2025-09-10T17:05:52.927,21,,,8043077359,5786ecd8-df08-48bc-8888-afb9017b6d1f,April Morris,aglong81@gmail.com,,,Coupon,1,-0.01,0.0,,
+2025-09-10T18:24:05.02,16224,2025-09-10T18:24:05.02,21,,,8043820411,89a847b0-67ef-4988-9097-b15801351ac2,Chandley Jones,chandleyjones@yahoo.com,,,Coupon,1,-0.01,0.0,,
+2025-09-16T10:57:27,259105727,2025-09-16T10:57:27,99,,,252592350111501,de24bc5e-cc24-481a-a719-183a30fa87b0,Vania Brun,vaniariveros21@icloud.com,,,Regular Sale,1,43.98,0.0,Footwear|Lifestyle|Regular|Women,Oofos
+2025-09-16T11:44:13,259114413,2025-09-16T11:44:13,99,,,252592356437591,cbda0160-b120-4b01-88c7-b1f12dd63c1a,Abigail Combs,abigailjanaecombs@gmail.com,,,Regular Sale,1,109.99,0.0,Footwear|Youth|Neutral|Girls,NEW BALANCE
+2025-09-16T12:43:59,259124359,2025-09-16T12:43:59,99,,,252592357306919,e92593a3-2851-4b52-9da2-94bed1ff717a,Sheila Stanphill,sheila_wages@yahoo.com,,,Regular Sale,1,160.0,0.0,Footwear|Neutral|NEUTRAL|Women,BROOKS
+2025-09-16T12:55:21,259125521,2025-09-16T12:55:21,99,,,252592359073781,009fa173-63dd-4ffc-81c6-dfe96071b00f,Russ Koenig,rkoenig@gmail.com,,,Regular Sale,1,25.0,0.0,Apparel|Men's|Tops|Graphic Tee,NEXT LEVEL
+2025-09-16T12:55:35,259125535,2025-09-16T12:55:35,99,,,7037283061,5aadc517-df1b-4877-9af7-a1a600ee3d25,Bruce MacMonigle,bruce_macmonigle@yahoo.com,,,Regular Sale,1,132.0,0.0,Footwear|Maximal|Men,Hoka One One
+2025-09-16T14:56:41,259145641,2025-09-16T14:56:41,99,,,252600000504659,a87bc9f7-c99a-465e-accc-d530d5b40e84,Raymond Rieling,rielingr@verizon.net,,,Regular Sale,1,140.0,0.0,Footwear|Stability|STABILITY|Men,BROOKS
+2025-09-16T15:46:08,25915468,2025-09-16T15:46:08,99,,,5185780178,b18122c8-99d2-4853-b906-acc701502d20,Tyler Richards,tyler.rchrds@gmail.com,,,Regular Sale,1,130.51,0.0,Footwear|Neutral|NEUTRAL|Men,SAUCONY
+2025-09-16T16:22:30,259162230,2025-09-16T16:22:30,99,,,252600004148115,1e23d623-1058-4708-b63a-27acb8ff00f3,Christine Gramenopoulos,nanacg07@gmail.com,,,Regular Sale,1,140.0,0.0,Footwear|Stability|STABILITY|Women,BROOKS

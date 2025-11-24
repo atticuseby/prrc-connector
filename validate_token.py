@@ -32,7 +32,7 @@ def validate_rics_token():
         "TicketDateEnd": "2024-12-31T23:59:59Z",
         "BatchStartDate": "2024-01-01T00:00:00Z",
         "BatchEndDate": "2024-12-31T23:59:59Z",
-        "StoreCode": 1
+        "StoreCode": "1"
     }
     
     try:

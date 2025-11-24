@@ -36,7 +36,7 @@ def main():
     log_message(f"✅ Token present, length={len(token)}")
     
     # Test API endpoint
-    start_date = (datetime.utcnow() - timedelta(days=30)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    start_date = (datetime.utcnow() - timedelta(days=45)).strftime("%Y-%m-%dT%H:%M:%SZ")  # 45 days to capture September 30th data
     end_date = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
     
     test_payload = {
@@ -158,7 +158,7 @@ def main():
         os.symlink(output_path, static_deduped_path)
         log_message(f"✅ Created symlink to raw file: {static_deduped_path}")
     
-    # Upload to Google Drive
+    # Upload to Google Drive (optional)
     log_message("=== UPLOADING TO GOOGLE DRIVE ===")
     try:
         from scripts.upload_to_gdrive import upload_to_drive
@@ -167,8 +167,8 @@ def main():
             upload_to_drive(deduped_path)
         log_message("✅ Successfully uploaded files to Google Drive")
     except Exception as e:
-        log_message(f"❌ Google Drive upload failed: {e}")
-        return 1
+        log_message(f"⚠️ Google Drive upload skipped: {e}")
+        log_message("ℹ️ Files are available locally for testing")
     
     # Log final counters
     log_message("=== FINAL COUNTERS ===")

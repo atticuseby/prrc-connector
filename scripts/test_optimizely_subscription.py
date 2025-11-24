@@ -249,8 +249,16 @@ def main():
     print(f"Test 2 (profiles with subscriptions): {status2}")
     print(f"Test 3 (list_subscribe event): {status3}")
     
-    print("\n💡 Wait 2-3 minutes, then run the diagnostic script to check if any method worked:")
-    print(f"   python scripts/check_optimizely_subscription.py {email} {list_id}")
+    print("\n💡 Next steps:")
+    print(f"   1. Wait 3-5 minutes for Optimizely to process the events")
+    print(f"   2. Run the diagnostic script to check subscription status:")
+    print(f"      python scripts/check_optimizely_subscription.py {email} {list_id}")
+    print(f"   3. If still not subscribed, verify the list ID is correct:")
+    print(f"      python scripts/verify_optimizely_list.py {list_id}")
+    print()
+    print("📝 Note: Both Test 1 and Test 3 returned 202 (Accepted), which means")
+    print("   Optimizely accepted the requests. If subscription doesn't appear after")
+    print("   5 minutes, the list ID might be incorrect or there may be a delay.")
 
 if __name__ == "__main__":
     main()

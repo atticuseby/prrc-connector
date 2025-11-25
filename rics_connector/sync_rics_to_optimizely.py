@@ -163,6 +163,7 @@ def process_rics_purchases(csv_path: str):
     if RICS_TEST_MODE:
         print(f"TEST_EMAIL: {RICS_TEST_EMAIL}")
         print(f"TEST_MAX_ROWS: {RICS_TEST_MAX_ROWS}")
+        print("⚠️  TEST MODE: Only processing first 5 rows and overriding emails with TEST_EMAIL")
     print(f"CSV file: {csv_path}")
     print()
     

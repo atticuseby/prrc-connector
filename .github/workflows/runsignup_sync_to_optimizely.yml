@@ -56,4 +56,5 @@ jobs:
         run: python tests/test_imports.py
 
       - name: 🔄 Process & sync to Optimizely
+        timeout-minutes: 360  # 6 hours max (GitHub Actions default, but explicit)
         run: python -m runsignup_connector.main_runsignup

@@ -548,6 +548,16 @@ def process_runsignup_csvs():
             file_row_count += 1
             total_rows += 1
             
+            # Progress logging every 100 rows
+            if file_row_count % 100 == 0:
+                elapsed_msg = ""
+                if not DRY_RUN:
+                    print(f"⏳ Progress: Processed {file_row_count} rows from {file_name} (valid: {file_valid_rows}, skipped: {file_skipped_rows})")
+                    if posted_profiles > 0:
+                        print(f"   Posted: {posted_profiles} profiles, {posted_events} events, {subscribed_to_lists} subscriptions")
+                else:
+                    print(f"⏳ Progress: [DRY_RUN] Processed {file_row_count} rows from {file_name} (valid: {file_valid_rows}, skipped: {file_skipped_rows})")
+            
             try:
                 profile_attrs, event_props, registration_ts = _map_row(row)
                 

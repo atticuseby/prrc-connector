@@ -8,7 +8,7 @@ import os
 import time
 import requests
 import json
-from typing import Dict, Optional, Tuple, Literal
+from typing import Dict, Optional, Tuple, Literal, List
 
 
 OPTIMIZELY_API_TOKEN = os.getenv("OPTIMIZELY_API_TOKEN", "").strip()
@@ -544,5 +544,72 @@ def post_event(
     # Should never reach here, but just in case
     raise requests.exceptions.RequestException(
         f"Failed to post event {event_name} for {email} after {MAX_RETRIES} attempts"
+    )
+
+
+def post_events_batch(events: List[Dict]) -> Tuple[int, str]:
+    """
+    Post multiple events to Optimizely in a single batch request.
+    
+    This is much faster than posting events individually. The Optimizely API
+    accepts an array of events in a single POST request.
+    
+    Args:
+        events: List of event dictionaries, each with:
+            - type: Event type (e.g., "runsignup_registration")
+            - timestamp: ISO 8601 timestamp string
+            - identifiers: Dict with email
+            - properties: Dict of event properties
+    
+    Returns:
+        Tuple of (status_code, response_text)
+        
+    Raises:
+        ValueError: If OPTIMIZELY_API_TOKEN is missing
+        requests.RequestException: On network errors
+    """
+    headers = _get_headers()
+    
+    # Optimizely API accepts an array of events
+    # Retry logic for network errors and 5xx status codes
+    for attempt in range(1, MAX_RETRIES + 1):
+        try:
+            response = requests.post(
+                OPTIMIZELY_EVENTS_ENDPOINT,
+                headers=headers,
+                json=events,  # Send array of events
+                timeout=TIMEOUT * 2  # Longer timeout for batches
+            )
+            
+            # Retry on 5xx errors (server errors)
+            if response.status_code >= 500:
+                if attempt < MAX_RETRIES:
+                    delay = RETRY_DELAY * attempt
+                    time.sleep(delay)
+                    continue
+                else:
+                    return response.status_code, response.text
+            
+            # Return immediately for 2xx, 4xx (don't retry client errors)
+            return response.status_code, response.text
+            
+        except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as e:
+            if attempt < MAX_RETRIES:
+                delay = RETRY_DELAY * attempt
+                time.sleep(delay)
+                continue
+            else:
+                raise requests.exceptions.RequestException(
+                    f"Network error posting batch of {len(events)} events after {MAX_RETRIES} attempts: {e}"
+                )
+        except requests.exceptions.RequestException as e:
+            # Don't retry on other request exceptions (4xx errors, etc.)
+            raise requests.exceptions.RequestException(
+                f"Network error posting batch of {len(events)} events: {e}"
+            )
+    
+    # Should never reach here, but just in case
+    raise requests.exceptions.RequestException(
+        f"Failed to post batch of {len(events)} events after {MAX_RETRIES} attempts"
     )
 

@@ -24,7 +24,8 @@ from google.oauth2 import service_account
 
 from runsignup_connector.optimizely_client import (
     upsert_profile_with_subscription,
-    post_event
+    post_event,
+    post_events_batch
 )
 
 
@@ -514,6 +515,10 @@ def process_runsignup_csvs():
     detailed_log_count = 0  # Track how many rows we've logged in detail (first few rows)
     MAX_DETAILED_LOGS = 5  # Log first 5 rows in detail
     
+    # ⚡ OPTIMIZATION: Batch event posting
+    EVENT_BATCH_SIZE = 100  # Send events in batches of 100
+    event_batch = []  # Collect events for batch posting
+    
     for file_info in files_global:
         file_id = file_info["id"]
         file_name = file_info["name"]
@@ -581,6 +586,17 @@ def process_runsignup_csvs():
                 else:
                     email = original_email
                 
+                # ⚡ OPTIMIZATION: Check event deduplication EARLY (before any API calls)
+                # This can skip entire rows if the event was already processed
+                event_key = _generate_event_key(email, event_props, registration_ts)
+                is_duplicate = event_key in processed_event_keys
+                
+                if is_duplicate:
+                    skipped_duplicate_events += 1
+                    if detailed_log_count < MAX_DETAILED_LOGS:
+                        print(f"⏭️  Skipping duplicate event for {email} (already processed)")
+                    continue  # Skip entire row - no API calls needed
+                
                 # Store sample rows for DRY_RUN (first 2 per partner)
                 if DRY_RUN:
                     if partner_id not in sample_rows_by_partner:
@@ -633,39 +649,54 @@ def process_runsignup_csvs():
                     if should_log_detail:
                         print(f"   Error details: {str(e)}")
                 
-                # Generate event key for deduplication
-                event_key = _generate_event_key(email, event_props, registration_ts)
+                # ⚡ OPTIMIZATION: Collect event for batch posting (already checked for duplicates above)
+                # Mark as processed immediately to avoid race conditions
+                new_event_keys.add(event_key)
                 
-                # Check if event was already processed
-                is_duplicate = event_key in processed_event_keys
+                # Build event payload for batch
+                event_payload = {
+                    "type": OPTIMIZELY_EVENT_NAME,
+                    "timestamp": registration_ts or datetime.now(timezone.utc).isoformat(),
+                    "identifiers": {
+                        "email": email
+                    },
+                    "properties": event_props
+                }
+                event_batch.append(event_payload)
                 
-                if is_duplicate:
-                    skipped_duplicate_events += 1
-                    if detailed_log_count < MAX_DETAILED_LOGS:
-                        print(f"   Event: Skipped (already processed)")
-                else:
-                    # Post event (use consistent event type: runsignup_registration)
+                # Post batch when it reaches the batch size
+                if len(event_batch) >= EVENT_BATCH_SIZE:
                     try:
-                        status_code, response_text = post_event(
-                            email,
-                            OPTIMIZELY_EVENT_NAME,  # "runsignup_registration"
-                            event_props,
-                            registration_ts
-                        )
+                        status_code, response_text = post_events_batch(event_batch)
                         if status_code in (200, 202):
-                            posted_events += 1
-                            new_event_keys.add(event_key)  # Mark as processed
+                            posted_events += len(event_batch)
                             if detailed_log_count <= MAX_DETAILED_LOGS:
-                                print(f"   Event: Posted {OPTIMIZELY_EVENT_NAME} event")
+                                print(f"   Events: Posted batch of {len(event_batch)} events")
                         else:
-                            print(f"⚠️ Event post failed for {email}: {status_code} - {response_text[:200]}")
+                            print(f"⚠️ Event batch post failed: {status_code} - {response_text[:200]}")
+                        event_batch = []  # Clear batch
                     except Exception as e:
-                        print(f"❌ Error posting event for {email} (row {row_idx} in {file_name}): {e}")
+                        print(f"❌ Error posting event batch: {e}")
+                        event_batch = []  # Clear batch on error
                     
             except Exception as e:
                 print(f"❌ Error processing row {row_idx} in {file_name}: {e}")
                 skipped_rows += 1
                 continue
+        
+        # ⚡ OPTIMIZATION: Flush any remaining events in batch at end of file
+        if event_batch and not DRY_RUN:
+            try:
+                status_code, response_text = post_events_batch(event_batch)
+                if status_code in (200, 202):
+                    posted_events += len(event_batch)
+                    print(f"   Events: Posted final batch of {len(event_batch)} events")
+                else:
+                    print(f"⚠️ Final event batch post failed: {status_code} - {response_text[:200]}")
+                event_batch = []  # Clear batch
+            except Exception as e:
+                print(f"❌ Error posting final event batch: {e}")
+                event_batch = []  # Clear batch on error
         
         # Log file processing summary
         print(f"\n✅ Completed {file_name}:")
@@ -683,6 +714,20 @@ def process_runsignup_csvs():
             "valid_rows": file_valid_rows,
             "skipped_rows": file_skipped_rows
         })
+    
+    # ⚡ OPTIMIZATION: Flush any remaining events in batch after all files
+    if event_batch and not DRY_RUN:
+        try:
+            status_code, response_text = post_events_batch(event_batch)
+            if status_code in (200, 202):
+                posted_events += len(event_batch)
+                print(f"\n📦 Posted final batch of {len(event_batch)} events")
+            else:
+                print(f"\n⚠️ Final event batch post failed: {status_code} - {response_text[:200]}")
+            event_batch = []  # Clear batch
+        except Exception as e:
+            print(f"\n❌ Error posting final event batch: {e}")
+            event_batch = []  # Clear batch on error
     
     # Print summary
     print("\n" + "=" * 60)

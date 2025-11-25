@@ -417,6 +417,9 @@ def fetch_rics_data_with_purchase_history(max_purchase_pages=None, debug_mode=Fa
     return output_path
 
 
+# Alias for backward compatibility
+fetch_rics_data = fetch_rics_data_with_purchase_history
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Fetch RICS POS data with purchase history.")
     parser.add_argument('--test', action='store_true', help='Enable test mode (limits stores and pages)')

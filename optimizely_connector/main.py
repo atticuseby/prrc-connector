@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 # Ensure repo root is in path so rics_connector/ and scripts/ can be imported
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from rics_connector.fetch_rics_data import fetch_rics_data
+from rics_connector.fetch_rics_data import fetch_rics_data_with_purchase_history
 from rics_connector.sync_rics_to_optimizely import run_sync
 from scripts.upload_to_gdrive import upload_to_drive
 
@@ -27,7 +27,7 @@ def run_rics_flow():
 
     try:
         print("📥 Pulling RICS data...")
-        filepath = fetch_rics_data()
+        filepath = fetch_rics_data_with_purchase_history()
         print("✅ RICS data pull complete\n")
     except Exception as e:
         print(f"❌ RICS data pull error: {e}\n")

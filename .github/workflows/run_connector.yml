@@ -45,9 +45,11 @@ jobs:
           GDRIVE_FOLDER_ID_RICS: ${{ secrets.GDRIVE_FOLDER_ID_RICS }}
 
       - name: Sync to Optimizely
-        run: python scripts/sync_to_optimizely.py rics_customer_purchase_history_deduped.csv
+        run: python -m rics_connector.sync_rics_to_optimizely rics_customer_purchase_history_deduped.csv
         env:
-          OPTIMIZELY_API_KEY: ${{ secrets.OPTIMIZELY_API_TOKEN }}
+          OPTIMIZELY_API_TOKEN: ${{ secrets.OPTIMIZELY_API_TOKEN }}
+          OPTIMIZELY_LIST_ID_RICS: ${{ secrets.OPTIMIZELY_LIST_ID_RICS }}
+          DRY_RUN: ${{ secrets.DRY_RUN }}
 
       - name: Sync to Meta (Offline Events)
         run: python scripts/sync_rics_to_meta.py rics_customer_purchase_history_deduped.csv

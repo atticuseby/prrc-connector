@@ -30,6 +30,8 @@ from runsignup_connector.optimizely_client import (
 
 
 # Configuration
+# IMPORTANT: DRY_RUN defaults to "true" for safety
+# Set DRY_RUN="false" in GitHub Secrets to actually post data
 DRY_RUN = os.getenv("DRY_RUN", "true").lower() == "true"
 # Note: We always select the most recent CSV from each folder (one per partner)
 GDRIVE_CREDENTIALS = os.getenv("GDRIVE_CREDENTIALS", "").strip()

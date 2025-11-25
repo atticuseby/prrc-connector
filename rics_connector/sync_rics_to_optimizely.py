@@ -22,9 +22,16 @@ from runsignup_connector.optimizely_client import (
 )
 
 # Configuration
+# IMPORTANT: DRY_RUN defaults to "true" for safety
+# Set DRY_RUN="false" in GitHub Secrets to actually post data
 DRY_RUN = os.getenv("DRY_RUN", "true").lower() == "true"
 OPTIMIZELY_LIST_ID_RICS = os.getenv("OPTIMIZELY_LIST_ID_RICS", "").strip()
 OPTIMIZELY_EVENT_NAME = "rics_purchase"  # Event type for purchases
+
+# TEST MODE configuration - for fast debugging (processes only 5 rows)
+RICS_TEST_MODE = os.getenv("RICS_TEST_MODE", "false").lower() == "true"
+RICS_TEST_EMAIL = os.getenv("RICS_TEST_EMAIL", "").strip()
+RICS_TEST_MAX_ROWS = 5  # Process only 5 rows in test mode
 
 # Event deduplication
 PROCESSED_EVENTS_LOG = os.path.join(os.path.dirname(__file__), "..", "logs", "processed_rics_events.json")
@@ -152,6 +159,10 @@ def process_rics_purchases(csv_path: str):
     """
     print("=== RICS PURCHASE SYNC TO OPTIMIZELY ===")
     print(f"DRY_RUN: {DRY_RUN}")
+    print(f"TEST_MODE: {RICS_TEST_MODE}")
+    if RICS_TEST_MODE:
+        print(f"TEST_EMAIL: {RICS_TEST_EMAIL}")
+        print(f"TEST_MAX_ROWS: {RICS_TEST_MAX_ROWS}")
     print(f"CSV file: {csv_path}")
     print()
     
@@ -184,9 +195,18 @@ def process_rics_purchases(csv_path: str):
     posted_profiles = 0
     posted_events = 0
     subscribed_to_lists = 0
+    rows_processed = 0  # Track rows actually processed (for TEST_MODE)
     
     # Batch event collection
     event_batch = []
+    
+    # TEST MODE validation
+    if RICS_TEST_MODE:
+        if not RICS_TEST_EMAIL:
+            raise RuntimeError("RICS_TEST_MODE is true but RICS_TEST_EMAIL is not set")
+        print(f"🧪 TEST MODE: Only processing first {RICS_TEST_MAX_ROWS} rows")
+        print(f"🧪 TEST MODE: Overriding all emails with {RICS_TEST_EMAIL}")
+        print()
     
     # Process CSV
     print(f"📄 Processing CSV: {csv_path}")
@@ -194,6 +214,11 @@ def process_rics_purchases(csv_path: str):
         reader = csv.DictReader(csvfile)
         
         for row_idx, row in enumerate(reader, start=2):  # Start at 2 (header is row 1)
+            # TEST MODE: Only process first 5 rows
+            if RICS_TEST_MODE and rows_processed >= RICS_TEST_MAX_ROWS:
+                print(f"\n⚠️  TEST MODE: Reached max rows ({RICS_TEST_MAX_ROWS}), stopping processing")
+                break
+            
             total_rows += 1
             
             # Progress logging every 100 rows
@@ -207,8 +232,19 @@ def process_rics_purchases(csv_path: str):
             
             try:
                 # Extract customer info
-                email = _normalize_email(row.get("CustomerEmail", ""))
+                original_email = _normalize_email(row.get("CustomerEmail", ""))
                 phone = row.get("CustomerPhone", "").strip()
+                
+                # TEST MODE: Override email with test email
+                if RICS_TEST_MODE:
+                    if not original_email:
+                        # Still need an email for TEST_MODE
+                        original_email = RICS_TEST_EMAIL
+                    email = RICS_TEST_EMAIL
+                    if rows_processed < 3:
+                        print(f"\n🧪 TEST MODE: Overriding email {original_email} → {email}")
+                else:
+                    email = original_email
                 
                 if not email:
                     skipped_rows += 1
@@ -253,6 +289,7 @@ def process_rics_purchases(csv_path: str):
                 event_props = {k: v for k, v in event_props.items() if v}
                 
                 valid_rows += 1
+                rows_processed += 1
                 
                 # ⚡ OPTIMIZATION: Check event deduplication EARLY (before any API calls)
                 event_key = _generate_event_key(email, ticket_number, event_props.get("sku", ""), purchase_ts)
@@ -353,9 +390,13 @@ def process_rics_purchases(csv_path: str):
     print("\n" + "=" * 60)
     print("SUMMARY")
     print("=" * 60)
+    if RICS_TEST_MODE:
+        print(f"⚠️  TEST MODE was enabled - only processed {rows_processed} rows with email override to {RICS_TEST_EMAIL}")
     print(f"Total rows: {total_rows}")
     print(f"Valid rows: {valid_rows}")
     print(f"Skipped rows: {skipped_rows}")
+    print(f"Rows processed: {rows_processed}")
+    print(f"DRY_RUN: {DRY_RUN}")
     if not DRY_RUN:
         print(f"Posted profiles: {posted_profiles}")
         print(f"Posted events: {posted_events}")

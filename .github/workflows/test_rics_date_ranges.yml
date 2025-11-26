@@ -18,8 +18,13 @@ jobs:
       - name: Install dependencies
         run: pip install requests
 
-      - name: Test RICS Date Ranges
+      - name: Test RICS Date Ranges (Original)
         env:
           RICS_API_TOKEN: ${{ secrets.RICS_API_TOKEN }}
         run: python scripts/test_rics_date_ranges.py
+
+      - name: Diagnose RICS API Date Limits
+        env:
+          RICS_API_TOKEN: ${{ secrets.RICS_API_TOKEN }}
+        run: python scripts/diagnose_rics_api_limits.py
 

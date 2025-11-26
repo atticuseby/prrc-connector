@@ -28,8 +28,3 @@ jobs:
           RICS_API_TOKEN: ${{ secrets.RICS_API_TOKEN }}
         run: python scripts/diagnose_rics_api_limits.py
 
-      - name: Compare GetPOSTransaction vs GetCustomerPurchaseHistory
-        env:
-          RICS_API_TOKEN: ${{ secrets.RICS_API_TOKEN }}
-        run: python scripts/test_customer_purchase_history_endpoint.py
-

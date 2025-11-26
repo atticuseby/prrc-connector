@@ -1,0 +1,25 @@
+name: Test RICS Date Ranges
+
+on:
+  workflow_dispatch: # run manually from Actions tab
+
+jobs:
+  test-date-ranges:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Test RICS Date Ranges
+        env:
+          RICS_API_TOKEN: ${{ secrets.RICS_API_TOKEN }}
+        run: python scripts/test_rics_date_ranges.py
+

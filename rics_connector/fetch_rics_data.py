@@ -177,6 +177,27 @@ def fetch_pos_transactions_for_store(store_code=None,
             sales = data.get("Sales", [])
             log_message(f"📊 Store {store_code} returned {len(sales)} sales")
             
+            # Check what date range is actually in this page of results
+            if sales and page_count == 0:
+                page_dates = []
+                for sale in sales:
+                    sale_headers = sale.get("SaleHeaders", [])
+                    for header in sale_headers:
+                        dt_str = header.get("TicketDateTime") or header.get("SaleDateTime")
+                        if dt_str:
+                            dt = parse_dt(dt_str)
+                            if dt:
+                                page_dates.append(dt)
+                
+                if page_dates:
+                    page_oldest = min(page_dates)
+                    page_newest = max(page_dates)
+                    log_message(f"📅 Store {store_code} page 1 date range: {page_oldest} to {page_newest}")
+                    log_message(f"📅 Store {store_code} requested range: {start_date} to {end_date}")
+                    if page_newest < (datetime.utcnow() - timedelta(days=7)):
+                        days_behind = (datetime.utcnow() - page_newest).days
+                        log_message(f"⚠️  WARNING: Store {store_code} newest data is {days_behind} days old!")
+            
             # Minimal debugging - only log if no sales found
             if not sales and page_count < 3:
                 log_message(f"🔍 Debug - Store {store_code} page {page_count+1}: No sales in response")

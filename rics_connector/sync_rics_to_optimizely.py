@@ -3,6 +3,25 @@ Process RICS purchase history CSV and sync to Optimizely.
 
 Reads purchase history CSV, posts purchase events, and updates customer profiles
 with proper subscription handling (respects unsubscribe states).
+
+DEDUPLICATION STRATEGY:
+This script implements two-layer deduplication to prevent duplicate events in Optimizely:
+
+1. **Ticket-level deduplication** (in fetch_rics_data.py):
+   - Tracks ticket numbers in `logs/sent_ticket_ids.csv`
+   - Prevents re-fetching the same tickets from RICS API
+   - Works across both initial (45-day) and daily (1-day) syncs
+
+2. **Event-level deduplication** (in this script):
+   - Tracks event keys (SHA256 hash of email + ticket_number + sku + timestamp) in `logs/processed_rics_events.json`
+   - Prevents posting duplicate purchase events to Optimizely
+   - Checks deduplication EARLY (before any API calls) for efficiency
+   - Works across both initial and daily syncs
+
+This ensures that:
+- Initial 45-day sync won't create duplicates when run multiple times
+- Daily 1-day syncs won't re-process events from previous days
+- Same purchase event (same email, ticket, SKU, timestamp) is only posted once to Optimizely
 """
 
 import os

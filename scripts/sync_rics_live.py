@@ -35,8 +35,13 @@ def main():
         return 1
     log_message(f"✅ Token present, length={len(token)}")
     
-    # Test API endpoint
-    start_date = (datetime.utcnow() - timedelta(days=45)).strftime("%Y-%m-%dT%H:%M:%SZ")  # 45 days to capture September 30th data
+    # Get lookback days from environment (default to 1 for daily sync)
+    lookback_days = int(os.getenv("RICS_LOOKBACK_DAYS", "1"))
+    log_message(f"📅 Using {lookback_days} day(s) lookback for data fetch")
+    
+    # Test API endpoint (use 45 days for test to ensure API is working)
+    test_lookback = max(lookback_days, 45)  # Use at least 45 days for test
+    start_date = (datetime.utcnow() - timedelta(days=test_lookback)).strftime("%Y-%m-%dT%H:%M:%SZ")
     end_date = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
     
     test_payload = {
@@ -83,9 +88,9 @@ def main():
         if args.no_dedup:
             log_message("🔧 Skipping deduplication as requested")
             # We'll modify the fetch function to skip dedup
-            output_path = fetch_rics_data_with_purchase_history(debug_mode=args.debug, no_dedup=True)
+            output_path = fetch_rics_data_with_purchase_history(debug_mode=args.debug, no_dedup=True, lookback_days=lookback_days)
         else:
-            output_path = fetch_rics_data_with_purchase_history(debug_mode=args.debug)
+            output_path = fetch_rics_data_with_purchase_history(debug_mode=args.debug, lookback_days=lookback_days)
         
         log_message(f"✅ RICS fetch completed: {output_path}")
         
@@ -103,7 +108,7 @@ def main():
                     log_message("⚠️ WARNING: No data rows found!")
                     log_message("🔍 Possible causes:")
                     log_message("  - RICS API token expired")
-                    log_message("  - No transactions in last 7 days")
+                    log_message(f"  - No transactions in last {lookback_days} day(s)")
                     log_message("  - Date filter too restrictive")
                     log_message("  - API endpoint changed")
                 else:

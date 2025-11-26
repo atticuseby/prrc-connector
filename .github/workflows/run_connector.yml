@@ -2,6 +2,15 @@ name: Run PRRC Connector
 
 on:
   workflow_dispatch: # run manually from Actions tab
+    inputs:
+      sync_type:
+        description: 'Sync type: "daily" (1 day) or "initial" (45 days catch-up)'
+        required: false
+        default: 'daily'
+        type: choice
+        options:
+          - daily
+          - initial
   schedule:
     - cron: '0 9 * * *' # Run daily at 9:00 AM UTC (4:00 AM EST)
 
@@ -19,6 +28,27 @@ jobs:
 
       - name: Install dependencies
         run: pip install -r requirements.txt
+
+      - name: Determine sync type and lookback days
+        id: sync_config
+        run: |
+          if [ "${{ github.event_name }}" == "schedule" ]; then
+            # Scheduled runs are always daily (1 day)
+            echo "sync_type=daily" >> $GITHUB_OUTPUT
+            echo "lookback_days=1" >> $GITHUB_OUTPUT
+            echo "📅 Scheduled run: Using 1 day lookback (daily sync)"
+          else
+            # Manual runs use the input parameter
+            SYNC_TYPE="${{ inputs.sync_type || 'daily' }}"
+            echo "sync_type=$SYNC_TYPE" >> $GITHUB_OUTPUT
+            if [ "$SYNC_TYPE" == "initial" ]; then
+              echo "lookback_days=45" >> $GITHUB_OUTPUT
+              echo "📅 Initial sync: Using 45 day lookback (catch-up)"
+            else
+              echo "lookback_days=1" >> $GITHUB_OUTPUT
+              echo "📅 Daily sync: Using 1 day lookback"
+            fi
+          fi
 
       - name: Sanity check secrets
         run: |
@@ -43,6 +73,7 @@ jobs:
           RICS_API_TOKEN: ${{ secrets.RICS_API_TOKEN }}
           GDRIVE_CREDENTIALS: ${{ secrets.GDRIVE_CREDENTIALS }}
           GDRIVE_FOLDER_ID_RICS: ${{ secrets.GDRIVE_FOLDER_ID_RICS }}
+          RICS_LOOKBACK_DAYS: ${{ steps.sync_config.outputs.lookback_days }}
 
       - name: Sync to Optimizely
         run: python -m rics_connector.sync_rics_to_optimizely rics_customer_purchase_history_deduped.csv

@@ -15,8 +15,13 @@ MAX_WORKERS = 1  # Reduced to 1 to avoid rate limiting
 DEBUG_MODE = False
 
 ABSOLUTE_TIMEOUT_SECONDS = 120
-CUTOFF_DATE = datetime.utcnow() - timedelta(days=45)  # 45 days to capture September 30th data
+
+# Configurable lookback days via environment variable
+# Default to 1 day for daily syncs, but can be set to 45 for initial catch-up sync
+RICS_LOOKBACK_DAYS = int(os.getenv("RICS_LOOKBACK_DAYS", "1"))
+CUTOFF_DATE = datetime.utcnow() - timedelta(days=RICS_LOOKBACK_DAYS)
 log_message(f"🔍 DEBUG: Current UTC time: {datetime.utcnow()}")
+log_message(f"🔍 DEBUG: Lookback days: {RICS_LOOKBACK_DAYS}")
 log_message(f"🔍 DEBUG: Cutoff date: {CUTOFF_DATE}")
 
 purchase_history_fields = [
@@ -86,17 +91,31 @@ def save_sent_ticket_ids(ticket_ids):
 def fetch_pos_transactions_for_store(store_code=None,
                                      max_purchase_pages=None,
                                      debug_mode=False,
-                                     already_sent=None):
-    """Fetch purchase history from POS/GetPOSTransaction for a given store."""
+                                     already_sent=None,
+                                     lookback_days=None):
+    """
+    Fetch purchase history from POS/GetPOSTransaction for a given store.
+    
+    Args:
+        store_code: Store code to fetch data for
+        max_purchase_pages: Maximum pages to fetch (None = unlimited)
+        debug_mode: Enable debug logging
+        already_sent: Set of ticket IDs already processed (for deduplication)
+        lookback_days: Number of days to look back (defaults to RICS_LOOKBACK_DAYS env var or 1)
+    """
     start_time = datetime.utcnow()
     all_rows = []
     seen_keys = set()
     page_count, api_calls, skip, take = 0, 0, 0, 100
 
-    start_date = (datetime.utcnow() - timedelta(days=45)).strftime("%Y-%m-%dT%H:%M:%SZ")  # 45 days to capture September 30th data
+    # Use provided lookback_days or fall back to global config
+    if lookback_days is None:
+        lookback_days = RICS_LOOKBACK_DAYS
+    
+    start_date = (datetime.utcnow() - timedelta(days=lookback_days)).strftime("%Y-%m-%dT%H:%M:%SZ")
     end_date = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
     
-    log_message(f"🔍 DEBUG: API date range - Start: {start_date}, End: {end_date}")
+    log_message(f"🔍 Store {store_code}: API date range - Start: {start_date}, End: {end_date} ({lookback_days} days lookback)")
     log_message(f"🔍 DEBUG: Current year: {datetime.utcnow().year}")
 
     while True:
@@ -210,19 +229,22 @@ def fetch_pos_transactions_for_store(store_code=None,
                 for sale_header in sale_headers:
                     sale_dt = parse_dt(sale_header.get("TicketDateTime") or sale_header.get("SaleDateTime"))
                     
+                    # Calculate cutoff based on lookback_days parameter
+                    cutoff = datetime.utcnow() - timedelta(days=lookback_days)
+                    
                     if len(all_rows) < 3:  # Only log first 3 sales for debugging
-                        log_message(f"🔍 Sale {sale_header.get('TicketNumber')}: date={sale_dt}, cutoff={CUTOFF_DATE}")
+                        log_message(f"🔍 Sale {sale_header.get('TicketNumber')}: date={sale_dt}, cutoff={cutoff}")
                         log_message(f"🔍 Raw TicketDateTime: {sale_header.get('TicketDateTime')}")
                         log_message(f"🔍 Raw SaleDateTime: {sale_header.get('SaleDateTime')}")
-                        log_message(f"🔍 Date comparison: {sale_dt} < {CUTOFF_DATE} = {sale_dt < CUTOFF_DATE if sale_dt else 'N/A'}")
+                        log_message(f"🔍 Date comparison: {sale_dt} < {cutoff} = {sale_dt < cutoff if sale_dt else 'N/A'}")
                     
                     if not sale_dt:
                         log_message(f"⚠️ Skipping sale {sale_header.get('TicketNumber')} - could not parse date")
                         continue
                     
-                    if sale_dt < CUTOFF_DATE:
+                    if sale_dt < cutoff:
                         if len(all_rows) < 3:  # Only log first few for debugging
-                            log_message(f"⚠️ Skipping sale {sale_header.get('TicketNumber')} - too old ({sale_dt} < {CUTOFF_DATE})")
+                            log_message(f"⚠️ Skipping sale {sale_header.get('TicketNumber')} - too old ({sale_dt} < {cutoff})")
                         continue  # Skip old sales
 
                     # Get customer info if available
@@ -327,13 +349,30 @@ def fetch_pos_transactions_for_store(store_code=None,
     return all_rows
 
 
-def fetch_rics_data_with_purchase_history(max_purchase_pages=None, debug_mode=False, return_summary=False, no_dedup=False):
+def fetch_rics_data_with_purchase_history(max_purchase_pages=None, debug_mode=False, return_summary=False, no_dedup=False, lookback_days=None):
+    """
+    Fetch RICS purchase data from all stores.
+    
+    Args:
+        max_purchase_pages: Maximum pages per store (None = unlimited)
+        debug_mode: Enable debug logging
+        return_summary: Return summary string along with file path
+        no_dedup: Skip deduplication tracking
+        lookback_days: Number of days to look back (defaults to RICS_LOOKBACK_DAYS env var or 1)
+    """
     start_time = datetime.utcnow()
     timestamp = datetime.now().strftime("%m_%d_%Y_%H%M")
     filename = f"rics_customer_purchase_history_{timestamp}.csv"
     output_dir = os.path.join("optimizely_connector", "output")
     output_path = os.path.join(output_dir, filename)
     os.makedirs(output_dir, exist_ok=True)
+
+    # Use provided lookback_days or fall back to global config
+    if lookback_days is None:
+        lookback_days = RICS_LOOKBACK_DAYS
+    
+    log_message(f"📅 Fetching RICS data with {lookback_days} day(s) lookback")
+    log_message(f"📅 Cutoff date: {CUTOFF_DATE}")
 
     if no_dedup:
         log_message("🔧 No-dedup mode: Skipping deduplication")
@@ -344,6 +383,8 @@ def fetch_rics_data_with_purchase_history(max_purchase_pages=None, debug_mode=Fa
 
     all_rows = []
     STORE_CODES = [1, 2, 3, 4, 6, 7, 8, 9, 10, 11, 12, 21, 22, 98, 99]
+    
+    log_message(f"🏪 Processing {len(STORE_CODES)} stores: {STORE_CODES}")
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
         futures = {
@@ -352,10 +393,12 @@ def fetch_rics_data_with_purchase_history(max_purchase_pages=None, debug_mode=Fa
                 store_code=store_code,
                 max_purchase_pages=max_purchase_pages,
                 debug_mode=debug_mode,
-                already_sent=already_sent
+                already_sent=already_sent,
+                lookback_days=lookback_days
             ): store_code
             for store_code in STORE_CODES
         }
+        store_results = {}
         for future in concurrent.futures.as_completed(futures):
             try:
                 # Check if we've been running too long (10 minutes max)
@@ -363,10 +406,22 @@ def fetch_rics_data_with_purchase_history(max_purchase_pages=None, debug_mode=Fa
                     log_message(f"⏰ Hit 10-minute timeout, stopping processing")
                     break
                     
+                store_code = futures[future]
                 rows = future.result()
                 all_rows.extend(rows)
+                store_results[store_code] = len(rows)
+                log_message(f"✅ Store {store_code}: Fetched {len(rows)} rows")
             except Exception as exc:
-                log_message(f"❌ Error in thread for store {futures[future]}: {exc}")
+                store_code = futures[future]
+                log_message(f"❌ Error in thread for store {store_code}: {exc}")
+                store_results[store_code] = 0
+        
+        # Log summary of all stores
+        log_message(f"\n📊 Store Summary ({lookback_days} day lookback):")
+        for store_code in STORE_CODES:
+            row_count = store_results.get(store_code, 0)
+            status = "✅" if row_count > 0 else "⚠️"
+            log_message(f"   {status} Store {store_code}: {row_count} rows")
 
     # Debug: Log sample data before writing CSV
     if all_rows:

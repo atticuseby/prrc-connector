@@ -337,14 +337,34 @@ def fetch_pos_transactions_for_store(store_code=None,
             log_message(f"❌ Error fetching POS transactions for Store {store_code}: {e}")
             break
 
-    log_message(f"📦 Store {store_code}: Collected {len(all_rows)} new rows "
-                f"({page_count} pages, {api_calls} calls)")
-    
-    # Debug: Log sample data from this store
+    # Find the most recent and oldest dates in the collected rows
     if all_rows:
-        log_message(f"🔍 DEBUG: Store {store_code} sample row: {all_rows[0]}")
+        dates = []
+        for row in all_rows:
+            dt = parse_dt(row.get("TicketDateTime") or row.get("SaleDateTime"))
+            if dt:
+                dates.append(dt)
+        
+        if dates:
+            oldest_date = min(dates)
+            newest_date = max(dates)
+            log_message(f"📦 Store {store_code}: Collected {len(all_rows)} new rows "
+                       f"({page_count} pages, {api_calls} calls)")
+            log_message(f"📅 Store {store_code}: Date range in data - Oldest: {oldest_date}, Newest: {newest_date}")
+            log_message(f"📅 Store {store_code}: Query range was - Start: {start_date}, End: {end_date}")
+            
+            # Calculate how many days old the newest data is
+            days_old = (datetime.utcnow() - newest_date).days
+            if days_old > 7:
+                log_message(f"⚠️  WARNING: Store {store_code} newest data is {days_old} days old! "
+                           f"API may have a delay in data availability.")
+        else:
+            log_message(f"📦 Store {store_code}: Collected {len(all_rows)} new rows "
+                       f"({page_count} pages, {api_calls} calls)")
+            log_message(f"⚠️  WARNING: Store {store_code} rows have no parseable dates!")
     else:
         log_message(f"⚠️ WARNING: Store {store_code} returned no rows!")
+        log_message(f"📅 Store {store_code}: Query range was - Start: {start_date}, End: {end_date}")
     
     return all_rows
 
@@ -422,6 +442,26 @@ def fetch_rics_data_with_purchase_history(max_purchase_pages=None, debug_mode=Fa
             row_count = store_results.get(store_code, 0)
             status = "✅" if row_count > 0 else "⚠️"
             log_message(f"   {status} Store {store_code}: {row_count} rows")
+        
+        # Find overall date range across all stores
+        if all_rows:
+            dates = []
+            for row in all_rows:
+                dt = parse_dt(row.get("TicketDateTime") or row.get("SaleDateTime"))
+                if dt:
+                    dates.append(dt)
+            
+            if dates:
+                oldest_date = min(dates)
+                newest_date = max(dates)
+                days_old = (datetime.utcnow() - newest_date).days
+                log_message(f"\n📅 Overall Data Date Range:")
+                log_message(f"   Oldest sale: {oldest_date}")
+                log_message(f"   Newest sale: {newest_date}")
+                log_message(f"   Newest data is {days_old} days old")
+                if days_old > 7:
+                    log_message(f"   ⚠️  WARNING: RICS API appears to have a {days_old}-day delay in data availability!")
+                    log_message(f"   This is likely an API limitation, not a code issue.")
 
     # Debug: Log sample data before writing CSV
     if all_rows:

@@ -40,15 +40,14 @@ def main():
     log_message(f"📅 Using {lookback_days} day(s) lookback for data fetch")
     
     # Test API endpoint (use 45 days for test to ensure API is working)
+    # Per RICS support: use date-only format (YYYY-MM-DD) and only BatchStartDate/BatchEndDate
     test_lookback = max(lookback_days, 45)  # Use at least 45 days for test
-    start_date = (datetime.utcnow() - timedelta(days=test_lookback)).strftime("%Y-%m-%dT%H:%M:%SZ")
-    end_date = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+    start_date = (datetime.utcnow() - timedelta(days=test_lookback)).strftime("%Y-%m-%d")
+    end_date = datetime.utcnow().strftime("%Y-%m-%d")
     
     test_payload = {
         "Take": 1,
         "Skip": 0,
-        "TicketDateStart": start_date,
-        "TicketDateEnd": end_date,
         "BatchStartDate": start_date,
         "BatchEndDate": end_date,
         "StoreCode": "1"

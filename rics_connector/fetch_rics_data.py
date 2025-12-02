@@ -112,8 +112,10 @@ def fetch_pos_transactions_for_store(store_code=None,
     if lookback_days is None:
         lookback_days = RICS_LOOKBACK_DAYS
     
-    start_date = (datetime.utcnow() - timedelta(days=lookback_days)).strftime("%Y-%m-%dT%H:%M:%SZ")
-    end_date = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+    # Use date-only format (YYYY-MM-DD) as recommended by RICS support
+    # Only use BatchStartDate and BatchEndDate, not TicketDateStart/TicketDateEnd
+    start_date = (datetime.utcnow() - timedelta(days=lookback_days)).strftime("%Y-%m-%d")
+    end_date = datetime.utcnow().strftime("%Y-%m-%d")
     
     log_message(f"🔍 Store {store_code}: API date range - Start: {start_date}, End: {end_date} ({lookback_days} days lookback)")
     log_message(f"🔍 DEBUG: Current year: {datetime.utcnow().year}")
@@ -129,11 +131,10 @@ def fetch_pos_transactions_for_store(store_code=None,
             log_message(f"⏰ Store {store_code}: Hit 5-minute timeout")
             break
             
+        # Per RICS support: use only BatchStartDate and BatchEndDate with date-only format
         payload = {
             "Take": take,
             "Skip": skip,
-            "TicketDateStart": start_date,
-            "TicketDateEnd": end_date,
             "BatchStartDate": start_date,
             "BatchEndDate": end_date,
             "StoreCode": str(store_code)

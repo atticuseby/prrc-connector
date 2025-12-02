@@ -83,6 +83,7 @@ jobs:
           DRY_RUN: ${{ secrets.DRY_RUN }}
           RICS_TEST_MODE: ${{ secrets.RICS_TEST_MODE || 'false' }}
           RICS_TEST_EMAIL: ${{ secrets.RICS_TEST_EMAIL || '' }}
+          RICS_TEST_NAME: ${{ secrets.RICS_TEST_NAME || '' }}
 
       - name: Sync to Meta (Offline Events)
         run: python scripts/sync_rics_to_meta.py rics_customer_purchase_history_deduped.csv

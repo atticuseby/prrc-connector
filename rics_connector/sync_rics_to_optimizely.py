@@ -50,6 +50,7 @@ OPTIMIZELY_EVENT_NAME = "purchase"  # Event type for purchases (standard Optimiz
 # TEST MODE configuration - for fast debugging (processes only 5 rows)
 RICS_TEST_MODE = os.getenv("RICS_TEST_MODE", "false").lower() == "true"
 RICS_TEST_EMAIL = os.getenv("RICS_TEST_EMAIL", "").strip()
+RICS_TEST_NAME = os.getenv("RICS_TEST_NAME", "").strip()  # Filter by customer name (case-insensitive partial match)
 RICS_TEST_MAX_ROWS = 5  # Process only 5 rows in test mode
 
 # Event deduplication
@@ -181,6 +182,8 @@ def process_rics_purchases(csv_path: str):
     print(f"TEST_MODE: {RICS_TEST_MODE}")
     if RICS_TEST_MODE:
         print(f"TEST_EMAIL: {RICS_TEST_EMAIL}")
+        if RICS_TEST_NAME:
+            print(f"TEST_NAME: {RICS_TEST_NAME} (filtering by name)")
         print(f"TEST_MAX_ROWS: {RICS_TEST_MAX_ROWS}")
         print("⚠️  TEST MODE: Only processing first 5 rows and overriding emails with TEST_EMAIL")
     print(f"CSV file: {csv_path}")
@@ -226,6 +229,8 @@ def process_rics_purchases(csv_path: str):
             raise RuntimeError("RICS_TEST_MODE is true but RICS_TEST_EMAIL is not set")
         print(f"🧪 TEST MODE: Only processing first {RICS_TEST_MAX_ROWS} rows")
         print(f"🧪 TEST MODE: Overriding all emails with {RICS_TEST_EMAIL}")
+        if RICS_TEST_NAME:
+            print(f"🧪 TEST MODE: Filtering by customer name containing '{RICS_TEST_NAME}'")
         print()
     
     # Process CSV
@@ -254,6 +259,13 @@ def process_rics_purchases(csv_path: str):
                 # Extract customer info
                 original_email = _normalize_email(row.get("CustomerEmail", ""))
                 phone = row.get("CustomerPhone", "").strip()
+                customer_name = row.get("CustomerName", "").strip()
+                
+                # TEST MODE: Filter by name if specified
+                if RICS_TEST_MODE and RICS_TEST_NAME:
+                    if not customer_name or RICS_TEST_NAME.lower() not in customer_name.lower():
+                        skipped_rows += 1
+                        continue  # Skip rows that don't match the name filter
                 
                 # TEST MODE: Override email with test email
                 if RICS_TEST_MODE:
@@ -263,6 +275,8 @@ def process_rics_purchases(csv_path: str):
                     email = RICS_TEST_EMAIL
                     if rows_processed < 3:
                         print(f"\n🧪 TEST MODE: Overriding email {original_email} → {email}")
+                        if RICS_TEST_NAME:
+                            print(f"🧪 TEST MODE: Matched customer name: {customer_name}")
                 else:
                     email = original_email
                 
@@ -411,7 +425,10 @@ def process_rics_purchases(csv_path: str):
     print("SUMMARY")
     print("=" * 60)
     if RICS_TEST_MODE:
-        print(f"⚠️  TEST MODE was enabled - only processed {rows_processed} rows with email override to {RICS_TEST_EMAIL}")
+        test_info = f"only processed {rows_processed} rows with email override to {RICS_TEST_EMAIL}"
+        if RICS_TEST_NAME:
+            test_info += f" (filtered by name: {RICS_TEST_NAME})"
+        print(f"⚠️  TEST MODE was enabled - {test_info}")
     print(f"Total rows: {total_rows}")
     print(f"Valid rows: {valid_rows}")
     print(f"Skipped rows: {skipped_rows}")

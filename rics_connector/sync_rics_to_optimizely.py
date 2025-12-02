@@ -263,9 +263,15 @@ def process_rics_purchases(csv_path: str):
                 
                 # TEST MODE: Filter by name if specified
                 if RICS_TEST_MODE and RICS_TEST_NAME:
+                    # Debug: Show first few names being checked
+                    if total_rows <= 10:
+                        print(f"🔍 Checking name: '{customer_name}' against filter: '{RICS_TEST_NAME}'")
                     if not customer_name or RICS_TEST_NAME.lower() not in customer_name.lower():
                         skipped_rows += 1
                         continue  # Skip rows that don't match the name filter
+                    # If we get here, we found a match
+                    if total_rows <= 10:
+                        print(f"✅ MATCH FOUND: '{customer_name}' contains '{RICS_TEST_NAME}'")
                 
                 # TEST MODE: Override email with test email
                 if RICS_TEST_MODE:

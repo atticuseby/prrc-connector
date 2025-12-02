@@ -45,7 +45,7 @@ from runsignup_connector.optimizely_client import (
 # Set DRY_RUN="false" in GitHub Secrets to actually post data
 DRY_RUN = os.getenv("DRY_RUN", "true").lower() == "true"
 OPTIMIZELY_LIST_ID_RICS = os.getenv("OPTIMIZELY_LIST_ID_RICS", "").strip()
-OPTIMIZELY_EVENT_NAME = "rics_purchase"  # Event type for purchases
+OPTIMIZELY_EVENT_NAME = "purchase"  # Event type for purchases (standard Optimizely purchase event)
 
 # TEST MODE configuration - for fast debugging (processes only 5 rows)
 RICS_TEST_MODE = os.getenv("RICS_TEST_MODE", "false").lower() == "true"

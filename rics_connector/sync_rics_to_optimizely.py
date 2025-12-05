@@ -45,7 +45,7 @@ from runsignup_connector.optimizely_client import (
 # Set DRY_RUN="false" in GitHub Secrets to actually post data
 DRY_RUN = os.getenv("DRY_RUN", "true").lower() == "true"
 OPTIMIZELY_LIST_ID_RICS = os.getenv("OPTIMIZELY_LIST_ID_RICS", "").strip()
-OPTIMIZELY_EVENT_NAME = "rics_purchase"  # Event type for RICS purchases (shows as pink/red purchase event in Optimizely)
+OPTIMIZELY_EVENT_NAME = "purchase"  # Event type for purchases (standard Optimizely purchase event)
 
 # TEST MODE configuration - for fast debugging (processes only 5 rows)
 RICS_TEST_MODE = os.getenv("RICS_TEST_MODE", "false").lower() == "true"
@@ -319,10 +319,7 @@ def process_rics_purchases(csv_path: str):
                     amount_paid_float = 0.0
                 
                 event_props = {
-                    "order_id": ticket_number,  # Required for Optimizely to recognize as purchase
-                    "value": amount_paid_float,  # Required for Optimizely to recognize as purchase
-                    "currency": "USD",  # Currency for purchase value
-                    "ticket_number": ticket_number,  # Keep for backward compatibility
+                    "ticket_number": ticket_number,
                     "store_code": row.get("StoreCode", "").strip(),
                     "terminal_id": row.get("TerminalId", "").strip(),
                     "cashier": row.get("Cashier", "").strip(),
@@ -335,8 +332,14 @@ def process_rics_purchases(csv_path: str):
                     "supplier_name": row.get("SupplierName", "").strip(),
                 }
                 
-                # Remove empty values (but keep order_id and value even if 0)
-                event_props = {k: v for k, v in event_props.items() if v or k in ("order_id", "value")}
+                # Add order_id and value only if ticket_number is not empty (required for Optimizely purchase recognition)
+                if ticket_number:
+                    event_props["order_id"] = ticket_number
+                    event_props["value"] = amount_paid_float
+                    event_props["currency"] = "USD"
+                
+                # Remove empty values
+                event_props = {k: v for k, v in event_props.items() if v}
                 
                 valid_rows += 1
                 rows_processed += 1

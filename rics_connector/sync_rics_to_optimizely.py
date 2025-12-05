@@ -44,7 +44,9 @@ from runsignup_connector.optimizely_client import (
 # IMPORTANT: DRY_RUN defaults to "true" for safety
 # Set DRY_RUN="false" in GitHub Secrets to actually post data
 DRY_RUN = os.getenv("DRY_RUN", "true").lower() == "true"
-OPTIMIZELY_LIST_ID_RICS = os.getenv("OPTIMIZELY_LIST_ID_RICS", "").strip()
+# List ID for "Base - Store Purchases - Automated" email list
+# Can be overridden via OPTIMIZELY_LIST_ID_RICS env var, but defaults to base_store_purchases_only
+OPTIMIZELY_LIST_ID_RICS = os.getenv("OPTIMIZELY_LIST_ID_RICS", "base_store_purchases_only").strip()
 OPTIMIZELY_EVENT_NAME = "purchase"  # Event type for purchases (standard Optimizely purchase event)
 
 # TEST MODE configuration - for fast debugging (processes only 5 rows)
@@ -194,9 +196,9 @@ def process_rics_purchases(csv_path: str):
         raise RuntimeError("Missing required env: OPTIMIZELY_API_TOKEN")
     
     if not OPTIMIZELY_LIST_ID_RICS:
-        print("⚠️ OPTIMIZELY_LIST_ID_RICS not set - customers will not be subscribed to list")
-    else:
-        print(f"📋 Subscribing customers to list: {OPTIMIZELY_LIST_ID_RICS}")
+        raise RuntimeError("OPTIMIZELY_LIST_ID_RICS must be set - required for subscribing store purchase customers")
+    print(f"📋 Subscribing customers to list: {OPTIMIZELY_LIST_ID_RICS}")
+    print("   (Respects existing unsubscribes - will not re-subscribe if previously unsubscribed)")
     print()
     
     # Check if CSV file exists
@@ -365,23 +367,26 @@ def process_rics_purchases(csv_path: str):
                     continue
                 
                 # Upsert profile with idempotent subscription logic
-                if OPTIMIZELY_LIST_ID_RICS:
-                    try:
-                        action, status_msg, was_subscribed = upsert_profile_with_subscription(
-                            email,
-                            profile_attrs,
-                            OPTIMIZELY_LIST_ID_RICS
-                        )
-                        
-                        posted_profiles += 1
-                        if was_subscribed:
-                            subscribed_to_lists += 1
-                        
-                        if total_rows <= 5:
-                            print(f"\n📝 Processing row {row_idx} (email: {email}):")
-                            print(f"   Profile: {action} - {status_msg}")
-                    except Exception as e:
-                        print(f"❌ Error upserting profile for {email} (row {row_idx}): {e}")
+                # This will:
+                # - Create profile if it doesn't exist
+                # - Subscribe to base_store_purchases_only list if not already subscribed
+                # - Respect existing unsubscribes (won't re-subscribe if previously unsubscribed)
+                try:
+                    action, status_msg, was_subscribed = upsert_profile_with_subscription(
+                        email,
+                        profile_attrs,
+                        OPTIMIZELY_LIST_ID_RICS
+                    )
+                    
+                    posted_profiles += 1
+                    if was_subscribed:
+                        subscribed_to_lists += 1
+                    
+                    if total_rows <= 5:
+                        print(f"\n📝 Processing row {row_idx} (email: {email}):")
+                        print(f"   Profile: {action} - {status_msg}")
+                except Exception as e:
+                    print(f"❌ Error upserting profile for {email} (row {row_idx}): {e}")
                 
                 # Build purchase event payload for batch
                 event_payload = {

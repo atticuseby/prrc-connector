@@ -45,7 +45,7 @@ from runsignup_connector.optimizely_client import (
 # Set DRY_RUN="false" in GitHub Secrets to actually post data
 DRY_RUN = os.getenv("DRY_RUN", "true").lower() == "true"
 OPTIMIZELY_LIST_ID_RICS = os.getenv("OPTIMIZELY_LIST_ID_RICS", "").strip()
-OPTIMIZELY_EVENT_NAME = "purchase"  # Event type for purchases (standard Optimizely purchase event)
+OPTIMIZELY_EVENT_NAME = "rics_purchase"  # Event type for RICS purchases (shows as pink/red purchase event in Optimizely)
 
 # TEST MODE configuration - for fast debugging (processes only 5 rows)
 RICS_TEST_MODE = os.getenv("RICS_TEST_MODE", "false").lower() == "true"
@@ -311,22 +311,32 @@ def process_rics_purchases(csv_path: str):
                 profile_attrs = {k: v for k, v in profile_attrs.items() if v}
                 
                 # Build purchase event properties
+                # Include order_id and value for Optimizely to recognize as purchase event
+                amount_paid_str = row.get("AmountPaid", "").strip()
+                try:
+                    amount_paid_float = float(amount_paid_str) if amount_paid_str else 0.0
+                except (ValueError, TypeError):
+                    amount_paid_float = 0.0
+                
                 event_props = {
-                    "ticket_number": ticket_number,
+                    "order_id": ticket_number,  # Required for Optimizely to recognize as purchase
+                    "value": amount_paid_float,  # Required for Optimizely to recognize as purchase
+                    "currency": "USD",  # Currency for purchase value
+                    "ticket_number": ticket_number,  # Keep for backward compatibility
                     "store_code": row.get("StoreCode", "").strip(),
                     "terminal_id": row.get("TerminalId", "").strip(),
                     "cashier": row.get("Cashier", "").strip(),
                     "sku": row.get("Sku", "").strip(),
                     "description": row.get("Description", "").strip(),
                     "quantity": row.get("Quantity", "").strip(),
-                    "amount_paid": row.get("AmountPaid", "").strip(),
+                    "amount_paid": amount_paid_str,  # Keep original string value
                     "discount": row.get("Discount", "").strip(),
                     "department": row.get("Department", "").strip(),
                     "supplier_name": row.get("SupplierName", "").strip(),
                 }
                 
-                # Remove empty values
-                event_props = {k: v for k, v in event_props.items() if v}
+                # Remove empty values (but keep order_id and value even if 0)
+                event_props = {k: v for k, v in event_props.items() if v or k in ("order_id", "value")}
                 
                 valid_rows += 1
                 rows_processed += 1

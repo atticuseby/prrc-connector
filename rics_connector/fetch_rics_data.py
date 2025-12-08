@@ -112,11 +112,11 @@ def fetch_pos_transactions_for_store(store_code=None,
     if lookback_days is None:
         lookback_days = RICS_LOOKBACK_DAYS
     
-    # Use date-only format (YYYY-MM-DD) as recommended by RICS support
+    # Use date-only format (YYYY-MM-DD) as recommended by RICS support (Jimmy)
     # Only use BatchStartDate and BatchEndDate, not TicketDateStart/TicketDateEnd
-    # Add 1 day to end_date to ensure we get today's data (API may not return same-day data immediately)
+    # Use today's date for end_date (no time, no future dates)
     start_date = (datetime.utcnow() - timedelta(days=lookback_days)).strftime("%Y-%m-%d")
-    end_date = (datetime.utcnow() + timedelta(days=1)).strftime("%Y-%m-%d")
+    end_date = datetime.utcnow().strftime("%Y-%m-%d")
     
     log_message(f"🔍 Store {store_code}: API date range - Start: {start_date}, End: {end_date} ({lookback_days} days lookback)")
     log_message(f"🔍 DEBUG: Current year: {datetime.utcnow().year}")
@@ -420,8 +420,9 @@ def fetch_rics_data_with_purchase_history(max_purchase_pages=None, debug_mode=Fa
     
     log_message(f"📅 Fetching RICS data with {lookback_days} day(s) lookback")
     log_message(f"📅 Cutoff date: {CUTOFF_DATE}")
-    log_message(f"📅 Query date range: {(datetime.utcnow() - timedelta(days=lookback_days)).strftime('%Y-%m-%d')} to {(datetime.utcnow() + timedelta(days=1)).strftime('%Y-%m-%d')}")
+    log_message(f"📅 Query date range: {(datetime.utcnow() - timedelta(days=lookback_days)).strftime('%Y-%m-%d')} to {datetime.utcnow().strftime('%Y-%m-%d')}")
     log_message(f"📅 Current UTC time: {datetime.utcnow()}")
+    log_message(f"📅 Using date-only format (YYYY-MM-DD) for BatchStartDate/BatchEndDate per RICS support")
 
     if no_dedup:
         log_message("🔧 No-dedup mode: Skipping deduplication")

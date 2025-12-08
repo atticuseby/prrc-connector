@@ -112,13 +112,21 @@ def fetch_pos_transactions_for_store(store_code=None,
     if lookback_days is None:
         lookback_days = RICS_LOOKBACK_DAYS
     
-    # Use date-only format (YYYY-MM-DD) as recommended by RICS support (Jimmy)
-    # Only use BatchStartDate and BatchEndDate, not TicketDateStart/TicketDateEnd
-    # Use today's date for end_date (no time, no future dates)
-    start_date = (datetime.utcnow() - timedelta(days=lookback_days)).strftime("%Y-%m-%d")
-    end_date = datetime.utcnow().strftime("%Y-%m-%d")
+    # Use ISO 8601 format with time (YYYY-MM-DDTHH:MM:SSZ) for both Batch and Ticket date fields
+    # Per API docs: use both BatchStartDate/BatchEndDate AND TicketDateStart/TicketDateEnd
+    start_datetime = datetime.utcnow() - timedelta(days=lookback_days)
+    end_datetime = datetime.utcnow()
     
-    log_message(f"🔍 Store {store_code}: API date range - Start: {start_date}, End: {end_date} ({lookback_days} days lookback)")
+    # Format as ISO 8601 with time (start of day for start, end of day for end)
+    start_date = start_datetime.strftime("%Y-%m-%dT00:00:00Z")
+    end_date = end_datetime.strftime("%Y-%m-%dT23:59:59Z")
+    
+    # Also create date-only versions for Batch dates (try both formats)
+    start_date_only = start_datetime.strftime("%Y-%m-%d")
+    end_date_only = end_datetime.strftime("%Y-%m-%d")
+    
+    log_message(f"🔍 Store {store_code}: API date range - Start: {start_date} / {start_date_only}, End: {end_date} / {end_date_only} ({lookback_days} days lookback)")
+    log_message(f"🔍 DEBUG: Using both BatchStartDate/BatchEndDate (date-only) AND TicketDateStart/TicketDateEnd (ISO 8601)")
     log_message(f"🔍 DEBUG: Current year: {datetime.utcnow().year}")
 
     while True:
@@ -132,12 +140,15 @@ def fetch_pos_transactions_for_store(store_code=None,
             log_message(f"⏰ Store {store_code}: Hit 5-minute timeout")
             break
             
-        # Per RICS support: use only BatchStartDate and BatchEndDate with date-only format
+        # Use both BatchStartDate/BatchEndDate AND TicketDateStart/TicketDateEnd
+        # Try date-only format for Batch dates, ISO 8601 with time for Ticket dates
         payload = {
             "Take": take,
             "Skip": skip,
-            "BatchStartDate": start_date,
-            "BatchEndDate": end_date,
+            "BatchStartDate": start_date_only,  # Date-only format
+            "BatchEndDate": end_date_only,        # Date-only format
+            "TicketDateStart": start_date,        # ISO 8601 with time
+            "TicketDateEnd": end_date,            # ISO 8601 with time
             "StoreCode": str(store_code)
         }
 
@@ -195,7 +206,7 @@ def fetch_pos_transactions_for_store(store_code=None,
                     page_oldest = min(page_dates)
                     page_newest = max(page_dates)
                     log_message(f"📅 Store {store_code} page 1 date range: {page_oldest} to {page_newest}")
-                    log_message(f"📅 Store {store_code} requested range: {start_date} to {end_date}")
+                    log_message(f"📅 Store {store_code} requested range: {start_date_only} to {end_date_only} (Batch) / {start_date} to {end_date} (Ticket)")
                     if page_newest < (datetime.utcnow() - timedelta(days=7)):
                         days_behind = (datetime.utcnow() - page_newest).days
                         log_message(f"⚠️  WARNING: Store {store_code} newest data is {days_behind} days old!")
@@ -378,7 +389,7 @@ def fetch_pos_transactions_for_store(store_code=None,
             log_message(f"📦 Store {store_code}: Collected {len(all_rows)} new rows "
                        f"({page_count} pages, {api_calls} calls)")
             log_message(f"📅 Store {store_code}: Date range in data - Oldest: {oldest_date}, Newest: {newest_date}")
-            log_message(f"📅 Store {store_code}: Query range was - Start: {start_date}, End: {end_date}")
+            log_message(f"📅 Store {store_code}: Query range was - Start: {start_date_only} to {end_date_only} (Batch) / {start_date} to {end_date} (Ticket)")
             
             # Calculate how many days old the newest data is
             days_old = (datetime.utcnow() - newest_date).days

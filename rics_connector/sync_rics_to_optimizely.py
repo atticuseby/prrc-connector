@@ -53,6 +53,7 @@ OPTIMIZELY_EVENT_NAME = "purchase"  # Event type for purchases (standard Optimiz
 RICS_TEST_MODE = os.getenv("RICS_TEST_MODE", "false").lower() == "true"
 RICS_TEST_EMAIL = os.getenv("RICS_TEST_EMAIL", "").strip()
 RICS_TEST_NAME = os.getenv("RICS_TEST_NAME", "").strip()  # Filter by customer name (case-insensitive partial match)
+RICS_TEST_EMAIL_FILTER = os.getenv("RICS_TEST_EMAIL_FILTER", "").strip()  # Filter by customer email (more reliable than name)
 RICS_TEST_MAX_ROWS = 5  # Process only 5 rows in test mode
 
 # Event deduplication
@@ -184,7 +185,9 @@ def process_rics_purchases(csv_path: str):
     print(f"TEST_MODE: {RICS_TEST_MODE}")
     if RICS_TEST_MODE:
         print(f"TEST_EMAIL: {RICS_TEST_EMAIL}")
-        if RICS_TEST_NAME:
+        if RICS_TEST_EMAIL_FILTER:
+            print(f"TEST_EMAIL_FILTER: {RICS_TEST_EMAIL_FILTER} (filtering by email)")
+        elif RICS_TEST_NAME:
             print(f"TEST_NAME: {RICS_TEST_NAME} (filtering by name)")
         print(f"TEST_MAX_ROWS: {RICS_TEST_MAX_ROWS}")
         print("⚠️  TEST MODE: Only processing first 5 rows and overriding emails with TEST_EMAIL")
@@ -231,7 +234,9 @@ def process_rics_purchases(csv_path: str):
             raise RuntimeError("RICS_TEST_MODE is true but RICS_TEST_EMAIL is not set")
         print(f"🧪 TEST MODE: Only processing first {RICS_TEST_MAX_ROWS} rows")
         print(f"🧪 TEST MODE: Overriding all emails with {RICS_TEST_EMAIL}")
-        if RICS_TEST_NAME:
+        if RICS_TEST_EMAIL_FILTER:
+            print(f"🧪 TEST MODE: Filtering by customer email matching '{RICS_TEST_EMAIL_FILTER}'")
+        elif RICS_TEST_NAME:
             print(f"🧪 TEST MODE: Filtering by customer name containing '{RICS_TEST_NAME}'")
         print()
     
@@ -263,8 +268,20 @@ def process_rics_purchases(csv_path: str):
                 phone = row.get("CustomerPhone", "").strip()
                 customer_name = row.get("CustomerName", "").strip()
                 
-                # TEST MODE: Filter by name if specified
-                if RICS_TEST_MODE and RICS_TEST_NAME:
+                # TEST MODE: Filter by email if specified (more reliable than name)
+                if RICS_TEST_MODE and RICS_TEST_EMAIL_FILTER:
+                    # Debug: Show first few emails being checked
+                    if total_rows <= 10:
+                        print(f"🔍 Checking email: '{original_email}' against filter: '{RICS_TEST_EMAIL_FILTER}'")
+                    if not original_email or original_email.lower() != RICS_TEST_EMAIL_FILTER.lower():
+                        skipped_rows += 1
+                        continue  # Skip rows that don't match the email filter
+                    # If we get here, we found a match
+                    if total_rows <= 10:
+                        print(f"✅ MATCH FOUND: '{original_email}' matches '{RICS_TEST_EMAIL_FILTER}'")
+                
+                # TEST MODE: Filter by name if specified (only if email filter not set)
+                elif RICS_TEST_MODE and RICS_TEST_NAME:
                     # Debug: Show first few names being checked
                     if total_rows <= 10:
                         print(f"🔍 Checking name: '{customer_name}' against filter: '{RICS_TEST_NAME}'")
@@ -283,7 +300,9 @@ def process_rics_purchases(csv_path: str):
                     email = RICS_TEST_EMAIL
                     if rows_processed < 3:
                         print(f"\n🧪 TEST MODE: Overriding email {original_email} → {email}")
-                        if RICS_TEST_NAME:
+                        if RICS_TEST_EMAIL_FILTER:
+                            print(f"🧪 TEST MODE: Matched customer email: {original_email}")
+                        elif RICS_TEST_NAME:
                             print(f"🧪 TEST MODE: Matched customer name: {customer_name}")
                 else:
                     email = original_email
@@ -450,7 +469,9 @@ def process_rics_purchases(csv_path: str):
     print("=" * 60)
     if RICS_TEST_MODE:
         test_info = f"only processed {rows_processed} rows with email override to {RICS_TEST_EMAIL}"
-        if RICS_TEST_NAME:
+        if RICS_TEST_EMAIL_FILTER:
+            test_info += f" (filtered by email: {RICS_TEST_EMAIL_FILTER})"
+        elif RICS_TEST_NAME:
             test_info += f" (filtered by name: {RICS_TEST_NAME})"
         print(f"⚠️  TEST MODE was enabled - {test_info}")
     print(f"Total rows: {total_rows}")

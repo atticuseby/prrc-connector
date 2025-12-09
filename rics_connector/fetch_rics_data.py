@@ -114,10 +114,9 @@ def fetch_pos_transactions_for_store(store_code=None,
     
     # Use ISO 8601 format with time (YYYY-MM-DDTHH:MM:SSZ) for both Batch and Ticket date fields
     # Per API docs: use both BatchStartDate/BatchEndDate AND TicketDateStart/TicketDateEnd
-    # For daily sync (lookback_days=1), ensure we get last 24 hours, not just "today"
-    # Subtract 1 hour buffer to ensure we don't miss data due to timezone/processing delays
-    start_datetime = datetime.utcnow() - timedelta(days=lookback_days, hours=1)
-    end_datetime = datetime.utcnow() + timedelta(hours=1)  # Add 1 hour buffer for same-day data
+    # Calculate date range: lookback_days ago to now
+    start_datetime = datetime.utcnow() - timedelta(days=lookback_days)
+    end_datetime = datetime.utcnow()
     
     # Format as ISO 8601 with time (start of day for start, end of day for end)
     start_date = start_datetime.strftime("%Y-%m-%dT00:00:00Z")
@@ -126,6 +125,12 @@ def fetch_pos_transactions_for_store(store_code=None,
     # Also create date-only versions for Batch dates (try both formats)
     start_date_only = start_datetime.strftime("%Y-%m-%d")
     end_date_only = end_datetime.strftime("%Y-%m-%d")
+    
+    log_message(f"🔍 DEBUG: Date range calculation:")
+    log_message(f"   lookback_days: {lookback_days}")
+    log_message(f"   start_datetime: {start_datetime} (UTC)")
+    log_message(f"   end_datetime: {end_datetime} (UTC)")
+    log_message(f"   API will query: {start_date} to {end_date}")
     
     log_message(f"🔍 Store {store_code}: API date range - Start: {start_date} / {start_date_only}, End: {end_date} / {end_date_only} ({lookback_days} days lookback)")
     log_message(f"🔍 DEBUG: Using both BatchStartDate/BatchEndDate (date-only) AND TicketDateStart/TicketDateEnd (ISO 8601)")
@@ -265,27 +270,21 @@ def fetch_pos_transactions_for_store(store_code=None,
                 for sale_header in sale_headers:
                     sale_dt = parse_dt(sale_header.get("TicketDateTime") or sale_header.get("SaleDateTime"))
                     
-                    # Calculate cutoff based on lookback_days parameter
-                    # Use a slightly more lenient cutoff (subtract 1 day) to account for timezone differences
-                    # and ensure we don't accidentally filter out valid data
-                    cutoff = datetime.utcnow() - timedelta(days=lookback_days + 1)
-                    
-                    if len(all_rows) < 3:  # Only log first 3 sales for debugging
-                        log_message(f"🔍 Sale {sale_header.get('TicketNumber')}: date={sale_dt}, cutoff={cutoff}")
-                        log_message(f"🔍 Raw TicketDateTime: {sale_header.get('TicketDateTime')}")
-                        log_message(f"🔍 Raw SaleDateTime: {sale_header.get('SaleDateTime')}")
-                        log_message(f"🔍 Date comparison: {sale_dt} < {cutoff} = {sale_dt < cutoff if sale_dt else 'N/A'}")
+                    # REMOVED: Post-fetch date filtering
+                    # The API query date range (BatchStartDate/BatchEndDate and TicketDateStart/TicketDateEnd)
+                    # should be the ONLY filter. If the API returns it, we use it.
+                    # This prevents double-filtering that could exclude valid data.
                     
                     if not sale_dt:
-                        log_message(f"⚠️ Skipping sale {sale_header.get('TicketNumber')} - could not parse date")
+                        if len(all_rows) < 10:  # Log first few missing dates
+                            log_message(f"⚠️ Skipping sale {sale_header.get('TicketNumber')} - could not parse date")
                         continue
                     
-                    # Only filter out sales that are clearly too old (more than lookback_days + 1 day)
-                    # This gives us a buffer for timezone differences while still filtering very old data
-                    if sale_dt < cutoff:
-                        if len(all_rows) < 3:  # Only log first few for debugging
-                            log_message(f"⚠️ Skipping sale {sale_header.get('TicketNumber')} - too old ({sale_dt} < {cutoff})")
-                        continue  # Skip old sales
+                    # Log first few dates for debugging
+                    if len(all_rows) < 3:
+                        log_message(f"🔍 Sale {sale_header.get('TicketNumber')}: date={sale_dt}")
+                        log_message(f"🔍 Raw TicketDateTime: {sale_header.get('TicketDateTime')}")
+                        log_message(f"🔍 Raw SaleDateTime: {sale_header.get('SaleDateTime')}")
 
                     # Get customer info if available
                     customer_info = sale_header.get("Customer", {})

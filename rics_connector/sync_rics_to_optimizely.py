@@ -378,15 +378,16 @@ def process_rics_purchases(csv_path: str):
                 valid_rows += 1
                 rows_processed += 1
                 
-                # ⚡ OPTIMIZATION: Check event deduplication EARLY (before any API calls)
+                # ⚡ DEDUPLICATION: Check if we already synced this purchase event to this profile
+                # Event key = email + ticket_number + sku + timestamp (unique per purchase event per customer)
                 event_key = _generate_event_key(email, ticket_number, event_props.get("sku", ""), purchase_ts)
                 is_duplicate = event_key in processed_event_keys
                 
                 if is_duplicate:
                     skipped_duplicate_events += 1
                     if total_rows <= 5:
-                        print(f"⏭️  Skipping duplicate purchase event for {email} (ticket {ticket_number})")
-                    continue  # Skip entire row - no API calls needed
+                        print(f"⏭️  Skipping duplicate purchase event for {email} (ticket {ticket_number}, SKU {event_props.get('sku', 'N/A')}) - already synced")
+                    continue  # Skip entire row - this purchase event already synced to this profile
                 
                 # Skip actual posting if DRY_RUN
                 if DRY_RUN:
@@ -404,9 +405,10 @@ def process_rics_purchases(csv_path: str):
                     print(f"\n📝 Processing row {row_idx} (email: {email}):")
                     print(f"   Ticket: {ticket_number}, Date: {purchase_ts}, Amount: {amount_paid_str}")
                 
-                # Upsert profile with idempotent subscription logic
+                # Step 1: Upsert profile (creates new profile if doesn't exist, updates if exists)
                 # This will:
                 # - Create profile if it doesn't exist
+                # - Update profile if it exists
                 # - Subscribe to base_store_purchases_only list if not already subscribed
                 # - Respect existing unsubscribes (won't re-subscribe if previously unsubscribed)
                 try:
@@ -425,8 +427,10 @@ def process_rics_purchases(csv_path: str):
                         print(f"   Profile: {action} - {status_msg}")
                 except Exception as e:
                     print(f"❌ Error upserting profile for {email} (row {row_idx}): {e}")
+                    # Continue to try posting event even if profile update fails
                 
-                # Build purchase event payload for batch
+                # Step 2: Build purchase event payload for batch
+                # This purchase event will be posted to the profile (whether new or existing)
                 event_payload = {
                     "type": OPTIMIZELY_EVENT_NAME,
                     "timestamp": purchase_ts or datetime.now(timezone.utc).isoformat(),
@@ -436,30 +440,23 @@ def process_rics_purchases(csv_path: str):
                     "properties": event_props
                 }
                 event_batch.append(event_payload)
-                event_batch_keys.append(event_key)  # Track keys for this batch (for deduplication after successful post)
+                event_batch_keys.append(event_key)  # Track keys for deduplication (only mark as processed after successful post)
                 
                 # Post batch when it reaches the batch size
                 if len(event_batch) >= EVENT_BATCH_SIZE:
                     try:
                         status_code, response_text = post_events_batch(event_batch)
                         if status_code in (200, 202):
-                            # ✅ SUCCESS: Only mark as processed AFTER successful post
+                            # ✅ SUCCESS: Purchase events posted to Optimizely
+                            # Only mark as processed AFTER successful API response (200/202)
+                            # This ensures we don't lose customers if API call fails
                             for key in event_batch_keys:
                                 new_event_keys.add(key)
                             posted_events += len(event_batch)
                             
-                            # Verify: Fetch profile to confirm data reached Optimizely
-                            if rows_processed <= 3:  # Only verify first few for performance
-                                from runsignup_connector.optimizely_client import get_profile
-                                verified_profile = get_profile(email)
-                                if verified_profile:
-                                    print(f"   ✅ VERIFIED: Profile exists in Optimizely for {email}")
-                                else:
-                                    print(f"   ⚠️ WARNING: Profile not found in Optimizely for {email} (may need a moment to process)")
-                            
                             if total_rows <= 5:
-                                print(f"   Events: Posted batch of {len(event_batch)} purchase events (status: {status_code})")
-                                print(f"   ✅ Marked {len(event_batch_keys)} events as processed in deduplication log")
+                                print(f"   ✅ Posted batch of {len(event_batch)} purchase events to Optimizely (status: {status_code})")
+                                print(f"   ✅ Marked {len(event_batch_keys)} events as processed (won't resend duplicates)")
                         else:
                             print(f"⚠️ Event batch post failed: {status_code} - {response_text[:200]}")
                             print(f"   ⚠️ NOT marking {len(event_batch)} events as processed (will retry next run)")

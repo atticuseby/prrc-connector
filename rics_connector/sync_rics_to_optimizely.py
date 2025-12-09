@@ -377,20 +377,22 @@ def process_rics_purchases(csv_path: str):
                     "supplier_name": row.get("SupplierName", "").strip(),
                 }
                 
-                # Add order_id and value only if ticket_number is not empty (required for Optimizely purchase recognition)
-                # order_id MUST be a string for Optimizely to display it as Purchase ID
-                if ticket_number:
-                    event_props["order_id"] = str(ticket_number).strip()  # Ensure it's a string
-                    event_props["value"] = amount_paid_float
-                    event_props["currency"] = "USD"
+                # Add order object only if ticket_number is present (required for purchase recognition)
+                ticket_number_str = str(ticket_number).strip() if ticket_number else ""
+                if ticket_number_str:
+                    event_props["order"] = {
+                        "order_id": ticket_number_str,  # required
+                        "value": amount_paid_float,
+                        "currency": "USD"
+                    }
                 else:
                     # Skip if no ticket_number - can't create purchase without order_id
                     skipped_rows += 1
                     skip_reasons["missing_ticket_number"] += 1
                     continue
-                
-                # Remove empty values (but keep order_id, value, currency, action)
-                event_props = {k: v for k, v in event_props.items() if v}
+
+                # Remove empty values (but keep order object intact)
+                event_props = {k: v for k, v in event_props.items() if v or v == 0}
                 
                 valid_rows += 1
                 rows_processed += 1
@@ -444,8 +446,8 @@ def process_rics_purchases(csv_path: str):
                 # Step 2: Build purchase event payload for batch
                 # Optimizely requires:
                 # - type="order"
-                # - action="purchase" (top-level field, NOT inside properties)
-                # - order_id/value/currency in properties
+                # - action="purchase" (top-level)
+                # - properties.order.order_id/value/currency
                 event_payload = {
                     "type": OPTIMIZELY_EVENT_NAME,  # "order" - CRITICAL: must be "order" not "purchase"
                     "action": OPTIMIZELY_EVENT_ACTION,  # "purchase" - top-level per Optimizely API
@@ -464,8 +466,7 @@ def process_rics_purchases(csv_path: str):
                     print(f"\n🔍 DEBUG: Event payload for ticket {ticket_number}:")
                     print(f"   Type: {event_payload['type']}")
                     print(f"   Properties.action: {event_payload['properties'].get('action')}")
-                    print(f"   Properties.order_id: {event_payload['properties'].get('order_id')}")
-                    print(f"   Properties.value: {event_payload['properties'].get('value')}")
+                    print(f"   Properties.order: {event_payload['properties'].get('order')}")
                     print(f"   Full payload: {json_module.dumps(event_payload, indent=2)}")
                 
                 event_batch.append(event_payload)

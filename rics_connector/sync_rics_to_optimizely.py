@@ -47,7 +47,9 @@ DRY_RUN = os.getenv("DRY_RUN", "true").lower() == "true"
 # List ID for "Base - Store Purchases - Automated" email list
 # Can be overridden via OPTIMIZELY_LIST_ID_RICS env var, but defaults to base_store_purchases_only
 OPTIMIZELY_LIST_ID_RICS = os.getenv("OPTIMIZELY_LIST_ID_RICS", "base_store_purchases_only").strip()
-OPTIMIZELY_EVENT_NAME = "purchase"  # Event type for purchases (standard Optimizely purchase event)
+# Optimizely requires "order" type with "purchase" action for purchase events
+OPTIMIZELY_EVENT_NAME = "order"  # Event type must be "order" (not "purchase")
+OPTIMIZELY_EVENT_ACTION = "purchase"  # Action property for purchase events
 
 # TEST MODE configuration - for fast debugging (processes only 5 rows)
 RICS_TEST_MODE = os.getenv("RICS_TEST_MODE", "false").lower() == "true"
@@ -186,7 +188,11 @@ def process_rics_purchases(csv_path: str):
     print("=== RICS PURCHASE SYNC TO OPTIMIZELY ===")
     print(f"DRY_RUN: {DRY_RUN}")
     print(f"TEST_MODE: {RICS_TEST_MODE}")
-    print(f"DEDUPLICATION: {'DISABLED' if RICS_DISABLE_DEDUPLICATION else 'ENABLED'}")
+    print(f"DEDUPLICATION: {'DISABLED ⚠️' if RICS_DISABLE_DEDUPLICATION else 'ENABLED'}")
+    if RICS_DISABLE_DEDUPLICATION:
+        print(f"⚠️  WARNING: Deduplication is DISABLED - events may be posted multiple times!")
+        print(f"⚠️  Only use this for testing. Re-enable deduplication for production.")
+    print(f"EVENT TYPE: {OPTIMIZELY_EVENT_NAME} with action={OPTIMIZELY_EVENT_ACTION}")
     if RICS_TEST_MODE:
         print(f"TEST_EMAIL: {RICS_TEST_EMAIL}")
         if RICS_TEST_EMAIL_FILTER:
@@ -430,13 +436,17 @@ def process_rics_purchases(csv_path: str):
                 
                 # Step 2: Build purchase event payload for batch
                 # This purchase event will be posted to the profile (whether new or existing)
+                # Optimizely requires type="order" with action="purchase" in properties
                 event_payload = {
-                    "type": OPTIMIZELY_EVENT_NAME,
+                    "type": OPTIMIZELY_EVENT_NAME,  # "order"
                     "timestamp": purchase_ts or datetime.now(timezone.utc).isoformat(),
                     "identifiers": {
                         "email": email
                     },
-                    "properties": event_props
+                    "properties": {
+                        **event_props,
+                        "action": OPTIMIZELY_EVENT_ACTION  # "purchase" - required for Optimizely to recognize as purchase
+                    }
                 }
                 event_batch.append(event_payload)
                 event_batch_keys.append(event_key)  # Track keys for deduplication (only mark as processed after successful post)

@@ -253,14 +253,9 @@ def process_rics_purchases(csv_path: str):
     if not os.path.exists(csv_path):
         raise FileNotFoundError(f"CSV file not found: {csv_path}")
     
-    # Check file size and row count before processing
+    # Check file size before processing
     file_size = os.path.getsize(csv_path)
-    with open(csv_path, "r", encoding="utf-8") as f:
-        preview_lines = f.readlines()[:5]
-        print(f"📊 CSV file size: {file_size} bytes")
-        print(f"📊 CSV preview (first 3 lines):")
-        for i, line in enumerate(preview_lines[:3], 1):
-            print(f"   Line {i}: {line.strip()[:100]}")
+    print(f"📊 CSV file: {os.path.basename(csv_path)} ({file_size:,} bytes)")
     
     with open(csv_path, "r", encoding="utf-8") as csvfile:
         reader = csv.DictReader(csvfile)
@@ -290,29 +285,23 @@ def process_rics_purchases(csv_path: str):
                 
                 # TEST MODE: Filter by email if specified (more reliable than name)
                 if RICS_TEST_MODE and RICS_TEST_EMAIL_FILTER:
-                    # Debug: Show first few emails being checked
-                    if total_rows <= 10:
-                        print(f"🔍 Checking email: '{original_email}' against filter: '{RICS_TEST_EMAIL_FILTER}'")
                     if not original_email or original_email.lower() != RICS_TEST_EMAIL_FILTER.lower():
                         skipped_rows += 1
                         skip_reasons["email_filter_no_match"] += 1
                         continue  # Skip rows that don't match the email filter
-                    # If we get here, we found a match
-                    if total_rows <= 10:
-                        print(f"✅ MATCH FOUND: '{original_email}' matches '{RICS_TEST_EMAIL_FILTER}'")
+                    # If we get here, we found a match - log only first match
+                    if rows_processed == 0:
+                        print(f"✅ Found matching email: '{original_email}'")
                 
                 # TEST MODE: Filter by name if specified (only if email filter not set)
                 elif RICS_TEST_MODE and RICS_TEST_NAME:
-                    # Debug: Show first few names being checked
-                    if total_rows <= 10:
-                        print(f"🔍 Checking name: '{customer_name}' against filter: '{RICS_TEST_NAME}'")
                     if not customer_name or RICS_TEST_NAME.lower() not in customer_name.lower():
                         skipped_rows += 1
                         skip_reasons["name_filter_no_match"] += 1
                         continue  # Skip rows that don't match the name filter
-                    # If we get here, we found a match
-                    if total_rows <= 10:
-                        print(f"✅ MATCH FOUND: '{customer_name}' contains '{RICS_TEST_NAME}'")
+                    # If we get here, we found a match - log only first match
+                    if rows_processed == 0:
+                        print(f"✅ Found matching name: '{customer_name}'")
                 
                 # TEST MODE: Override email with test email
                 if RICS_TEST_MODE:
@@ -320,12 +309,9 @@ def process_rics_purchases(csv_path: str):
                         # Still need an email for TEST_MODE
                         original_email = RICS_TEST_EMAIL
                     email = RICS_TEST_EMAIL
-                    if rows_processed < 3:
-                        print(f"\n🧪 TEST MODE: Overriding email {original_email} → {email}")
-                        if RICS_TEST_EMAIL_FILTER:
-                            print(f"🧪 TEST MODE: Matched customer email: {original_email}")
-                        elif RICS_TEST_NAME:
-                            print(f"🧪 TEST MODE: Matched customer name: {customer_name}")
+                    # Only log first override
+                    if rows_processed == 0:
+                        print(f"🧪 TEST MODE: Using test email '{email}' for all rows")
                 else:
                     email = original_email
                 
@@ -396,25 +382,17 @@ def process_rics_purchases(csv_path: str):
                 if is_duplicate:
                     skipped_duplicate_events += 1
                     skip_reasons["duplicate_event"] += 1
-                    if total_rows <= 5:
-                        print(f"⏭️  Skipping duplicate purchase event for {email} (ticket {ticket_number}, SKU {event_props.get('sku', 'N/A')}) - already synced")
+                    # Only log duplicates in test mode or very small datasets
+                    if (RICS_TEST_MODE and rows_processed < 3) or (not RICS_TEST_MODE and total_rows <= 5):
+                        print(f"⏭️  Skipping duplicate: {email} (ticket {ticket_number})")
                     continue  # Skip entire row - this purchase event already synced to this profile
                 
                 # Skip actual posting if DRY_RUN
                 if DRY_RUN:
-                    if total_rows <= 5 or rows_processed <= 5:
-                        print(f"\n[DRY_RUN] Would process purchase:")
-                        print(f"   Email: {email}")
-                        print(f"   Ticket: {ticket_number}")
-                        print(f"   SKU: {event_props.get('sku', 'N/A')}")
-                        print(f"   Amount: {event_props.get('amount_paid', 'N/A')}")
-                        print(f"   Date: {purchase_ts}")
+                    # Only log in test mode or very small datasets
+                    if (RICS_TEST_MODE and rows_processed < 3) or (not RICS_TEST_MODE and total_rows <= 5):
+                        print(f"   [DRY_RUN] Would process: {email} - ticket {ticket_number}, ${amount_paid_str}")
                     continue
-                
-                # Log first few rows being processed (for debugging)
-                if rows_processed <= 3:
-                    print(f"\n📝 Processing row {row_idx} (email: {email}):")
-                    print(f"   Ticket: {ticket_number}, Date: {purchase_ts}, Amount: {amount_paid_str}")
                 
                 # Step 1: Upsert profile (creates new profile if doesn't exist, updates if exists)
                 # This will:
@@ -433,9 +411,9 @@ def process_rics_purchases(csv_path: str):
                     if was_subscribed:
                         subscribed_to_lists += 1
                     
-                    if total_rows <= 5:
-                        print(f"\n📝 Processing row {row_idx} (email: {email}):")
-                        print(f"   Profile: {action} - {status_msg}")
+                    # Only log first few rows in test mode or if very small dataset
+                    if (RICS_TEST_MODE and rows_processed < 3) or (not RICS_TEST_MODE and total_rows <= 5):
+                        print(f"   Row {row_idx}: {action} profile for {email} - {status_msg}")
                 except Exception as e:
                     print(f"❌ Error upserting profile for {email} (row {row_idx}): {e}")
                     # Continue to try posting event even if profile update fails
@@ -465,9 +443,9 @@ def process_rics_purchases(csv_path: str):
                                 new_event_keys.add(key)
                             posted_events += len(event_batch)
                             
-                            if total_rows <= 5:
-                                print(f"   ✅ Posted batch of {len(event_batch)} purchase events to Optimizely (status: {status_code})")
-                                print(f"   ✅ Marked {len(event_batch_keys)} events as processed (won't resend duplicates)")
+                            # Only log batch posts in test mode or very small datasets
+                            if (RICS_TEST_MODE and rows_processed < 10) or (not RICS_TEST_MODE and total_rows <= 10):
+                                print(f"   ✅ Posted batch of {len(event_batch)} events (status: {status_code})")
                         else:
                             print(f"⚠️ Event batch post failed: {status_code} - {response_text[:200]}")
                             print(f"   ⚠️ NOT marking {len(event_batch)} events as processed (will retry next run)")
@@ -523,27 +501,31 @@ def process_rics_purchases(csv_path: str):
     print("SUMMARY")
     print("=" * 60)
     if RICS_TEST_MODE:
-        test_info = f"only processed {rows_processed} rows with email override to {RICS_TEST_EMAIL}"
+        test_info = f"TEST MODE: {rows_processed} rows processed"
         if RICS_TEST_EMAIL_FILTER:
-            test_info += f" (filtered by email: {RICS_TEST_EMAIL_FILTER})"
+            test_info += f" (filtered by: {RICS_TEST_EMAIL_FILTER})"
         elif RICS_TEST_NAME:
-            test_info += f" (filtered by name: {RICS_TEST_NAME})"
-        print(f"⚠️  TEST MODE was enabled - {test_info}")
-    print(f"Total rows: {total_rows}")
+            test_info += f" (filtered by: {RICS_TEST_NAME})"
+        print(f"⚠️  {test_info}")
+    print(f"Total rows in CSV: {total_rows}")
     print(f"Valid rows: {valid_rows}")
     print(f"Skipped rows: {skipped_rows}")
-    if skipped_rows > 0:
-        print(f"\nSkip reasons breakdown:")
+    if skipped_rows > 0 and (RICS_TEST_MODE or skipped_rows < 100):
+        # Only show skip breakdown for test mode or small datasets
+        print(f"Skip reasons:")
         for reason, count in skip_reasons.items():
             if count > 0:
                 print(f"  - {reason}: {count}")
-    print(f"Rows processed: {rows_processed}")
-    print(f"DRY_RUN: {DRY_RUN}")
     if not DRY_RUN:
-        print(f"Posted profiles: {posted_profiles}")
-        print(f"Posted events: {posted_events}")
-        print(f"Skipped duplicate events: {skipped_duplicate_events}")
-        print(f"Subscribed to lists: {subscribed_to_lists}")
+        print(f"\n✅ Posted to Optimizely:")
+        print(f"   Profiles: {posted_profiles}")
+        print(f"   Events: {posted_events}")
+        if subscribed_to_lists > 0:
+            print(f"   Subscriptions: {subscribed_to_lists}")
+        if skipped_duplicate_events > 0:
+            print(f"   Duplicates skipped: {skipped_duplicate_events}")
+    else:
+        print(f"\n[DRY_RUN] No data posted to Optimizely")
     print("=" * 60)
     
     return valid_rows

@@ -377,12 +377,18 @@ def process_rics_purchases(csv_path: str):
                 }
                 
                 # Add order_id and value only if ticket_number is not empty (required for Optimizely purchase recognition)
+                # order_id MUST be a string for Optimizely to display it as Purchase ID
                 if ticket_number:
-                    event_props["order_id"] = ticket_number
+                    event_props["order_id"] = str(ticket_number).strip()  # Ensure it's a string
                     event_props["value"] = amount_paid_float
                     event_props["currency"] = "USD"
+                else:
+                    # Skip if no ticket_number - can't create purchase without order_id
+                    skipped_rows += 1
+                    skip_reasons["missing_ticket_number"] += 1
+                    continue
                 
-                # Remove empty values
+                # Remove empty values (but keep order_id, value, currency, action)
                 event_props = {k: v for k, v in event_props.items() if v}
                 
                 valid_rows += 1
@@ -437,17 +443,29 @@ def process_rics_purchases(csv_path: str):
                 # Step 2: Build purchase event payload for batch
                 # This purchase event will be posted to the profile (whether new or existing)
                 # Optimizely requires type="order" with action="purchase" in properties
+                # order_id must be in properties for Optimizely to display as Purchase ID
                 event_payload = {
-                    "type": OPTIMIZELY_EVENT_NAME,  # "order"
+                    "type": OPTIMIZELY_EVENT_NAME,  # "order" - CRITICAL: must be "order" not "purchase"
                     "timestamp": purchase_ts or datetime.now(timezone.utc).isoformat(),
                     "identifiers": {
                         "email": email
                     },
                     "properties": {
                         **event_props,
-                        "action": OPTIMIZELY_EVENT_ACTION  # "purchase" - required for Optimizely to recognize as purchase
+                        "action": OPTIMIZELY_EVENT_ACTION  # "purchase" - CRITICAL: must be in properties
                     }
                 }
+                
+                # Debug: Log first few event payloads to verify structure
+                if (RICS_TEST_MODE and rows_processed < 2) or (not RICS_TEST_MODE and total_rows <= 3):
+                    import json as json_module
+                    print(f"\n🔍 DEBUG: Event payload for ticket {ticket_number}:")
+                    print(f"   Type: {event_payload['type']}")
+                    print(f"   Properties.action: {event_payload['properties'].get('action')}")
+                    print(f"   Properties.order_id: {event_payload['properties'].get('order_id')}")
+                    print(f"   Properties.value: {event_payload['properties'].get('value')}")
+                    print(f"   Full payload: {json_module.dumps(event_payload, indent=2)}")
+                
                 event_batch.append(event_payload)
                 event_batch_keys.append(event_key)  # Track keys for deduplication (only mark as processed after successful post)
                 

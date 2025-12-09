@@ -220,6 +220,13 @@ def process_rics_purchases(csv_path: str):
     total_rows = 0
     valid_rows = 0
     skipped_rows = 0
+    skip_reasons = {
+        "email_filter_no_match": 0,
+        "name_filter_no_match": 0,
+        "missing_email": 0,
+        "duplicate_event": 0,
+        "exception": 0
+    }
     posted_profiles = 0
     posted_events = 0
     subscribed_to_lists = 0
@@ -288,6 +295,7 @@ def process_rics_purchases(csv_path: str):
                         print(f"🔍 Checking email: '{original_email}' against filter: '{RICS_TEST_EMAIL_FILTER}'")
                     if not original_email or original_email.lower() != RICS_TEST_EMAIL_FILTER.lower():
                         skipped_rows += 1
+                        skip_reasons["email_filter_no_match"] += 1
                         continue  # Skip rows that don't match the email filter
                     # If we get here, we found a match
                     if total_rows <= 10:
@@ -300,6 +308,7 @@ def process_rics_purchases(csv_path: str):
                         print(f"🔍 Checking name: '{customer_name}' against filter: '{RICS_TEST_NAME}'")
                     if not customer_name or RICS_TEST_NAME.lower() not in customer_name.lower():
                         skipped_rows += 1
+                        skip_reasons["name_filter_no_match"] += 1
                         continue  # Skip rows that don't match the name filter
                     # If we get here, we found a match
                     if total_rows <= 10:
@@ -322,6 +331,7 @@ def process_rics_purchases(csv_path: str):
                 
                 if not email:
                     skipped_rows += 1
+                    skip_reasons["missing_email"] += 1
                     continue
                 
                 # Extract purchase info
@@ -385,6 +395,7 @@ def process_rics_purchases(csv_path: str):
                 
                 if is_duplicate:
                     skipped_duplicate_events += 1
+                    skip_reasons["duplicate_event"] += 1
                     if total_rows <= 5:
                         print(f"⏭️  Skipping duplicate purchase event for {email} (ticket {ticket_number}, SKU {event_props.get('sku', 'N/A')}) - already synced")
                     continue  # Skip entire row - this purchase event already synced to this profile
@@ -472,6 +483,7 @@ def process_rics_purchases(csv_path: str):
             except Exception as e:
                 print(f"❌ Error processing row {row_idx}: {e}")
                 skipped_rows += 1
+                skip_reasons["exception"] += 1
                 continue
     
     # Flush any remaining events in batch
@@ -520,6 +532,11 @@ def process_rics_purchases(csv_path: str):
     print(f"Total rows: {total_rows}")
     print(f"Valid rows: {valid_rows}")
     print(f"Skipped rows: {skipped_rows}")
+    if skipped_rows > 0:
+        print(f"\nSkip reasons breakdown:")
+        for reason, count in skip_reasons.items():
+            if count > 0:
+                print(f"  - {reason}: {count}")
     print(f"Rows processed: {rows_processed}")
     print(f"DRY_RUN: {DRY_RUN}")
     if not DRY_RUN:

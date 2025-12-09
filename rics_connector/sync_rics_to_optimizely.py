@@ -242,6 +242,18 @@ def process_rics_purchases(csv_path: str):
     
     # Process CSV
     print(f"📄 Processing CSV: {csv_path}")
+    if not os.path.exists(csv_path):
+        raise FileNotFoundError(f"CSV file not found: {csv_path}")
+    
+    # Check file size and row count before processing
+    file_size = os.path.getsize(csv_path)
+    with open(csv_path, "r", encoding="utf-8") as f:
+        preview_lines = f.readlines()[:5]
+        print(f"📊 CSV file size: {file_size} bytes")
+        print(f"📊 CSV preview (first 3 lines):")
+        for i, line in enumerate(preview_lines[:3], 1):
+            print(f"   Line {i}: {line.strip()[:100]}")
+    
     with open(csv_path, "r", encoding="utf-8") as csvfile:
         reader = csv.DictReader(csvfile)
         
@@ -377,13 +389,19 @@ def process_rics_purchases(csv_path: str):
                 
                 # Skip actual posting if DRY_RUN
                 if DRY_RUN:
-                    if total_rows <= 5:
+                    if total_rows <= 5 or rows_processed <= 5:
                         print(f"\n[DRY_RUN] Would process purchase:")
                         print(f"   Email: {email}")
                         print(f"   Ticket: {ticket_number}")
                         print(f"   SKU: {event_props.get('sku', 'N/A')}")
                         print(f"   Amount: {event_props.get('amount_paid', 'N/A')}")
+                        print(f"   Date: {purchase_ts}")
                     continue
+                
+                # Log first few rows being processed (for debugging)
+                if rows_processed <= 3:
+                    print(f"\n📝 Processing row {row_idx} (email: {email}):")
+                    print(f"   Ticket: {ticket_number}, Date: {purchase_ts}, Amount: {amount_paid_str}")
                 
                 # Upsert profile with idempotent subscription logic
                 # This will:

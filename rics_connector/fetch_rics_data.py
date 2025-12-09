@@ -114,7 +114,7 @@ def fetch_pos_transactions_for_store(store_code=None,
     
     # Use ISO 8601 format with time (YYYY-MM-DDTHH:MM:SSZ) for both Batch and Ticket date fields
     # Per API docs: use both BatchStartDate/BatchEndDate AND TicketDateStart/TicketDateEnd
-    # Calculate date range: lookback_days ago to now
+    # Calculate date range: lookback_days ago to now (exact, no buffers)
     start_datetime = datetime.utcnow() - timedelta(days=lookback_days)
     end_datetime = datetime.utcnow()
     
@@ -126,11 +126,10 @@ def fetch_pos_transactions_for_store(store_code=None,
     start_date_only = start_datetime.strftime("%Y-%m-%d")
     end_date_only = end_datetime.strftime("%Y-%m-%d")
     
-    log_message(f"🔍 DEBUG: Date range calculation:")
-    log_message(f"   lookback_days: {lookback_days}")
-    log_message(f"   start_datetime: {start_datetime} (UTC)")
-    log_message(f"   end_datetime: {end_datetime} (UTC)")
-    log_message(f"   API will query: {start_date} to {end_date}")
+    log_message(f"🔍 DEBUG: Date range calculation for {lookback_days} day lookback:")
+    log_message(f"   Start: {start_datetime} (UTC) = {start_date} / {start_date_only}")
+    log_message(f"   End: {end_datetime} (UTC) = {end_date} / {end_date_only}")
+    log_message(f"   This should return data from the last {lookback_days} days")
     
     log_message(f"🔍 Store {store_code}: API date range - Start: {start_date} / {start_date_only}, End: {end_date} / {end_date_only} ({lookback_days} days lookback)")
     log_message(f"🔍 DEBUG: Using both BatchStartDate/BatchEndDate (date-only) AND TicketDateStart/TicketDateEnd (ISO 8601)")

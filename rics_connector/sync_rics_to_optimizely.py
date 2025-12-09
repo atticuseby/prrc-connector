@@ -238,6 +238,7 @@ def process_rics_purchases(csv_path: str):
         "email_filter_no_match": 0,
         "name_filter_no_match": 0,
         "missing_email": 0,
+        "missing_ticket_number": 0,
         "duplicate_event": 0,
         "exception": 0
     }

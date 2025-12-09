@@ -211,11 +211,21 @@ def fetch_pos_transactions_for_store(store_code=None,
                 if page_dates:
                     page_oldest = min(page_dates)
                     page_newest = max(page_dates)
-                    log_message(f"📅 Store {store_code} page 1 date range: {page_oldest} to {page_newest}")
-                    log_message(f"📅 Store {store_code} requested range: {start_date_only} to {end_date_only} (Batch) / {start_date} to {end_date} (Ticket)")
+                    days_span = (page_newest - page_oldest).days
+                    log_message(f"📅 Store {store_code} page 1 ACTUAL date range in API response:")
+                    log_message(f"   Oldest: {page_oldest}")
+                    log_message(f"   Newest: {page_newest}")
+                    log_message(f"   Span: {days_span} days")
+                    log_message(f"📅 Store {store_code} REQUESTED date range:")
+                    log_message(f"   Batch: {start_date_only} to {end_date_only}")
+                    log_message(f"   Ticket: {start_date} to {end_date}")
+                    log_message(f"   Expected: {lookback_days} days")
                     if page_newest < (datetime.utcnow() - timedelta(days=7)):
                         days_behind = (datetime.utcnow() - page_newest).days
                         log_message(f"⚠️  WARNING: Store {store_code} newest data is {days_behind} days old!")
+                    if days_span < (lookback_days * 0.5):  # If we got less than 50% of expected range
+                        log_message(f"⚠️  WARNING: Store {store_code} only returned {days_span} days of data, expected {lookback_days} days!")
+                        log_message(f"   This suggests the API query may not be working correctly.")
             
             # Minimal debugging - only log if no sales found
             if not sales and page_count < 3:

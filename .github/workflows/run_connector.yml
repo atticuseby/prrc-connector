@@ -85,6 +85,7 @@ jobs:
           RICS_TEST_EMAIL: ${{ secrets.RICS_TEST_EMAIL || '' }}
           RICS_TEST_NAME: ${{ secrets.RICS_TEST_NAME || '' }}
           RICS_TEST_EMAIL_FILTER: ${{ secrets.RICS_TEST_EMAIL_FILTER || '' }}
+          RICS_DISABLE_DEDUPLICATION: ${{ secrets.RICS_DISABLE_DEDUPLICATION || 'false' }}
 
       - name: Sync to Meta (Offline Events)
         run: python scripts/sync_rics_to_meta.py rics_customer_purchase_history_deduped.csv

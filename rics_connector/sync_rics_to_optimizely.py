@@ -56,6 +56,9 @@ RICS_TEST_NAME = os.getenv("RICS_TEST_NAME", "").strip()  # Filter by customer n
 RICS_TEST_EMAIL_FILTER = os.getenv("RICS_TEST_EMAIL_FILTER", "").strip()  # Filter by customer email (more reliable than name)
 RICS_TEST_MAX_ROWS = 5  # Process only 5 rows in test mode
 
+# Deduplication control - set to "true" to disable deduplication (useful for testing)
+RICS_DISABLE_DEDUPLICATION = os.getenv("RICS_DISABLE_DEDUPLICATION", "false").lower() == "true"
+
 # Event deduplication
 PROCESSED_EVENTS_LOG = os.path.join(os.path.dirname(__file__), "..", "logs", "processed_rics_events.json")
 
@@ -183,6 +186,7 @@ def process_rics_purchases(csv_path: str):
     print("=== RICS PURCHASE SYNC TO OPTIMIZELY ===")
     print(f"DRY_RUN: {DRY_RUN}")
     print(f"TEST_MODE: {RICS_TEST_MODE}")
+    print(f"DEDUPLICATION: {'DISABLED' if RICS_DISABLE_DEDUPLICATION else 'ENABLED'}")
     if RICS_TEST_MODE:
         print(f"TEST_EMAIL: {RICS_TEST_EMAIL}")
         if RICS_TEST_EMAIL_FILTER:
@@ -208,13 +212,17 @@ def process_rics_purchases(csv_path: str):
     if not os.path.exists(csv_path):
         raise FileNotFoundError(f"CSV file not found: {csv_path}")
     
-    # Load processed events for deduplication
-    processed_event_keys = load_processed_events()
+    # Load processed events for deduplication (unless disabled)
+    if RICS_DISABLE_DEDUPLICATION:
+        processed_event_keys = set()
+        print(f"⚠️  DEDUPLICATION DISABLED - all events will be processed (even if previously synced)")
+    else:
+        processed_event_keys = load_processed_events()
+        if not DRY_RUN:
+            print(f"📋 Loaded {len(processed_event_keys)} previously processed events for deduplication")
+    
     new_event_keys = set()
     skipped_duplicate_events = 0
-    
-    if not DRY_RUN:
-        print(f"📋 Loaded {len(processed_event_keys)} previously processed events for deduplication")
     
     # Track stats
     total_rows = 0
@@ -377,15 +385,17 @@ def process_rics_purchases(csv_path: str):
                 # ⚡ DEDUPLICATION: Check if we already synced this purchase event to this profile
                 # Event key = email + ticket_number + sku + timestamp (unique per purchase event per customer)
                 event_key = _generate_event_key(email, ticket_number, event_props.get("sku", ""), purchase_ts)
-                is_duplicate = event_key in processed_event_keys
-                
-                if is_duplicate:
-                    skipped_duplicate_events += 1
-                    skip_reasons["duplicate_event"] += 1
-                    # Only log duplicates in test mode or very small datasets
-                    if (RICS_TEST_MODE and rows_processed < 3) or (not RICS_TEST_MODE and total_rows <= 5):
-                        print(f"⏭️  Skipping duplicate: {email} (ticket {ticket_number})")
-                    continue  # Skip entire row - this purchase event already synced to this profile
+                # Check for duplicate events (skip if deduplication is enabled)
+                if not RICS_DISABLE_DEDUPLICATION:
+                    is_duplicate = event_key in processed_event_keys
+                    
+                    if is_duplicate:
+                        skipped_duplicate_events += 1
+                        skip_reasons["duplicate_event"] += 1
+                        # Only log duplicates in test mode or very small datasets
+                        if (RICS_TEST_MODE and rows_processed < 3) or (not RICS_TEST_MODE and total_rows <= 5):
+                            print(f"⏭️  Skipping duplicate: {email} (ticket {ticket_number})")
+                        continue  # Skip entire row - this purchase event already synced to this profile
                 
                 # Skip actual posting if DRY_RUN
                 if DRY_RUN:
@@ -486,15 +496,18 @@ def process_rics_purchases(csv_path: str):
             event_batch = []
             event_batch_keys = []
     
-    # Save processed events for next run
-    if new_event_keys:
-        updated_keys = processed_event_keys.union(new_event_keys)
-        save_processed_events(updated_keys)
-        print(f"\n💾 Saved {len(new_event_keys)} new event keys to deduplication log")
+    # Save processed events for next run (unless deduplication is disabled)
+    if not RICS_DISABLE_DEDUPLICATION:
+        if new_event_keys:
+            updated_keys = processed_event_keys.union(new_event_keys)
+            save_processed_events(updated_keys)
+            print(f"\n💾 Saved {len(new_event_keys)} new event keys to deduplication log")
+        else:
+            # Preserve existing events even if no new ones
+            save_processed_events(processed_event_keys)
+            print(f"\n💾 Preserved {len(processed_event_keys)} existing tracked events")
     else:
-        # Preserve existing events even if no new ones
-        save_processed_events(processed_event_keys)
-        print(f"\n💾 Preserved {len(processed_event_keys)} existing tracked events")
+        print(f"\n⚠️  Deduplication disabled - events were NOT saved to deduplication log")
     
     # Print summary
     print("\n" + "=" * 60)

@@ -114,8 +114,10 @@ def fetch_pos_transactions_for_store(store_code=None,
     
     # Use ISO 8601 format with time (YYYY-MM-DDTHH:MM:SSZ) for both Batch and Ticket date fields
     # Per API docs: use both BatchStartDate/BatchEndDate AND TicketDateStart/TicketDateEnd
-    start_datetime = datetime.utcnow() - timedelta(days=lookback_days)
-    end_datetime = datetime.utcnow()
+    # For daily sync (lookback_days=1), ensure we get last 24 hours, not just "today"
+    # Subtract 1 hour buffer to ensure we don't miss data due to timezone/processing delays
+    start_datetime = datetime.utcnow() - timedelta(days=lookback_days, hours=1)
+    end_datetime = datetime.utcnow() + timedelta(hours=1)  # Add 1 hour buffer for same-day data
     
     # Format as ISO 8601 with time (start of day for start, end of day for end)
     start_date = start_datetime.strftime("%Y-%m-%dT00:00:00Z")

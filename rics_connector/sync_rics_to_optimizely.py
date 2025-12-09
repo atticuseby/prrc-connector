@@ -227,6 +227,7 @@ def process_rics_purchases(csv_path: str):
     
     # Batch event collection
     event_batch = []
+    event_batch_keys = []  # Track event keys for each batch (for deduplication after successful post)
     
     # TEST MODE validation
     if RICS_TEST_MODE:
@@ -435,22 +436,41 @@ def process_rics_purchases(csv_path: str):
                     "properties": event_props
                 }
                 event_batch.append(event_payload)
-                new_event_keys.add(event_key)  # Mark as processed
+                event_batch_keys.append(event_key)  # Track keys for this batch (for deduplication after successful post)
                 
                 # Post batch when it reaches the batch size
                 if len(event_batch) >= EVENT_BATCH_SIZE:
                     try:
                         status_code, response_text = post_events_batch(event_batch)
                         if status_code in (200, 202):
+                            # ✅ SUCCESS: Only mark as processed AFTER successful post
+                            for key in event_batch_keys:
+                                new_event_keys.add(key)
                             posted_events += len(event_batch)
+                            
+                            # Verify: Fetch profile to confirm data reached Optimizely
+                            if rows_processed <= 3:  # Only verify first few for performance
+                                from runsignup_connector.optimizely_client import get_profile
+                                verified_profile = get_profile(email)
+                                if verified_profile:
+                                    print(f"   ✅ VERIFIED: Profile exists in Optimizely for {email}")
+                                else:
+                                    print(f"   ⚠️ WARNING: Profile not found in Optimizely for {email} (may need a moment to process)")
+                            
                             if total_rows <= 5:
-                                print(f"   Events: Posted batch of {len(event_batch)} purchase events")
+                                print(f"   Events: Posted batch of {len(event_batch)} purchase events (status: {status_code})")
+                                print(f"   ✅ Marked {len(event_batch_keys)} events as processed in deduplication log")
                         else:
                             print(f"⚠️ Event batch post failed: {status_code} - {response_text[:200]}")
+                            print(f"   ⚠️ NOT marking {len(event_batch)} events as processed (will retry next run)")
+                            # Don't add to new_event_keys - will retry next time
                         event_batch = []  # Clear batch
+                        event_batch_keys = []  # Clear keys
                     except Exception as e:
                         print(f"❌ Error posting event batch: {e}")
+                        print(f"   ⚠️ NOT marking events as processed (will retry next run)")
                         event_batch = []  # Clear batch on error
+                        event_batch_keys = []  # Clear keys
                 
             except Exception as e:
                 print(f"❌ Error processing row {row_idx}: {e}")
@@ -462,14 +482,22 @@ def process_rics_purchases(csv_path: str):
         try:
             status_code, response_text = post_events_batch(event_batch)
             if status_code in (200, 202):
+                # ✅ SUCCESS: Only mark as processed AFTER successful post
+                for key in event_batch_keys:
+                    new_event_keys.add(key)
                 posted_events += len(event_batch)
-                print(f"\n📦 Posted final batch of {len(event_batch)} purchase events")
+                print(f"\n📦 Posted final batch of {len(event_batch)} purchase events (status: {status_code})")
+                print(f"   ✅ Marked {len(event_batch_keys)} events as processed in deduplication log")
             else:
                 print(f"\n⚠️ Final event batch post failed: {status_code} - {response_text[:200]}")
+                print(f"   ⚠️ NOT marking {len(event_batch)} events as processed (will retry next run)")
             event_batch = []
+            event_batch_keys = []
         except Exception as e:
             print(f"\n❌ Error posting final event batch: {e}")
+            print(f"   ⚠️ NOT marking events as processed (will retry next run)")
             event_batch = []
+            event_batch_keys = []
     
     # Save processed events for next run
     if new_event_keys:

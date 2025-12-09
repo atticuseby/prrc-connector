@@ -442,18 +442,19 @@ def process_rics_purchases(csv_path: str):
                     # Continue to try posting event even if profile update fails
                 
                 # Step 2: Build purchase event payload for batch
-                # This purchase event will be posted to the profile (whether new or existing)
-                # Optimizely requires type="order" with action="purchase" in properties
-                # order_id must be in properties for Optimizely to display as Purchase ID
+                # Optimizely requires:
+                # - type="order"
+                # - action="purchase" (top-level field, NOT inside properties)
+                # - order_id/value/currency in properties
                 event_payload = {
                     "type": OPTIMIZELY_EVENT_NAME,  # "order" - CRITICAL: must be "order" not "purchase"
+                    "action": OPTIMIZELY_EVENT_ACTION,  # "purchase" - top-level per Optimizely API
                     "timestamp": purchase_ts or datetime.now(timezone.utc).isoformat(),
                     "identifiers": {
                         "email": email
                     },
                     "properties": {
-                        **event_props,
-                        "action": OPTIMIZELY_EVENT_ACTION  # "purchase" - CRITICAL: must be in properties
+                        **event_props
                     }
                 }
                 

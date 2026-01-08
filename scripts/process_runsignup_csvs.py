@@ -23,7 +23,6 @@ from googleapiclient.http import MediaIoBaseDownload
 from google.oauth2 import service_account
 
 from runsignup_connector.optimizely_client import (
-    upsert_profile_with_subscription,
     post_event,
     post_events_batch
 )
@@ -517,9 +516,12 @@ def process_runsignup_csvs():
     detailed_log_count = 0  # Track how many rows we've logged in detail (first few rows)
     MAX_DETAILED_LOGS = 5  # Log first 5 rows in detail
     
-    # ⚡ OPTIMIZATION: Batch event posting
-    EVENT_BATCH_SIZE = 100  # Send events in batches of 100
+    # ⚡ OPTIMIZATION: Batch event posting (increased from 100 for better throughput)
+    EVENT_BATCH_SIZE = 250  # Send events in batches of 250
+    # ⚡ OPTIMIZATION: Batch profile updates (customer_update events) for much faster processing
+    PROFILE_BATCH_SIZE = 250  # Send profile updates in batches of 250
     event_batch = []  # Collect events for batch posting
+    profile_batch = []  # Collect profile updates for batch posting
     
     for file_info in files_global:
         file_id = file_info["id"]
@@ -622,34 +624,45 @@ def process_runsignup_csvs():
                 if DRY_RUN:
                     continue
                 
-                # Upsert profile with idempotent subscription logic
                 should_log_detail = detailed_log_count < MAX_DETAILED_LOGS
                 if should_log_detail:
                     print(f"\n📝 Processing row {row_idx} (email: {email}):")
                 
-                try:
-                    action, status_msg, was_subscribed = upsert_profile_with_subscription(
-                        email,
-                        profile_attrs,
-                        list_id
-                    )
-                    
-                    posted_profiles += 1
-                    if was_subscribed:
-                        subscribed_to_lists += 1
-                    
-                    if should_log_detail:
-                        print(f"   Profile: {action} - {status_msg}")
-                    elif detailed_log_count == 0:
-                        # Log first row in summary format
-                        print(f"   First row: {email} - {action} - {status_msg}")
-                    
-                    detailed_log_count += 1
-                    
-                except Exception as e:
-                    print(f"❌ Error upserting profile for {email} (row {row_idx} in {file_name}): {e}")
-                    if should_log_detail:
-                        print(f"   Error details: {str(e)}")
+                # ⚡ OPTIMIZATION: Build profile update payload for batch posting
+                # Use customer_update event type with list subscription included
+                # This is much faster than calling upsert_profile_with_subscription() which does 3 API calls per row
+                # (GET profile + POST profile + POST subscription = 3 calls vs 1 batched call)
+                # Note: Optimizely's API respects existing unsubscribe preferences when using lists field in customer_update events
+                profile_payload = {
+                    "type": "customer_update",
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "identifiers": {
+                        "email": email
+                    },
+                    "properties": profile_attrs
+                }
+                
+                # Include list subscription in the payload (Optimizely handles create/update automatically)
+                if list_id:
+                    profile_payload["lists"] = [{"id": list_id, "subscribe": True}]
+                
+                profile_batch.append(profile_payload)
+                
+                # ⚡ OPTIMIZATION: Post profile batch when it reaches the batch size
+                if len(profile_batch) >= PROFILE_BATCH_SIZE:
+                    try:
+                        status_code, response_text = post_events_batch(profile_batch)
+                        if status_code in (200, 202):
+                            posted_profiles += len(profile_batch)
+                            subscribed_to_lists += len(profile_batch)  # All profiles in batch include subscription
+                            if detailed_log_count <= MAX_DETAILED_LOGS:
+                                print(f"   Profiles: Posted batch of {len(profile_batch)} profile updates")
+                        else:
+                            print(f"⚠️ Profile batch post failed: {status_code} - {response_text[:200]}")
+                        profile_batch = []  # Clear batch
+                    except Exception as e:
+                        print(f"❌ Error posting profile batch: {e}")
+                        profile_batch = []  # Clear batch on error
                 
                 # ⚡ OPTIMIZATION: Collect event for batch posting (already checked for duplicates above)
                 # Mark as processed immediately to avoid race conditions
@@ -680,11 +693,28 @@ def process_runsignup_csvs():
                     except Exception as e:
                         print(f"❌ Error posting event batch: {e}")
                         event_batch = []  # Clear batch on error
+                
+                detailed_log_count += 1
                     
             except Exception as e:
                 print(f"❌ Error processing row {row_idx} in {file_name}: {e}")
                 skipped_rows += 1
                 continue
+        
+        # ⚡ OPTIMIZATION: Flush any remaining profile updates in batch at end of file
+        if profile_batch and not DRY_RUN:
+            try:
+                status_code, response_text = post_events_batch(profile_batch)
+                if status_code in (200, 202):
+                    posted_profiles += len(profile_batch)
+                    subscribed_to_lists += len(profile_batch)
+                    print(f"   Profiles: Posted final batch of {len(profile_batch)} profile updates")
+                else:
+                    print(f"⚠️ Final profile batch post failed: {status_code} - {response_text[:200]}")
+                profile_batch = []  # Clear batch
+            except Exception as e:
+                print(f"❌ Error posting final profile batch: {e}")
+                profile_batch = []  # Clear batch on error
         
         # ⚡ OPTIMIZATION: Flush any remaining events in batch at end of file
         if event_batch and not DRY_RUN:
@@ -716,6 +746,21 @@ def process_runsignup_csvs():
             "valid_rows": file_valid_rows,
             "skipped_rows": file_skipped_rows
         })
+    
+    # ⚡ OPTIMIZATION: Flush any remaining profile updates in batch after all files
+    if profile_batch and not DRY_RUN:
+        try:
+            status_code, response_text = post_events_batch(profile_batch)
+            if status_code in (200, 202):
+                posted_profiles += len(profile_batch)
+                subscribed_to_lists += len(profile_batch)
+                print(f"\n📦 Posted final batch of {len(profile_batch)} profile updates")
+            else:
+                print(f"\n⚠️ Final profile batch post failed: {status_code} - {response_text[:200]}")
+            profile_batch = []  # Clear batch
+        except Exception as e:
+            print(f"\n❌ Error posting final profile batch: {e}")
+            profile_batch = []  # Clear batch on error
     
     # ⚡ OPTIMIZATION: Flush any remaining events in batch after all files
     if event_batch and not DRY_RUN:

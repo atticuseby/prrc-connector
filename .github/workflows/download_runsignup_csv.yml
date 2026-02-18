@@ -10,9 +10,8 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      RUNSIGNUP_API_KEY: ${{ secrets.RUNSIGNUP_API_KEY }}
-      RUNSIGNUP_API_SECRET: ${{ secrets.RUNSIGNUP_API_SECRET }}
-      RUNSIGNUP_PARTNER_IDS: ${{ secrets.RUNSIGNUP_PARTNER_IDS }}
+      RUNSIGNUP_EMAIL: ${{ secrets.RUNSIGNUP_EMAIL }}
+      RUNSIGNUP_PASSWORD: ${{ secrets.RUNSIGNUP_PASSWORD }}
       GDRIVE_CREDENTIALS: ${{ secrets.GDRIVE_CREDENTIALS }}
       GDRIVE_FOLDER_ID_1384: ${{ secrets.GDRIVE_FOLDER_ID_1384 }}
       GDRIVE_FOLDER_ID_1385: ${{ secrets.GDRIVE_FOLDER_ID_1385 }}
@@ -27,8 +26,13 @@ jobs:
         with:
           python-version: '3.10'
 
-      - name: Install dependencies
-        run: pip install requests google-api-python-client google-auth google-auth-httplib2 google-auth-oauthlib
+      - name: Install Chrome
+        run: |
+          wget -q https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+          sudo apt install -y ./google-chrome-stable_current_amd64.deb
 
-      - name: Fetch RunSignUp data via API
-        run: python scripts/fetch_runsignup_api.py
+      - name: Install dependencies
+        run: pip install selenium google-api-python-client google-auth google-auth-httplib2 google-auth-oauthlib
+
+      - name: Download RunSignUp CSVs
+        run: python scripts/download_all_runsignup_csvs.py

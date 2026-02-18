@@ -35,12 +35,13 @@ def _get_drive_service_and_folder():
 
     return service, folder_id
 
-def upload_to_drive(file_path, filename=None):
+def upload_to_drive(file_path, filename=None, folder_id=None):
     """
     Upload file to Google Drive folder.
     - If a file with the same name exists in the folder, overwrite it.
     - Otherwise, create a new file.
     Works with Shared Drives (supportsAllDrives=True).
+    Pass folder_id to override the GDRIVE_FOLDER_ID_RICS env var.
     """
     if not filename:
         filename = os.path.basename(file_path)
@@ -49,7 +50,8 @@ def upload_to_drive(file_path, filename=None):
         logging.error(f"File does not exist: {file_path}")
         return
 
-    service, folder_id = _get_drive_service_and_folder()
+    service, default_folder_id = _get_drive_service_and_folder()
+    folder_id = folder_id or default_folder_id
 
     logging.info(f"Uploading {file_path} as {filename}")
     logging.info(f"Target folder ID: {folder_id}")

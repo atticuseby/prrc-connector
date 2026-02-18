@@ -10,43 +10,25 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      RUNSIGNUP_EMAIL: ${{ secrets.RUNSIGNUP_EMAIL }}
-      RUNSIGNUP_PASSWORD: ${{ secrets.RUNSIGNUP_PASSWORD }}
+      RUNSIGNUP_API_KEY: ${{ secrets.RUNSIGNUP_API_KEY }}
+      RUNSIGNUP_API_SECRET: ${{ secrets.RUNSIGNUP_API_SECRET }}
+      RUNSIGNUP_PARTNER_IDS: ${{ secrets.RUNSIGNUP_PARTNER_IDS }}
       GDRIVE_CREDENTIALS: ${{ secrets.GDRIVE_CREDENTIALS }}
-      GDRIVE_FOLDER_ID_RICS: ${{ secrets.GDRIVE_FOLDER_ID_RICS }}
+      GDRIVE_FOLDER_ID_1384: ${{ secrets.GDRIVE_FOLDER_ID_1384 }}
+      GDRIVE_FOLDER_ID_1385: ${{ secrets.GDRIVE_FOLDER_ID_1385 }}
+      GDRIVE_FOLDER_ID_1411: ${{ secrets.GDRIVE_FOLDER_ID_1411 }}
 
     steps:
-      - name: 📂 Checkout repository
+      - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: 🧰 Install Chrome & ChromeDriver
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y wget unzip curl jq libnss3 libxss1 libasound2t64 libatk-bridge2.0-0 libgtk-3-0 xvfb
-          wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
-          sudo dpkg -i google-chrome-stable_current_amd64.deb || sudo apt-get -f install -y
-          CHROME_VERSION=$(google-chrome --version | grep -oP '\d+\.\d+\.\d+')
-          CHROMEDRIVER_URL=$(curl -s "https://googlechromelabs.github.io/chrome-for-testing/last-known-good-versions-with-downloads.json" | jq -r --arg ver "$CHROME_VERSION" '.channels.Stable.downloads.chromedriver[] | select(.platform == "linux64") | .url')
-          wget -O chromedriver_linux64.zip "$CHROMEDRIVER_URL"
-          unzip chromedriver_linux64.zip
-          sudo mv chromedriver-linux64/chromedriver /usr/local/bin/
-          sudo chmod +x /usr/local/bin/chromedriver
-
-      - name: 🐍 Set up Python
+      - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.10'
 
-      - name: 📦 Install Python dependencies
-        run: |
-          pip install selenium google-api-python-client google-auth google-auth-httplib2 google-auth-oauthlib
+      - name: Install dependencies
+        run: pip install requests google-api-python-client google-auth google-auth-httplib2 google-auth-oauthlib
 
-      - name: 🚀 Run download_all_runsignup_csvs.py
-        run: python scripts/download_all_runsignup_csvs.py
-
-      - name: 📸 Upload debug screenshots (if any)
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: debug-screenshots
-          path: optimizely_connector/output/
+      - name: Fetch RunSignUp data via API
+        run: python scripts/fetch_runsignup_api.py

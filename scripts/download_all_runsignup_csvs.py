@@ -138,7 +138,8 @@ def main():
             print(f"\n=== Downloading for Partner ID {partner['id']} ({partner['name']}) ===")
             try:
                 csv_path = wait_for_and_download(driver, partner["url"], partner["id"])
-                upload_to_drive(csv_path)
+                folder_id = os.environ.get(f"GDRIVE_FOLDER_ID_{partner['id']}")
+                upload_to_drive(csv_path, folder_id=folder_id)
                 print("📤 Upload complete.")
             except Exception as e:
                 print(f"❌ Skipped {partner['id']} due to error: {e}")

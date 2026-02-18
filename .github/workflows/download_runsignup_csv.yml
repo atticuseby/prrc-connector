@@ -30,6 +30,7 @@ jobs:
         run: |
           wget -q https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
           sudo apt install -y ./google-chrome-stable_current_amd64.deb
+          sudo rm -f /usr/bin/chromedriver  # remove stale system chromedriver so selenium-manager downloads the matching version
 
       - name: Install dependencies
         run: pip install selenium google-api-python-client google-auth google-auth-httplib2 google-auth-oauthlib

@@ -9,6 +9,12 @@ jobs:
   download_all_csvs:
     runs-on: ubuntu-latest
 
+    env:
+      RUNSIGNUP_EMAIL: ${{ secrets.RUNSIGNUP_EMAIL }}
+      RUNSIGNUP_PASSWORD: ${{ secrets.RUNSIGNUP_PASSWORD }}
+      GDRIVE_CREDENTIALS: ${{ secrets.GDRIVE_CREDENTIALS }}
+      GDRIVE_FOLDER_ID_RICS: ${{ secrets.GDRIVE_FOLDER_ID_RICS }}
+
     steps:
       - name: 📂 Checkout repository
         uses: actions/checkout@v3
